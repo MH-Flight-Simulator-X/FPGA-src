@@ -1,0 +1,6 @@
+# .gitignore for the FPGA-src
+*.log
+*.so
+*.history
+*.o
+*.a
