@@ -4,3 +4,7 @@
 *.history
 *.o
 *.a
+
+# Verilator sim
+obj_dir/
+*.vcd

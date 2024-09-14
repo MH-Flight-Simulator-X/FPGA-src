@@ -27,8 +27,8 @@ module mat_vec_mul_dim_4
     );
 
     reg [1:0] index = 2'b00;
-    reg i_dv_r;
-    reg o_dv_r;
+    // reg i_dv_r;      // TODO: Are they needed?
+    // reg o_dv_r;
     reg [DATAWIDTH-1:0] A_r [4][4];
     reg [DATAWIDTH-1:0] x_r [4];
     reg [DATAWIDTH-1:0] y_r [4];
@@ -40,7 +40,7 @@ module mat_vec_mul_dim_4
             foreach (A_r[i,j]) A_r[i][j] <= '0;
             foreach (x_r[i]) x_r[i] <= '0;
 
-            i_dv_r <= 1'b0;
+            // i_dv_r <= 1'b0;
             current_state <= IDLE;
 
         end else begin
@@ -53,8 +53,9 @@ module mat_vec_mul_dim_4
                 A_r[2] <= A[2];
                 A_r[3] <= A[3];
                 x_r <= x;
+                foreach (y_r[i]) y_r[i] <= '0;
 
-                i_dv_r <= i_dv;
+                // i_dv_r <= i_dv;
             end
         end
     end
@@ -100,10 +101,10 @@ module mat_vec_mul_dim_4
             foreach (y_r[i]) y_r[i] <= '0;
         end else if (current_state == PROCESSING) begin
             // DO COMPUTATION
-            y_r[0] <= y_r[0] + (A_r[0][index] * x[index]);
-            y_r[1] <= y_r[1] + (A_r[1][index] * x[index]);
-            y_r[2] <= y_r[2] + (A_r[2][index] * x[index]);
-            y_r[3] <= y_r[3] + (A_r[3][index] * x[index]);
+            y_r[0] <= y_r[0] + (A_r[0][index] * x_r[index]);
+            y_r[1] <= y_r[1] + (A_r[1][index] * x_r[index]);
+            y_r[2] <= y_r[2] + (A_r[2][index] * x_r[index]);
+            y_r[3] <= y_r[3] + (A_r[3][index] * x_r[index]);
 
             index <= index + 1'b1;
         end
