@@ -27,20 +27,21 @@ module mat_vec_mul_dim_4
     );
 
     reg [1:0] index = 2'b00;
-    // reg i_dv_r;      // TODO: Are they needed?
-    // reg o_dv_r;
+    reg i_dv_r;
+    reg o_dv_r;
+    reg o_ready_r;
     reg [DATAWIDTH-1:0] A_r [4][4];
     reg [DATAWIDTH-1:0] x_r [4];
     reg [DATAWIDTH-1:0] y_r [4];
 
-    mat_vec_mul_state_t current_state, next_state;
+    mat_vec_mul_state_t current_state = IDLE, next_state = IDLE;
 
     always_ff @(posedge clk or negedge rstn) begin
         if (~rstn) begin
             foreach (A_r[i,j]) A_r[i][j] <= '0;
             foreach (x_r[i]) x_r[i] <= '0;
 
-            // i_dv_r <= 1'b0;
+            i_dv_r <= 1'b0;
             current_state <= IDLE;
 
         end else begin
@@ -55,7 +56,7 @@ module mat_vec_mul_dim_4
                 x_r <= x;
                 foreach (y_r[i]) y_r[i] <= '0;
 
-                // i_dv_r <= i_dv;
+                i_dv_r <= i_dv;
             end
         end
     end
@@ -69,25 +70,19 @@ module mat_vec_mul_dim_4
         case (current_state)
             IDLE: begin
                 o_ready = 1'b1;
-                if (i_dv) begin
+                if (i_dv_r == 1'b1) begin
                     next_state = PROCESSING;
                 end
             end
 
             PROCESSING: begin
-                if (index == 3) begin
+                if (index == 2'b11) begin
                     next_state = DONE;
                 end
             end
 
             DONE: begin
-                o_ready = 1'b1;
-                o_dv = 1'b1;
-                if (i_dv) begin
-                    next_state = PROCESSING;
-                end else begin
-                    next_state = IDLE;
-                end
+                next_state = IDLE;
             end
 
             default: next_state = IDLE;
@@ -116,6 +111,15 @@ module mat_vec_mul_dim_4
             foreach (y[i]) y[i] <= '0;
         end else if (current_state == DONE) begin
             y <= y_r;
+            o_ready_r <= 1'b1;
+            o_dv_r <= 1'b1;
+            i_dv_r <= 1'b0;
+        end else begin
+            o_ready_r <= 1'b0;
+            o_dv_r <= 1'b0;
         end
     end
+
+    assign o_ready = o_ready_r;
+    assign o_dv = o_dv_r;
 endmodule
