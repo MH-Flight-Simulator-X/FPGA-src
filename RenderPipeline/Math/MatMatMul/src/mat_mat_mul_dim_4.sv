@@ -1,4 +1,5 @@
 // Module for multiplying a 4x4 matrix by a 4-dim vector of fixed-point data
+// Version: 0.1
 
 `timescale 1ns / 1ps
 

@@ -1,7 +1,6 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "obj_dir/Vmat_vec_mul_dim_4.h"
-#include "obj_dir/Vmat_vec_mul_dim_4___024unit.h"
 
 #define MAX_SIM_TIME 40
 vluint64_t sim_time = 0;
@@ -66,6 +65,15 @@ int main(int argc, char** argv) {
             dut->i_dv = 0;
 
             if (posedge_cnt == 6) {
+                assign_matrix_data(dut, matrix_data);
+                assign_vector_data(dut, vector_data);
+                dut->i_dv = 1;
+
+                for (int i = 0; i < 4; i++) {
+                    vector_data[i] *= 2;
+                }
+            }
+            if (posedge_cnt == 7) {
                 assign_matrix_data(dut, matrix_data);
                 assign_vector_data(dut, vector_data);
                 dut->i_dv = 1;

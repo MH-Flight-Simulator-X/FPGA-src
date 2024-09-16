@@ -1,12 +1,7 @@
 // Module for multiplying a 4x4 matrix by a 4-dim vector of fixed-point data
+// Version: 0.2
 
 `timescale 1ns / 1ps
-
-typedef enum logic [1:0] {
-    IDLE = 2'b00,
-    PROCESSING = 2'b01,
-    DONE = 2'b10
-} mat_vec_mul_state_t /*verilator public*/;
 
 module mat_vec_mul_dim_4
     #(
@@ -22,86 +17,110 @@ module mat_vec_mul_dim_4
 
     // Output Data
     output logic [DATAWIDTH-1:0] y [4],     // Output Vector
-    output logic o_dv,
-    output logic o_ready
+    output logic o_dv
     );
 
-    reg [1:0] index = 2'b00;
-    reg i_dv_r;
-    reg o_dv_r;
-    reg o_ready_r;
-    reg [DATAWIDTH-1:0] A_r [4][4];
-    reg [DATAWIDTH-1:0] x_r [4];
-    reg [DATAWIDTH-1:0] y_r [4];
+    logic [3:0] i_dv_r;
+    logic [DATAWIDTH-1:0] A_r_0 [4][4];
+    logic [DATAWIDTH-1:0] x_r_0 [4];
 
-    mat_vec_mul_state_t current_state = IDLE, next_state = IDLE;
+    logic [DATAWIDTH-1:0] A_r_1 [4][4];
+    logic [DATAWIDTH-1:0] x_r_1 [4];
+    logic [DATAWIDTH-1:0] y_r_1 [4];
+
+    logic [DATAWIDTH-1:0] A_r_2 [4][4];
+    logic [DATAWIDTH-1:0] x_r_2 [4];
+    logic [DATAWIDTH-1:0] y_r_2 [4];
+
+    logic [DATAWIDTH-1:0] A_r_3 [4][4];
+    logic [DATAWIDTH-1:0] x_r_3 [4];
+    logic [DATAWIDTH-1:0] y_r_3 [4];
+
+    logic [DATAWIDTH-1:0] y_inter_0 [4];
+    logic [DATAWIDTH-1:0] y_inter_1 [4];
+    logic [DATAWIDTH-1:0] y_inter_2 [4];
+    logic [DATAWIDTH-1:0] y_inter_3 [4];
 
     always_ff @(posedge clk or negedge rstn) begin
         if (~rstn) begin
-            foreach (A_r[i,j]) A_r[i][j] <= '0;
-            foreach (x_r[i]) x_r[i] <= '0;
+            foreach (A_r_0[i,j]) A_r_0[i][j] <= '0;
+            foreach (x_r_0[i]) x_r_0[i] <= '0;
 
-            i_dv_r <= 1'b0;
-            current_state <= IDLE;
+            foreach (A_r_1[i,j]) A_r_1[i][j] <= '0;
+            foreach (x_r_1[i]) x_r_1[i] <= '0;
+            foreach (y_r_1[i]) y_r_1[i] <= '0;
 
+            foreach (A_r_2[i,j]) A_r_2[i][j] <= '0;
+            foreach (x_r_2[i]) x_r_2[i] <= '0;
+            foreach (y_r_2[i]) y_r_2[i] <= '0;
+
+            foreach (A_r_3[i,j]) A_r_3[i][j] <= '0;
+            foreach (x_r_3[i]) x_r_3[i] <= '0;
+            foreach (y_r_3[i]) y_r_3[i] <= '0;
+
+            i_dv_r <= '0;
         end else begin
-            current_state <= next_state;
+            i_dv_r[0] <= i_dv;
+            i_dv_r[1] <= i_dv_r[0];
+            i_dv_r[2] <= i_dv_r[1];
+            i_dv_r[3] <= i_dv_r[2];
 
-            if (i_dv && o_ready) begin
-                // Assign input data to registers
-                A_r[0] <= A[0];
-                A_r[1] <= A[1];
-                A_r[2] <= A[2];
-                A_r[3] <= A[3];
-                x_r <= x;
-                foreach (y_r[i]) y_r[i] <= '0;
+            A_r_0[0] <= A[0];
+            A_r_0[1] <= A[1];
+            A_r_0[2] <= A[2];
+            A_r_0[3] <= A[3];
+            x_r_0    <= x;
 
-                i_dv_r <= i_dv;
-            end
+            A_r_1[0] <= A_r_0[0];
+            A_r_1[1] <= A_r_0[1];
+            A_r_1[2] <= A_r_0[2];
+            A_r_1[3] <= A_r_0[3];
+            x_r_1    <= x_r_0;
+
+            A_r_2[0] <= A_r_1[0];
+            A_r_2[1] <= A_r_1[1];
+            A_r_2[2] <= A_r_1[2];
+            A_r_2[3] <= A_r_1[3];
+            x_r_2    <= x_r_1;
+
+            A_r_3[0] <= A_r_2[0];
+            A_r_3[1] <= A_r_2[1];
+            A_r_3[2] <= A_r_2[2];
+            A_r_3[3] <= A_r_2[3];
+            x_r_3    <= x_r_2;
         end
     end
 
-    // State machine
-    always_comb begin
-        o_ready = 1'b0;
-        o_dv = 1'b0;
-        next_state = current_state;
-
-        case (current_state)
-            IDLE: begin
-                o_ready = 1'b1;
-                if (i_dv_r == 1'b1) begin
-                    next_state = PROCESSING;
-                end
-            end
-
-            PROCESSING: begin
-                if (index == 2'b11) begin
-                    next_state = DONE;
-                end
-            end
-
-            DONE: begin
-                next_state = IDLE;
-            end
-
-            default: next_state = IDLE;
-        endcase
-    end
-
     // Compute the matrix vector product
-    always_ff @(posedge clk or negedge rstn) begin
-        if (~rstn) begin
-            index <= 2'b00;
-            foreach (y_r[i]) y_r[i] <= '0;
-        end else if (current_state == PROCESSING) begin
-            // DO COMPUTATION
-            y_r[0] <= y_r[0] + (A_r[0][index] * x_r[index]);
-            y_r[1] <= y_r[1] + (A_r[1][index] * x_r[index]);
-            y_r[2] <= y_r[2] + (A_r[2][index] * x_r[index]);
-            y_r[3] <= y_r[3] + (A_r[3][index] * x_r[index]);
+    always_comb begin
+        foreach (y_inter_0[i]) y_inter_0[i] = '0;
+        foreach (y_inter_1[i]) y_inter_1[i] = '0;
+        foreach (y_inter_2[i]) y_inter_2[i] = '0;
+        foreach (y_inter_3[i]) y_inter_3[i] = '0;
 
-            index <= index + 1'b1;
+        if (i_dv_r[0]) begin
+            y_inter_0[0] = A_r_0[0][0] * x_r_0[0];
+            y_inter_0[1] = A_r_0[1][0] * x_r_0[0];
+            y_inter_0[2] = A_r_0[2][0] * x_r_0[0];
+            y_inter_0[3] = A_r_0[3][0] * x_r_0[0];
+        end
+        if (i_dv_r[1]) begin
+            y_inter_1[0] = y_r_1[0] + A_r_1[0][1] * x_r_1[1];
+            y_inter_1[1] = y_r_1[1] + A_r_1[1][1] * x_r_1[1];
+            y_inter_1[2] = y_r_1[2] + A_r_1[2][1] * x_r_1[1];
+            y_inter_1[3] = y_r_1[3] + A_r_1[3][1] * x_r_1[1];
+        end
+        if (i_dv_r[2]) begin
+            y_inter_2[0] = y_r_2[0] + A_r_2[0][2] * x_r_2[2];
+            y_inter_2[1] = y_r_2[1] + A_r_2[1][2] * x_r_2[2];
+            y_inter_2[2] = y_r_2[2] + A_r_2[2][2] * x_r_2[2];
+            y_inter_2[3] = y_r_2[3] + A_r_2[3][2] * x_r_2[2];
+        end
+        if (i_dv_r[3]) begin
+            y_inter_3[0] = y_r_3[0] + A_r_3[0][3] * x_r_3[3];
+            y_inter_3[1] = y_r_3[1] + A_r_3[1][3] * x_r_3[3];
+            y_inter_3[2] = y_r_3[2] + A_r_3[2][3] * x_r_3[3];
+            y_inter_3[3] = y_r_3[3] + A_r_3[3][3] * x_r_3[3];
         end
     end
 
@@ -109,17 +128,14 @@ module mat_vec_mul_dim_4
     always_ff @(posedge clk or negedge rstn) begin
         if (~rstn) begin
             foreach (y[i]) y[i] <= '0;
-        end else if (current_state == DONE) begin
-            y <= y_r;
-            o_ready_r <= 1'b1;
-            o_dv_r <= 1'b1;
-            i_dv_r <= 1'b0;
+            o_dv <= '0;
         end else begin
-            o_ready_r <= 1'b0;
-            o_dv_r <= 1'b0;
+            y_r_1 <= y_inter_0;
+            y_r_2 <= y_inter_1;
+            y_r_3 <= y_inter_2;
+
+            y <= y_inter_3;
+            o_dv <= i_dv_r[3];
         end
     end
-
-    assign o_ready = o_ready_r;
-    assign o_dv = o_dv_r;
 endmodule
