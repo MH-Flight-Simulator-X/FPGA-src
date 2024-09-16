@@ -21,4 +21,4 @@ place_design
 route_design
 
 # Write bitstream
-write_bitstream -froce "${origin_dir}/Build/${design_name.bit}"
+write_bitstream -froce "${origin_dir}/Build/output/${design_name.bit}"
