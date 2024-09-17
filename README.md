@@ -10,3 +10,10 @@ The spesification for the system can be found in **Documentation/FPGA-Specificat
 
 ## Testing
 
+## Building the project
+To build the project run the following inside the **Build/** directory
+
+`
+mkdir logs
+viado -mode batch -source build.tcl -log logs/build.log -journal logs/build.jou
+`

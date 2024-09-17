@@ -1,13 +1,17 @@
-set design_name "MH-FPGA"
-set board_name "MH-Flight-Simulator-X-PCB"
-set fpga_part "xc7a100t-1ftg256i"
+set design_name "MH_FPGA"
+set board_name "Arty-A7"
+set fpga_part "xc7a35ticsg324-1L"
 
 set lib_dir [file normalize "./../lib"]
 set origin_dir [file normalize "./../"]
 
+# Create log directory
+file mkdir logs
+
 # Read design sources
-read_verilog -sv "${lib_dir}/"
-read_verilog -sv "${origin_dir}/src/"
+read_verilog -sv "${lib_dir}/RenderPipeline/Math/MatMatMul/src/mat_mat_mul_dim_4.sv"
+read_verilog -sv "${lib_dir}/RenderPipeline/Math/MatVecMul/src/mat_vec_mul_dim_4.sv"
+read_verilog -sv "${origin_dir}/src/top_${design_name}.sv"
 
 # Read constraints
 read_xdc "${origin_dir}/Constraints/${board_name}.xdc"
@@ -21,4 +25,4 @@ place_design
 route_design
 
 # Write bitstream
-write_bitstream -froce "${origin_dir}/Build/output/${design_name.bit}"
+write_bitstream -force "${origin_dir}/Build/output/${design_name.bit}"
