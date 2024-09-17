@@ -1,5 +1,5 @@
 // Module for multiplying a 4x4 matrix by a 4-dim vector of fixed-point data
-// Version: 0.2
+// Version: 1.0
 
 `timescale 1ns / 1ps
 
@@ -20,26 +20,29 @@ module mat_vec_mul_dim_4
     output logic o_dv
     );
 
+    localparam unsigned OutputRangeStart = DATAWIDTH / 2;
+    localparam unsigned OutputRangeEnd = OutputRangeStart + DATAWIDTH - 1;
+
     logic [3:0] i_dv_r;
     logic [DATAWIDTH-1:0] A_r_0 [4][4];
     logic [DATAWIDTH-1:0] x_r_0 [4];
 
     logic [DATAWIDTH-1:0] A_r_1 [4][4];
     logic [DATAWIDTH-1:0] x_r_1 [4];
-    logic [DATAWIDTH-1:0] y_r_1 [4];
+    logic [2 * DATAWIDTH-1:0] y_r_1 [4];
 
     logic [DATAWIDTH-1:0] A_r_2 [4][4];
     logic [DATAWIDTH-1:0] x_r_2 [4];
-    logic [DATAWIDTH-1:0] y_r_2 [4];
+    logic [2 * DATAWIDTH-1:0] y_r_2 [4];
 
     logic [DATAWIDTH-1:0] A_r_3 [4][4];
     logic [DATAWIDTH-1:0] x_r_3 [4];
-    logic [DATAWIDTH-1:0] y_r_3 [4];
+    logic [2 * DATAWIDTH-1:0] y_r_3 [4];
 
-    logic [DATAWIDTH-1:0] y_inter_0 [4];
-    logic [DATAWIDTH-1:0] y_inter_1 [4];
-    logic [DATAWIDTH-1:0] y_inter_2 [4];
-    logic [DATAWIDTH-1:0] y_inter_3 [4];
+    logic [2 * DATAWIDTH-1:0] y_inter_0 [4];
+    logic [2 * DATAWIDTH-1:0] y_inter_1 [4];
+    logic [2 * DATAWIDTH-1:0] y_inter_2 [4];
+    logic [2 * DATAWIDTH-1:0] y_inter_3 [4];
 
     always_ff @(posedge clk or negedge rstn) begin
         if (~rstn) begin
@@ -134,7 +137,11 @@ module mat_vec_mul_dim_4
             y_r_2 <= y_inter_1;
             y_r_3 <= y_inter_2;
 
-            y <= y_inter_3;
+            y[0] <= y_inter_3[0][OutputRangeEnd:OutputRangeStart];
+            y[1] <= y_inter_3[1][OutputRangeEnd:OutputRangeStart];
+            y[2] <= y_inter_3[2][OutputRangeEnd:OutputRangeStart];
+            y[3] <= y_inter_3[3][OutputRangeEnd:OutputRangeStart];
+
             o_dv <= i_dv_r[3];
         end
     end

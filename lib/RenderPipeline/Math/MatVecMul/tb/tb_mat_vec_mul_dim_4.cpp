@@ -2,9 +2,28 @@
 #include <verilated_vcd_c.h>
 #include "obj_dir/Vmat_vec_mul_dim_4.h"
 
+#define FIXED_POINT_FRAC_BITS 16
+typedef uint32_t fixed_point_t;
+
+double fixed_to_double(fixed_point_t input);
+fixed_point_t double_to_fixed(double input);
+
 #define MAX_SIM_TIME 40
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
+
+vluint32_t matrix_data_fixed[4][4];
+double matrix_data[4][4] = {
+    {  1.5,  2.5,  3.2,  4.1    },
+    {  5.2,  6.1,  7.5,  8.0125 },
+    {  9.1, 10.2, 11.3, 12.4    },
+    { 13.2, 14.2, 15.2, 16.1    },
+};
+
+vluint32_t vector_data_fixed[4];
+double vector_data[4] = {
+    1.0, 1.0, 1.0, 1.0
+};
 
 void reset_dut(Vmat_vec_mul_dim_4* dut, vluint64_t& sim_time) {
     dut->rstn = 1;
@@ -30,7 +49,24 @@ void assign_matrix_data(Vmat_vec_mul_dim_4* dut, vluint32_t data[4][4]) {
 };
 
 void assign_vector_data(Vmat_vec_mul_dim_4* dut, vluint32_t data[4]) {
-    dut->x[0] = data[0]; dut->x[1] = data[1]; dut->x[2] = data[2]; dut->x[3] = data[3];
+    dut->x[0] = data[0]; 
+    dut->x[1] = data[1]; 
+    dut->x[2] = data[2]; 
+    dut->x[3] = data[3];
+}
+
+void check_output_data(Vmat_vec_mul_dim_4* dut) {
+    if (dut->o_dv) {
+        printf("Output data valid:\n");
+
+        double data_out[4];
+        data_out[0] = fixed_to_double(dut->y[0]);
+        data_out[1] = fixed_to_double(dut->y[1]);
+        data_out[2] = fixed_to_double(dut->y[2]);
+        data_out[3] = fixed_to_double(dut->y[3]);
+
+        printf("\tData: (%f, %f, %f, %f)\n", data_out[0], data_out[1], data_out[2], data_out[3]);
+    }
 }
 
 
@@ -43,17 +79,6 @@ int main(int argc, char** argv) {
     dut->trace(m_trace, 5);
     m_trace->open("waveform.vcd");
 
-    vluint32_t matrix_data[4][4] = {
-        {  1,  2,  3,  4 },
-        {  5,  6,  7,  8 },
-        {  9, 10, 11, 12 },
-        { 13, 14, 15, 16 },
-    };
-
-    vluint32_t vector_data[4] = {
-        1, 1, 1, 1
-    };
-
     while (sim_time < MAX_SIM_TIME) {
         reset_dut(dut, sim_time);
 
@@ -65,19 +90,23 @@ int main(int argc, char** argv) {
             dut->i_dv = 0;
 
             if (posedge_cnt == 6) {
-                assign_matrix_data(dut, matrix_data);
-                assign_vector_data(dut, vector_data);
-                dut->i_dv = 1;
+                // Generate input
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        matrix_data_fixed[i][j] = double_to_fixed(matrix_data[i][j]);
+                    }
+                }
 
                 for (int i = 0; i < 4; i++) {
-                    vector_data[i] *= 2;
+                    vector_data_fixed[i] = double_to_fixed(vector_data[i]);
                 }
-            }
-            if (posedge_cnt == 7) {
-                assign_matrix_data(dut, matrix_data);
-                assign_vector_data(dut, vector_data);
+
+                assign_matrix_data(dut, matrix_data_fixed);
+                assign_vector_data(dut, vector_data_fixed);
                 dut->i_dv = 1;
             }
+
+            check_output_data(dut);
         }
 
         m_trace->dump(sim_time);
@@ -87,4 +116,12 @@ int main(int argc, char** argv) {
     m_trace->close();
     delete dut;
     exit(EXIT_SUCCESS);
+}
+
+double fixed_to_double(fixed_point_t input) {
+    return ((double)input / (double)(1 << FIXED_POINT_FRAC_BITS));
+}
+
+fixed_point_t double_to_fixed(double input) {
+    return (fixed_point_t)(round(input * (1 << FIXED_POINT_FRAC_BITS)));
 }
