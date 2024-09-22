@@ -1,9 +1,9 @@
 SRC_DIR = ../src
 MODULE = framebuffer
 
-SCREEN_WIDTH = 640
-SCREEN_HEIGHT = 480
-INDEX_WIDTH = 4
+FB_WIDTH = 640
+FB_HEIGHT = 480
+DATA_WIDTH = 4
 
 .PHONY:sim
 sim: waveform.vcd
@@ -35,7 +35,7 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
 	-cc $(SRC_DIR)/$(MODULE).sv --exe tb_$(MODULE).cpp \
-	-GSCREEN_WIDTH=$(SCREEN_WIDTH) -GSCREEN_HEIGHT=$(SCREEN_HEIGHT) -GINDEX_WIDTH=$(INDEX_WIDTH)
+	-GFB_WIDTH=$(FB_WIDTH) -GFB_HEIGHT=$(FB_HEIGHT) -GDATA_WIDTH=$(DATA_WIDTH)
 	@touch .stamp.verilate
 
 .PHONY:lint
