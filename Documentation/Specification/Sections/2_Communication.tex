@@ -1,0 +1,38 @@
+\section{FPGA-MCU Communication}
+\subsection{SPI Driver}
+\subsection{Data Protocol}
+The data protocol for the communication between the MCU and the FPGA is shown in 
+figure \ref{fig:spi_data_protocol}.
+
+\textbf{[[FIGURE SHOWING PROTOCOL]]}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth, height=2.5cm]{Diagrams/data_protocol_diagram.png}
+    \caption{Data protocol}
+    \label{fig:spi_data_protocol}
+\end{figure}
+
+First byte represents the number of entities that is to be rendered to the screen,
+called \textit{NUM\_ENTETIES}. The following 3 bytes represents the camera yaw and pitch angles in 
+relation to the y and x axis repsectively. The three bytes are split into two 12-bit 
+fixed-point numbers of type Q1.11, where the MSB is the sign bit. This means that 
+each angle represents a number in the range [-1, 0.99951171875], which maps to the 
+range [-$\pi$, $\pi$].
+
+After that follows \textit{NUM\_ENTETIES} accounts of entity data to be rendered, where 
+the first entity is the player. The entity data encoding is as follows:
+\begin{enumerate}
+    \item \textbf{Byte 1 -- 8:} The 10 MSB bits are flags for each entity (TBD), then follows 
+        the \textit{x, y} and \textit{z} position of the entity, each of which are 18-bit fixed-point 
+        numbers on the form Q7.11.
+    \item \textbf{Byte 9 -- 11:} Entity rotation in pitch, yaw, and roll, each represented with an 
+        8-bit fixed-point number in a Q1.7 format (again MSB is sign).
+\end{enumerate}
+
+The flag bits can be decoded as follows:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth, height=2cm]{Diagrams/flag_bit_decoding.png}
+    \caption{Flag bit decoding}
+    \label{fig:flag_bit_decoding}
+\end{figure}

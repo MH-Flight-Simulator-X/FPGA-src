@@ -17,3 +17,16 @@ logs/
 # Verilator sim
 obj_dir/
 *.vcd
+
+# LaTeX
+*.out
+*.pygtex
+*.log
+*.aux
+*.fls
+*.toc
+*.fdb_latexmk
+*.synctex.gz
+
+*.zip
+*.tar.gz

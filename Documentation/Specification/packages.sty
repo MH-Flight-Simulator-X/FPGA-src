@@ -1,0 +1,39 @@
+\usepackage{tikz}
+\usepackage{babel}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage{a4wide}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[pdftex, pdfborderstyle={/S/U/W 0}]{hyperref}
+\usepackage[left=2.5cm, right=2.5cm]{geometry}
+
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{tocloft}
+\renewcommand{\contentsname}{\normalfont\Large Contents} % Customize title
+\renewcommand{\cftsecfont}{\normalfont} % For sections
+\renewcommand{\cftsubsecfont}{\normalfont} % For subsections (if needed)
+
+\usepackage{titlesec}
+\titleformat{\section}
+  {\normalfont\Large}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont}{\thesubsubsection}{1em}{}
+
+\setlength{\parindent}{0pt} 
+\setlength{\parskip}{3.5pt}
+
+\newenvironment{pythoncode}{\VerbatimEnvironment\begin{tcolorbox}[colback=black!2.5!white, colframe=white!75!black]\begin{minted}{python}}{\end{minted}\end{tcolorbox}}
