@@ -1,4 +1,4 @@
-SRC_DIR = ../
+SRC_DIR = ../src
 MODULE = framebuffer
 
 SCREEN_WIDTH = 640
