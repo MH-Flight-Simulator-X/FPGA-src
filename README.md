@@ -5,24 +5,25 @@ The source files for the FPGA system, written in SystemVerilog.
 The project is splitt into multiple modules and accompanying documentation in **Documentation/**.
 The following is an overview of the project structure
 
-**FPGA-src**  
+<pre>
+<strong>FPGA-src</strong>
 ├── src/  
-│   └── top\_mh\_flight\_sim\_fpga.sv  
+│   └── top_mh_flight_sim_fpga.sv  
 ├── lib/  
 │   ├── Framebuffer/  
 │   │   └── framebuffer.sv  
 │   ├── Display/  
-│   │   └── display\_480p.sv  
+│   │   └── display_480p.sv  
 │   ├── RenderPipeline/  
 │   │   └── Math/  
-│   │       ├── mat\_mat\_mul\_dim\_4.sv  
-│   │       └── mat\_vec\_mul\_dim\_4.sv  
+│   │       ├── mat_mat_mul_dim_4.sv  
+│   │       └── mat_vec_mul_dim_4.sv  
 │   └── SPI/  
-│       ├── spi\_master.sv  
-│       └── spi\_slave.sv  
+│       ├── spi_master.sv  
+│       └── spi_slave.sv  
 ├── Documentation/  
-│   ├── FPGA\_spesification.pdf  
-│   └── Module\_documentation.md  
+│   ├── FPGA_spesification.pdf  
+│   └── Module_documentation.md  
 ├── Constraints/  
 │   ├── Arty-A7100t.xdc  
 │   └── MH-System.xdc  
@@ -32,14 +33,17 @@ The following is an overview of the project structure
 │   └── program.tcl  
 ├── README.md  
 └── LICENSE  
+</pre>
   
 ## Documentation
-The spesification for the system can be found in **Documentation/FPGA-Specification.pdf**.
+The spesification for the system can be found here:
+[Project Specification](Documentation/FPGA-Specification.pdf) (Note: the spesification is written 
+in norwegian)
 
 ## Testing
 For each of the modules in the **lib/** directory, a __src__ and a __tb__ directories are provided.
 The testbenches for the src files are provided in the tb directory. All testbenches are written in C++
-and are utilizing *Verilator*.
+and are utilizing [Verilator](https://github.com/verilator/verilator).
 
 ## Building the project
 To build the project run the following inside the **Build/** directory
