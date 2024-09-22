@@ -20,9 +20,9 @@ read_xdc "${origin_dir}/Constraints/${board_name}.xdc"
 synth_design -top "top_${design_name}" -part ${fpga_part}
 
 # Place and route
-opt_design
-place_design
-route_design
+# opt_design
+# place_design
+# route_design
 
 # Write bitstream
-write_bitstream -force "${origin_dir}/Build/output/${design_name.bit}"
+# write_bitstream -force "${origin_dir}/Build/output/${design_name.bit}"

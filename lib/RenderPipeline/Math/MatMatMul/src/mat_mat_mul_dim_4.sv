@@ -1,4 +1,5 @@
 // Module for multiplying a 4x4 matrix by a 4-dim vector of fixed-point data
+// Currently configured for Q10.8
 // Version: 0.1
 
 `timescale 1ns / 1ps
@@ -11,33 +12,40 @@ typedef enum logic [1:0] {
 
 module mat_mat_mul_dim_4
     #(
-    parameter unsigned DATAWIDTH = 32
+    parameter unsigned DATAWIDTH = 18,
+    parameter unsigned FRAC_BITS = 8
     ) (
     input clk,
     input rstn,
 
     // Input Data
-    input logic [DATAWIDTH-1:0] A [4][4],   // 1. Input matrix
-    input logic [DATAWIDTH-1:0] B [4][4],   // 2. Input matrix
+    input signed [DATAWIDTH-1:0] A [4][4],   // 1. Input matrix
+    input signed [DATAWIDTH-1:0] B [4][4],   // 2. Input matrix
     input logic i_dv,
 
     // Output Data
-    output logic [DATAWIDTH-1:0] C [4][4],  // Output matrix
+    output logic signed [DATAWIDTH-1:0] C [4][4],  // Output matrix
     output logic o_dv,
     output logic o_ready
     );
+
+    localparam unsigned OutputRangeStart = FRAC_BITS;
+    localparam unsigned OutputRangeEnd = DATAWIDTH + OutputRangeStart - 1;
 
     reg [1:0] index = 2'b00;
     reg i_dv_r;
     reg o_dv_r;
     reg o_ready_r;
-    reg [DATAWIDTH-1:0] A_r [4][4];
-    reg [DATAWIDTH-1:0] B_r [4][4];
-    reg [DATAWIDTH-1:0] C_r [4][4];
+    reg signed [DATAWIDTH-1:0] A_r [4][4];
+    reg signed [DATAWIDTH-1:0] B_r [4][4];
+    reg signed [2 * DATAWIDTH-1:0] C_r [4][4];      // Double data width to account for precision
+                                                    // loss. Could be worth experimenting
+                                                    // with only using DATAWIDTH for
+                                                    // intermediate calculation
 
     mat_mat_mul_state_t current_state = IDLE, next_state = IDLE;
 
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (~rstn) begin
             foreach (A_r[i,j]) A_r[i][j] <= '0;
             foreach (B_r[i,j]) B_r[i][j] <= '0;
@@ -60,22 +68,18 @@ module mat_mat_mul_dim_4
                 B_r[2] <= B[2];
                 B_r[3] <= B[3];
 
-                foreach (C_r[i,j]) C_r[i][j] <= '0;
-
-                i_dv_r <= i_dv;
             end
+
+            i_dv_r <= i_dv;
         end
     end
 
     // State machine
     always_comb begin
-        o_ready = 1'b0;
-        o_dv = 1'b0;
         next_state = current_state;
 
         case (current_state)
             IDLE: begin
-                o_ready = 1'b1;
                 if (i_dv_r == 1'b1) begin
                     next_state = PROCESSING;
                 end
@@ -96,7 +100,7 @@ module mat_mat_mul_dim_4
     end
 
     // Compute the matrix vector product
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (~rstn) begin
             index <= 2'b00;
         end else if (current_state == PROCESSING) begin
@@ -126,17 +130,43 @@ module mat_mat_mul_dim_4
     end
 
     // Register outputs
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (~rstn) begin
-            foreach (C_r[i,j]) C_r[i][j] <= '0;
-        end else if (current_state == DONE) begin
-            C <= C_r;
-            o_ready_r <= 1'b1;
-            o_dv_r <= 1'b1;
-            i_dv_r <= 1'b0;
-        end else begin
-            o_ready_r <= 1'b0;
             o_dv_r <= 1'b0;
+            o_ready_r <= 1'b1;
+        end
+        else begin
+            if (current_state == IDLE) begin
+                o_ready_r <= 1'b1;
+                foreach (C[i, j]) C[i][j] <= '0;
+            end else if (current_state == PROCESSING) begin
+                foreach (C[i, j]) C[i][j] <= '0;
+                o_ready_r <= 1'b0;
+            end
+            else begin
+                C[0][0] <= {C_r[0][0][DATAWIDTH-1], C_r[0][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][1] <= {C_r[0][0][DATAWIDTH-1], C_r[0][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][2] <= {C_r[0][0][DATAWIDTH-1], C_r[0][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][3] <= {C_r[0][0][DATAWIDTH-1], C_r[0][3][OutputRangeEnd-1:OutputRangeStart]};
+
+                C[1][0] <= {C_r[0][0][DATAWIDTH-1], C_r[1][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][1] <= {C_r[0][0][DATAWIDTH-1], C_r[1][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][2] <= {C_r[0][0][DATAWIDTH-1], C_r[1][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][3] <= {C_r[0][0][DATAWIDTH-1], C_r[1][3][OutputRangeEnd-1:OutputRangeStart]};
+
+                C[2][0] <= {C_r[0][0][DATAWIDTH-1], C_r[2][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][1] <= {C_r[0][0][DATAWIDTH-1], C_r[2][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][2] <= {C_r[0][0][DATAWIDTH-1], C_r[2][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][3] <= {C_r[0][0][DATAWIDTH-1], C_r[2][3][OutputRangeEnd-1:OutputRangeStart]};
+
+                C[3][0] <= {C_r[0][0][DATAWIDTH-1], C_r[3][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][1] <= {C_r[0][0][DATAWIDTH-1], C_r[3][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][2] <= {C_r[0][0][DATAWIDTH-1], C_r[3][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][3] <= {C_r[0][0][DATAWIDTH-1], C_r[3][3][OutputRangeEnd-1:OutputRangeStart]};
+
+                o_dv_r <= 1'b1;
+                o_ready_r <= 1'b1;
+            end
         end
     end
 
