@@ -16,4 +16,5 @@ logs/
 
 # Verilator sim
 obj_dir/
+*.stamp.verilate
 *.vcd
