@@ -5,6 +5,12 @@
 *.o
 *.a
 
+# Vivado output
+*.jou
+*.log
+logs/
+.Xil/
+
 # Verilator sim
 obj_dir/
 *.vcd
