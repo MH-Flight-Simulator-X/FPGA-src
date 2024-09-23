@@ -31,3 +31,7 @@ obj_dir/
 
 *.zip
 *.tar.gz
+
+# Utils
+Utils/img/*.mem
+Utils/img/*.png
