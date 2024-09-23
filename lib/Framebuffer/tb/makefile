@@ -1,8 +1,8 @@
 SRC_DIR = ../src
 MODULE = framebuffer
 
-FB_WIDTH = 640
-FB_HEIGHT = 480
+FB_WIDTH = 8
+FB_HEIGHT = 4
 DATA_WIDTH = 4
 
 .PHONY:sim
