@@ -40,7 +40,7 @@ The following is an overview of the project structure
   
 ## Documentation
 The spesification for the system can be found here:
-[Project Specification](Documentation/FPGA-Specification.pdf) (Note: the spesification is written 
+[Project Specification](Documentation/Specification/FPGA-Specification.pdf) (Note: the spesification is written 
 in norwegian)
 
 ## Testing
