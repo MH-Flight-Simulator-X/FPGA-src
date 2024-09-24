@@ -2,7 +2,7 @@ module framebuffer #(
     parameter FB_WIDTH,
     parameter FB_HEIGHT,
     parameter DATA_WIDTH,
-    parameter FILE,
+    parameter FILE = "",
     localparam FB_SIZE = FB_WIDTH * FB_HEIGHT,
     localparam ADDR_WIDTH = $clog2(FB_SIZE)
 ) (
@@ -20,8 +20,8 @@ module framebuffer #(
 
     // State Machine States
     typedef enum logic {
-        IDLE,        // Idle state, normal operation
-        CLEAR_S        // Clearing state, clearing the framebuffer
+        IDLE,               // Idle state, normal operation
+        CLEAR               // Clearing state, clearing the framebuffer
     } state_t;
     state_t state = IDLE;
 
@@ -32,10 +32,10 @@ module framebuffer #(
     ) bram_inst (
         .clk_write(clk_write),
         .clk_read(clk_read),
-        .write_enable(write_enable || (state == CLEAR_S)),
-        .addr_write((state == CLEAR_S) ? clear_counter : addr_write),
+        .write_enable(write_enable || (state == CLEAR)),
+        .addr_write((state == CLEAR) ? clear_counter : addr_write),
         .addr_read(addr_read),
-        .data_in((state == CLEAR_S) ? clear_value : data_in),
+        .data_in((state == CLEAR) ? clear_value : data_in),
         .data_out(data_out)
     );
 
@@ -47,13 +47,13 @@ module framebuffer #(
             IDLE: begin
                 clearing <= 1'b0;
                 if (clear) begin
-                    state <= CLEAR_S;
+                    state <= CLEAR;
                     clearing <= 1'b1;
                     clear_counter <= 0;
                 end
             end
-            CLEAR_S: begin
-                if (clear_counter < FB_SIZE - 1) begin
+            CLEAR: begin
+                if (clear_counter < ADDR_WIDTH'(FB_SIZE - 1)) begin
                     clear_counter <= clear_counter + 1;
                 end else begin
                     state <= IDLE;

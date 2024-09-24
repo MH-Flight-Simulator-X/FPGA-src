@@ -1,4 +1,5 @@
 SRC_DIR = ../src
+BRAM_FILE = ../../BRAM_DP/src/bram_dp.sv
 MODULE = framebuffer
 
 FB_WIDTH = 8
@@ -30,11 +31,11 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
 
-.stamp.verilate: $(SRC_DIR)/$(MODULE).sv tb_$(MODULE).cpp
+.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(BRAM_FILE) tb_$(MODULE).cpp
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-	-cc $(SRC_DIR)/$(MODULE).sv --exe tb_$(MODULE).cpp \
+	-cc $(SRC_DIR)/$(MODULE).sv $(BRAM_FILE) --exe tb_$(MODULE).cpp \
 	-GFB_WIDTH=$(FB_WIDTH) -GFB_HEIGHT=$(FB_HEIGHT) -GDATA_WIDTH=$(DATA_WIDTH)
 	@touch .stamp.verilate
 
