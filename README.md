@@ -19,8 +19,11 @@ The following is an overview of the project structure
 │   │       ├── mat_mat_mul_dim_4.sv  
 │   │       └── mat_vec_mul_dim_4.sv  
 │   └── SPI/  
-│       ├── spi_master.sv  
-│       └── spi_slave.sv  
+│       ├── src/
+│       │   ├── spi_master.sv  
+│       │   └── spi_slave.sv  
+│       └── tb/
+│           └── spi_master_tb.cpp
 ├── Documentation/  
 │   ├── FPGA_spesification.pdf  
 │   └── Module_documentation.md  
