@@ -1,6 +1,155 @@
 \section{Render Pipeline}
 \subsection{Vertex Shader}
-\subsection{Vertex Post-Processor}
-\subsection{Primitive Assembler}
-\subsection{Rasterizer \& Fragment Shader}
+\begin{algorithm}[H]
+\caption{Vertex Shader}
+\begin{algorithmic}
+% Input vertices, mvp matrix
+\State $vertices, mvp \gets$ input  \Comment{Model-View-Projection matrix}
 
+% Loop over all vertices
+\ForAll{$v \in vertices$}
+    % Transform vertex
+    \State $out\_vertex \gets mvp \cdot \text{vec4}(v, 1)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Vertex Post-Processor}
+\begin{algorithm}[H]
+\caption{Vertex Post-Processor}
+\begin{algorithmic}
+% Input vertices, camera position
+\State $vertices \gets$ input
+
+% Loop over all vertices
+\ForAll{$v \in vertices$}
+    \State $out\_vertex \gets v / v.w$
+    \State $out\_vertex.x \gets (out\_vertex.x + 1) \cdot \text{screen\_width} / 2.0$
+    \State $out\_vertex.y \gets (1 - out\_vertex.y) \cdot \text{screen\_height} / 2.0$
+    \State $out\_vertex.z \gets out\_vertex.z / (\text{zfar} - \text{znear})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Primitive Assembler}
+\begin{algorithm}[H]
+\caption{Primitive Assembler}
+\begin{algorithmic}
+% Input vertices, indices
+\State $vertices, indices \gets$ input
+
+% Loop over all indices, 3 at a time
+\State
+\ForAll{$i \in [0, \text{len}(indices), 3]$}
+
+    % Get vertices for triangle
+    \State $a \gets vertices[indices[i]]$
+    \State $b \gets vertices[indices[i+1]]$
+    \State $c \gets vertices[indices[i+2]]$
+
+    % Compute normal
+    \State
+    \State $normal \gets (v1 - v0) \times (v2 - v0)$
+
+    % Check if triangle is backfacing
+    \State
+    \State $v0 \gets (a + b + c) / 3$
+    \State $cam\_to\_v0 \gets cameraPos - v0$
+    \State $dot \gets cam\_to\_v0 \cdot normal$
+
+    % If backfacing, skip triangle
+    \State
+    \State $triangle \gets Triangle()$ \Comment{Output triangle}
+    \If{$dot < 0$}
+        \State $triangle.valid \gets \textbf{false}$
+        \State \textbf{continue}
+    \EndIf
+    \State $triangle.valid \gets \textbf{true}$
+
+    % Set vertices
+    \State
+    \State $triangle.v0 \gets a$
+    \State $triangle.v1 \gets b$
+    \State $triangle.v2 \gets c$
+
+    % Set normal
+    \State
+    \State $triangle.normal \gets normal$
+
+    % Set bounding box
+    \State
+    \State $triangle.BB \gets$ ComputeBoundingBox(triangle)
+
+    % Yield triangle
+    \State
+    \State \textbf{yield} triangle
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Rasterizer \& Fragment Shader}
+For the rasterizer, each tile has its own buffer of binned triangles.
+For each triangle, it goes over the pixels in the bounding box of the triangle.
+For each pixel it computes the barycentric coordinate $\beta$ as follows:
+
+\begin{algorithm}[H]
+\caption{Barycentric coordinate computation}
+\begin{algorithmic}
+% Input v0, v1, v2, p
+% Output beta
+\State $v0, v1, v2, p \gets$ input
+
+\State
+\State $v10 \gets v1 - v0$
+\State $v20 \gets v2 - v0$
+\State $v0p \gets p - v0$
+
+% Space 
+\State
+\State $d00 \gets v10 \cdot v10$
+\State $d01 \gets v10 \cdot v20$
+\State $d11 \gets v20 \cdot v20$
+\State $d20 \gets v0p \cdot v10$
+\State $d21 \gets v0p \cdot v20$
+
+\State
+\State $det \gets d00 \cdot d11 - d01 \cdot d01$
+\State $beta.x \gets (d11 \cdot d20 - d01 \cdot d21) / det$
+\State $beta.y \gets (d00 \cdot d21 - d01 \cdot d20) / det$
+\State $beta.z \gets 1 - beta.x - beta.y$
+
+\State
+\State
+\Return $beta$
+\end {algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Rasterizer + Fragment Shader}
+\begin{algorithmic}
+% Input triangle
+\State $triangle \gets$ input
+
+% Loop over all pixel in bounding box
+\ForAll{pixel in $triangle.BB$}
+    % Compute barycentric coordinates
+    \State $beta \gets$ ComputeBarycentricCoordinates(triangle, pixel)
+
+    % Check if pixel is inside triangle
+    \State
+    \If{$beta.x \geq 0$ and $beta.y \geq 0$ and $beta.z \geq 0$}
+        % Compute depth
+        \State $depth \gets beta.x \cdot v0.z + beta.y \cdot v1.z + beta.z \cdot v2.z$
+
+        % Check if depth is less than current depth
+        \State
+        \If{$depth < depthBuffer[pixel]$}
+            % Update depth buffer
+            \State $depthBuffer[pixel] \gets depth$
+
+            % Compute color
+            \State $color \gets beta.x \cdot v0.color + beta.y \cdot v1.color + beta.z \cdot v2.color$
+
+            % Update framebuffer
+            \State $framebuffer[pixel] \gets color$
+        \EndIf
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
