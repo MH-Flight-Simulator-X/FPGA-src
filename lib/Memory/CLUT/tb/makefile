@@ -1,4 +1,3 @@
-
 SRC_DIR = ../src
 MODULE = clut
 

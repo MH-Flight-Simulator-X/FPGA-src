@@ -1,6 +1,6 @@
 // Create a color lookup table from a file
 
-`timescale 1ps / 1ps
+`timescale 1ns / 1ps
 
 module clut#(
     parameter SIZE,

@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
             posedge_cnt_write++;
 
             dut->clear = 1;
-            if (posedge_cnt_write > 2 && !dut->clearing) {
+            if (posedge_cnt_write > 1) {
                 dut->clear = 0;
             }
 
