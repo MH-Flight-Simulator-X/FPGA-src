@@ -9,6 +9,11 @@ clock = pygame.time.Clock()
 
 black = (0, 0, 0)
 white = (255, 255, 255)
+red = (255, 0, 0)
+green = (0, 255, 0)
+blue = (0, 0, 255)
+
+colors = [white, red, green, blue]
 
 
 def read_obj_file(path):
@@ -109,25 +114,51 @@ def update_screen_and_depth_buffer(x, y, z, color, depth_buffer, screen):
 def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
     min_x, max_x, min_y, max_y = compute_bounding_box(v1, v2, v3, screen_width, screen_height)
 
+    # Compute the edge functions at the top-left corner of the bounding box (min_x, min_y)
+    e1 = edge_function(v1, v2, (min_x, min_y))
+    e2 = edge_function(v2, v3, (min_x, min_y))
+    e3 = edge_function(v3, v1, (min_x, min_y))
+
+    # Precompute the edge function increments
+    e1_dx = v2[1] - v1[1]
+    e1_dy = -(v2[0] - v1[0])
+
+    e2_dx = v3[1] - v2[1]
+    e2_dy = -(v3[0] - v2[0])
+
+    e3_dx = v1[1] - v3[1]
+    e3_dy = -(v1[0] - v3[0])
+
     area = edge_function(v1, v2, v3)
 
     for y in range(min_y, max_y + 1):
+        # Store the initial edge values at the start of each row
+        e1_row = e1
+        e2_row = e2
+        e3_row = e3
+
         for x in range(min_x, max_x + 1):
-            p = (x, y)
+            # Check if the point (x, y) is inside the triangle
+            if e1_row >= 0 and e2_row >= 0 and e3_row >= 0:
 
-            area1 = edge_function(v2, v3, p)
-            area2 = edge_function(v3, v1, p)
-            area3 = edge_function(v1, v2, p)
-
-            if area1 >= 0 and area2 >= 0 and area3 >= 0:
-                
-                w1 = area1 / area
-                w2 = area2 / area
-                w3 = area3 / area
+                # Barycentric weights
+                w1 = e1_row / area
+                w2 = e2_row / area
+                w3 = e3_row / area
 
                 z = w1 * v1[2] + w2 * v2[2] + w3 * v3[2]
 
-                update_screen_and_depth_buffer(x, y, z, (255, 0, 0), depth_buffer, screen)
+                update_screen_and_depth_buffer(x, y, z, color, depth_buffer, screen)
+
+            # Increment edge function values for the next pixel in the row
+            e1_row += e1_dx
+            e2_row += e2_dx
+            e3_row += e3_dx
+
+        # At the end of each row, increment the edge values vertically
+        e1 += e1_dy
+        e2 += e2_dy
+        e3 += e3_dy
 
 
 vertices, faces = read_obj_file("suzanne.obj")
@@ -172,8 +203,8 @@ while running:
 
         projected_vertices.append(vertex)
 
-    for face in faces:
-        rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], white, depth_buffer, screen)
+    for i, face in enumerate(faces):
+        rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], colors[i%4], depth_buffer, screen)
         # pygame.draw.line(screen, white, tuple(projected_vertices[face[0]][0:1]), tuple(projected_vertices[face[1]][0:1]), 3)
         # pygame.draw.line(screen, white, tuple(projected_vertices[face[1]][0:1]), tuple(projected_vertices[face[2]][0:1]), 3)
         # pygame.draw.line(screen, white, tuple(projected_vertices[face[2]][0:1]), tuple(projected_vertices[face[0]][0:1]), 3)
