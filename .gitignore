@@ -13,6 +13,7 @@
 *.log
 logs/
 .Xil/
+clockInfo.txt
 
 # Verilator sim
 obj_dir/
