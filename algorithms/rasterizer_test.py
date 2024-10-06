@@ -7,6 +7,11 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 
 clock = pygame.time.Clock()
 
+fov = 90
+z_near = 0.1
+z_far = 100
+aspect_ratio = screen_width / screen_height
+
 black = (0, 0, 0)
 white = (255, 255, 255)
 red = (255, 0, 0)
@@ -131,6 +136,9 @@ def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
 
     area = edge_function(v1, v2, v3)
 
+    if (area == 0):
+        return
+
     for y in range(min_y, max_y + 1):
         # Store the initial edge values at the start of each row
         e1_row = e1
@@ -161,37 +169,15 @@ def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
         e3 += e3_dy
 
 
-vertices, faces = read_obj_file("suzanne.obj")
-
-fov = 90
-z_near = 0.1
-z_far = 100
-aspect_ratio = screen_width / screen_height
-
-angle = 0
-
-depth_buffer = np.full((screen_width, screen_height), np.inf)
-
-pos = [0, 0, -3]
-
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    dt = clock.tick(60) / 1000.0
-    angle += dt
-
-    screen.fill(black)
-    depth_buffer.fill(np.inf)
-
+def draw_model(model, pos, rotation, depth_buffer, screen):
+    vertices, faces = model
+    
     projected_vertices = []
     
     for vertex in vertices:
-        vertex = rotate_x(vertex, angle)
-        vertex = rotate_y(vertex, angle)
-        vertex = rotate_z(vertex, angle)
+        vertex = rotate_x(vertex, rotation[0])
+        vertex = rotate_y(vertex, rotation[1])
+        vertex = rotate_z(vertex, rotation[2])
 
         vertex = translate(vertex, pos)
 
@@ -205,11 +191,35 @@ while running:
 
     for i, face in enumerate(faces):
         rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], colors[i%4], depth_buffer, screen)
-        # pygame.draw.line(screen, white, tuple(projected_vertices[face[0]][0:1]), tuple(projected_vertices[face[1]][0:1]), 3)
-        # pygame.draw.line(screen, white, tuple(projected_vertices[face[1]][0:1]), tuple(projected_vertices[face[2]][0:1]), 3)
-        # pygame.draw.line(screen, white, tuple(projected_vertices[face[2]][0:1]), tuple(projected_vertices[face[0]][0:1]), 3)
 
+        
+tetrahedron = read_obj_file("tetrahedron.obj")
+monkey = read_obj_file("suzanne.obj")
+
+angle = 0
+
+depth_buffer = np.full((screen_width, screen_height), np.inf)
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    dt = clock.tick(60) / 1000.0
+    angle += dt
+
+    screen.fill(black)
+    depth_buffer.fill(np.inf)
+
+    tet_pos = [2*np.cos(angle), 0, -5 + 2*np.sin(angle)]
+    draw_model(tetrahedron, tet_pos, (angle, angle, angle), depth_buffer, screen)
+    
+    monkey_pos = [-2*np.cos(angle), 0, -5 - 2*np.sin(angle)]
+    draw_model(monkey, monkey_pos, (angle, angle, angle), depth_buffer, screen)
+    
     pygame.display.flip()
 
 
 pygame.quit()
+
