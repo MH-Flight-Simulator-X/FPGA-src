@@ -14,6 +14,7 @@
 logs/
 .Xil/
 clockInfo.txt
+*.bit
 
 # Verilator sim
 obj_dir/
