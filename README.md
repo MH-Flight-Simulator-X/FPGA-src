@@ -37,6 +37,9 @@ The following is an overview of the project structure
 ├── README.md  
 └── LICENSE  
 </pre>
+
+A figure showing the top-level design overview:
+![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
   
 ## Documentation
 The spesification for the system can be found here:
