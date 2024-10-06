@@ -33,14 +33,17 @@ module rasterizer #(
     reg [9:0] line_jump_value;
 
     // State machine for bounding box calculation and drawing
-    reg [2:0] state;
-    typedef enum logic [2:0] {
+    typedef enum logic [3:0] {
         COMPUTE_BBOX_STAGE_1,
         COMPUTE_BBOX_STAGE_2,
-        CHECK_BBOX,
-        COMPUTE_BBOX_STAGE_3,
+        CHECK_BBOX_IS_INSIDE_STAGE_1,
+        CHECK_BBOX_IS_INSIDE_STAGE_2,
+        CHECK_BBOX_IS_INSIDE_STAGE_3,
+        VERIFY_BBOX,
+        CLAMP_BBOX,
         INIT_DRAW,
-        DRAW_AND_INCREMENT,
+        DRAW,
+        NEW_LINE,
         DONE
     } state_t;
 
