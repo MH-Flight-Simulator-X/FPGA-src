@@ -1,27 +1,36 @@
 module rasterizer #(
-    parameter FB_WIDTH,
-    parameter FB_HEIGHT,
-    parameter FB_ADDR_WIDTH
+    parameter VERTEX_WIDTH,
+    parameter FB_ADDR_WIDTH,
+    parameter signed [VERTEX_WIDTH-1:0] FB_WIDTH,
+    parameter signed [VERTEX_WIDTH-1:0] FB_HEIGHT
 ) (
     input logic clk,
     input logic rst,
 
-    input wire [9:0] x0,
-    input wire [9:0] y0,
-    input wire [9:0] x1,
-    input wire [9:0] y1,
-    input wire [9:0] x2,
-    input wire [9:0] y2,
+    input logic signed [VERTEX_WIDTH-1:0] x0,
+    input logic signed [VERTEX_WIDTH-1:0] y0,
+    input logic signed [VERTEX_WIDTH-1:0] x1,
+    input logic signed [VERTEX_WIDTH-1:0] y1,
+    input logic signed [VERTEX_WIDTH-1:0] x2,
+    input logic signed [VERTEX_WIDTH-1:0] y2,
 
     output reg [FB_ADDR_WIDTH-1:0] fb_addr_write,
     output reg fb_write_enable,
     output reg done
-);
+); 
 
     // Registers to hold bounding box coordinates
-    reg [9:0] min_x, max_x, min_y, max_y;
+    reg signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
 
     // Registers to store whether part of the bounding box is inside framebuffer
+    reg min_x_is_right_of_fb_start;
+    reg max_x_is_right_of_fb_start;
+    reg min_y_is_right_of_fb_start;
+    reg max_y_is_right_of_fb_start;
+    reg min_x_is_left_of_fb_end;
+    reg max_x_is_left_of_fb_end;
+    reg min_y_is_left_of_fb_end;
+    reg max_y_is_left_of_fb_end;
     reg min_x_is_inside;
     reg min_y_is_inside;
     reg max_x_is_inside;
@@ -30,7 +39,7 @@ module rasterizer #(
     reg y_is_inside;
 
     // Register to store a value used to jump to next line in bounding box
-    reg [9:0] line_jump_value;
+    reg [FB_ADDR_WIDTH-1:0] line_jump_value;
 
     // State machine for bounding box calculation and drawing
     typedef enum logic [3:0] {
@@ -49,27 +58,15 @@ module rasterizer #(
 
     state_t state;
 
-    reg [9:0] x, y;
+    reg [VERTEX_WIDTH-1:0] x, y;
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            min_x <= 0;
-            max_x <= 0;
-            min_y <= 0;
-            max_y <= 0;
-
-            min_x_is_inside <= 0;
-            max_x_is_inside <= 0;
-            min_y_is_inside <= 0;
-            max_y_is_inside <= 0;
-
-            x <= 0;
-            y <= 0;
-
             fb_write_enable <= 0;
             fb_addr_write <= 0;
 
             done <= 1'b0;
+
             state <= COMPUTE_BBOX_STAGE_1;
         end
         else begin
@@ -95,21 +92,27 @@ module rasterizer #(
                 end
 
                 CHECK_BBOX_IS_INSIDE_STAGE_1: begin
-                    // Check if points appear after the start of the framebuffer
-                    min_x_is_inside <= (0 <= min_x);
-                    max_x_is_inside <= (0 <= max_x);
-                    min_y_is_inside <= (0 <= min_x);
-                    max_y_is_inside <= (0 <= max_y);
+                    // Check if bbox corners appear after start of framebuffer
+                    min_x_is_right_of_fb_start <= (0 <= min_x);
+                    max_x_is_right_of_fb_start <= (0 <= max_x);
+                    min_y_is_right_of_fb_start <= (0 <= min_x);
+                    max_y_is_right_of_fb_start <= (0 <= max_y);
+
+                    // Check if bbox corners appear before end of framebuffer
+                    min_x_is_left_of_fb_end <= (min_x < FB_WIDTH);
+                    min_y_is_left_of_fb_end <= (min_y < FB_HEIGHT);
+                    max_x_is_left_of_fb_end <= (max_x < FB_WIDTH);
+                    max_y_is_left_of_fb_end <= (max_y < FB_HEIGHT);
 
                     state <= CHECK_BBOX_IS_INSIDE_STAGE_2;
                 end
 
                 CHECK_BBOX_IS_INSIDE_STAGE_2: begin
-                    // Check if points appear before end of frambuffer
-                    min_x_is_inside &= (min_x < FB_WIDTH);
-                    min_y_is_inside &= (min_y < FB_WIDTH);
-                    max_x_is_inside &= (max_x < FB_WIDTH);
-                    max_y_is_inside &= (max_y < FB_WIDTH);
+                    // Check if bbox corners are inside of framebuffer
+                    min_x_is_inside <= (min_x_is_right_of_fb_start && min_x_is_left_of_fb_end);
+                    min_y_is_inside <= (min_y_is_right_of_fb_start && min_y_is_left_of_fb_end);
+                    max_x_is_inside <= (max_x_is_right_of_fb_start && max_x_is_left_of_fb_end);
+                    max_y_is_inside <= (max_y_is_right_of_fb_start && max_y_is_left_of_fb_end);
 
                     state <= CHECK_BBOX_IS_INSIDE_STAGE_3;
                 end
@@ -147,7 +150,7 @@ module rasterizer #(
                     x <= min_x;
                     y <= min_y;
 
-                    line_jump_value <= FB_WIDTH - (max_x - min_x);
+                    line_jump_value <= FB_WIDTH[FB_ADDR_WIDTH-1:0] - (max_x[FB_ADDR_WIDTH-1:0] - min_x[FB_ADDR_WIDTH-1:0]);
 
                     state <= DRAW;
                 end
@@ -166,7 +169,7 @@ module rasterizer #(
                 NEW_LINE: begin
                     if (y < max_y) begin
                         y <= y + 1; 
-                        fb_addr_write <= fb_addr_write + line_jump_value; 
+                        fb_addr_write <= fb_addr_write + line_jump_value[FB_ADDR_WIDTH-1:0]; 
 
                         state <= DRAW;
                     end
