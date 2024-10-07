@@ -6,13 +6,13 @@
 #include "obj_dir/Vmat_mul.h"
 #include "obj_dir/Vmat_mul___024unit.h"
 
-#define FIXED_POINT_WIDTH 24
-#define FIXED_POINT_FRAC_WIDTH 13
+#define FIXED_POINT_WIDTH 16
+#define FIXED_POINT_FRAC_WIDTH 8
 
 #define RESET_CLKS 8
 
 float test_A[4][4] = {
-    {1.0, 2.0, 3.0, 4.0},
+    {-1.0, 2.0, 3.0, 4.0},
     {1.0, 2.0, 3.0, 4.0},
     {1.0, 2.0, 3.0, 4.0},
     {1.0, 2.0, 3.0, 4.0}
@@ -20,24 +20,10 @@ float test_A[4][4] = {
 
 float test_B[4][4] = {
     {2.0, 0.0, 0.0, 0.0},
-    {0.0, 0.5, 0.0, 0.0},
+    {0.0, -0.5, 0.0, 0.0},
     {0.0, 0.0, 0.25, 0.0},
-    {0.0, 0.0, 0.0, 4.76623}
+    {0.0, 0.0, 0.0, -4.765}
 };
-
-// float test_A[4][4] = {
-//     {1.0, 2.0, 3.0, 4.0},
-//     {2.2, 3.2, 2.6, 1.8},
-//     {2.9, 4.8, 5.6, 2.4},
-//     {0.1, 0.8, 8.2, 6.3}
-// };
-//
-// float test_B[4][4] = {
-//     {8.8, 9.2, 5.2, 1.5},
-//     {9.3, 6.3, 7.3, 6.1}, 
-//     {4.4, 3.2, 2.2, 5.6},
-//     {7.9, 1.2, 4.5, 6.2}
-// };
 
 void print_matrix(float mat[4][4]);
 
@@ -55,8 +41,8 @@ void populate_matrix_random(float mat[4][4], float max_val) {
 void assign_matrix_data(Vmat_mul* dut, float A[4][4], float B[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            dut->A[i][j] = FixedPoint<vluint32_t>::fromFloat(A[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
-            dut->B[i][j] = FixedPoint<vluint32_t>::fromFloat(B[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
+            dut->A[i][j] = FixedPoint<int32_t>::fromFloat(A[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
+            dut->B[i][j] = FixedPoint<int32_t>::fromFloat(B[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
         }
     }
 };
@@ -64,8 +50,8 @@ void assign_matrix_data(Vmat_mul* dut, float A[4][4], float B[4][4]) {
 void get_matrix_data_input(Vmat_mul* dut, float A[4][4], float B[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            A[i][j] = FixedPoint<vluint32_t>(dut->A[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
-            B[i][j] = FixedPoint<vluint32_t>(dut->B[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
+            A[i][j] = FixedPoint<int32_t>(dut->A[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
+            B[i][j] = FixedPoint<int32_t>(dut->B[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
         }
     }
 };
@@ -73,9 +59,14 @@ void get_matrix_data_input(Vmat_mul* dut, float A[4][4], float B[4][4]) {
 void get_matrix_data_output(Vmat_mul* dut, float C[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            C[i][j] = FixedPoint<vluint32_t>(dut->C[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
+            std::bitset<16> bits(dut->C[i][j]);
+            std::cout << "Data: " << dut->C[i][j] << "\tBits: " << bits << std::endl;
+            C[i][j] = FixedPoint<int32_t>(dut->C[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
+            std::cout << "C[" << i << "][" << j << "]: " << C[i][j] << std::endl;
         }
+        printf("\n");
     }
+    printf("\n");
 }
 
 void check_matrix_data(Vmat_mul* dut) {

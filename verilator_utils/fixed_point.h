@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstdint>
 #include <limits>
+#include <bitset>
 
 template <typename T>
 class FixedPoint {
@@ -17,7 +18,17 @@ public:
     }
 
     float toFloat() const {
-        return static_cast<float>(data) / (1 << fracBits);
+        // Sign extend
+        int sign = (data >> (totalBits - 1)) & 1;
+        T sign_extended = data;
+        if (sign) {
+            for (int i = sizeof(T) * 8 - 1; i >= totalBits; i--) {
+                sign_extended |= (1 << i);
+            }
+        }
+
+        float f = static_cast<float>(sign_extended) / (1 << fracBits);
+        return f;
     }
 
     bool operator==(const float& f) const {

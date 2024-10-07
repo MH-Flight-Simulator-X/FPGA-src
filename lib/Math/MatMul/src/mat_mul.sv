@@ -11,8 +11,8 @@ typedef enum logic [1:0] {
 } mat_mat_mul_state_t /*verilator public*/;
 
 module mat_mul #(
-    parameter unsigned DATAWIDTH = 24,
-    parameter unsigned FRACBITS = 13
+    parameter unsigned DATAWIDTH = 16,
+    parameter unsigned FRACBITS = 8
     ) (
     input clk,
     input rstn,
@@ -37,7 +37,7 @@ module mat_mul #(
     reg o_ready_r;
     reg signed [DATAWIDTH-1:0] A_r [4][4];
     reg signed [DATAWIDTH-1:0] B_r [4][4];
-    reg signed [2 * DATAWIDTH-1:0] C_r [4][4];      // Double data width to account for precision
+    reg signed [2 * DATAWIDTH:0] C_r [4][4];        // Double data width to account for precision
                                                     // loss. Could be worth experimenting
                                                     // with only using DATAWIDTH for
                                                     // intermediate calculation
@@ -146,25 +146,25 @@ module mat_mul #(
                 o_dv_r <= 1'b0;
             end
             else begin
-                C[0][0] <= {C_r[0][0][DATAWIDTH-1], C_r[0][0][OutputRangeEnd-1:OutputRangeStart]};
-                C[0][1] <= {C_r[0][0][DATAWIDTH-1], C_r[0][1][OutputRangeEnd-1:OutputRangeStart]};
-                C[0][2] <= {C_r[0][0][DATAWIDTH-1], C_r[0][2][OutputRangeEnd-1:OutputRangeStart]};
-                C[0][3] <= {C_r[0][0][DATAWIDTH-1], C_r[0][3][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][0] <= {C_r[0][0][2*DATAWIDTH-1], C_r[0][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][1] <= {C_r[0][1][2*DATAWIDTH-1], C_r[0][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][2] <= {C_r[0][2][2*DATAWIDTH-1], C_r[0][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[0][3] <= {C_r[0][3][2*DATAWIDTH-1], C_r[0][3][OutputRangeEnd-1:OutputRangeStart]};
 
-                C[1][0] <= {C_r[0][0][DATAWIDTH-1], C_r[1][0][OutputRangeEnd-1:OutputRangeStart]};
-                C[1][1] <= {C_r[0][0][DATAWIDTH-1], C_r[1][1][OutputRangeEnd-1:OutputRangeStart]};
-                C[1][2] <= {C_r[0][0][DATAWIDTH-1], C_r[1][2][OutputRangeEnd-1:OutputRangeStart]};
-                C[1][3] <= {C_r[0][0][DATAWIDTH-1], C_r[1][3][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][0] <= {C_r[1][0][2*DATAWIDTH-1], C_r[1][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][1] <= {C_r[1][1][2*DATAWIDTH-1], C_r[1][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][2] <= {C_r[1][2][2*DATAWIDTH-1], C_r[1][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[1][3] <= {C_r[1][3][2*DATAWIDTH-1], C_r[1][3][OutputRangeEnd-1:OutputRangeStart]};
 
-                C[2][0] <= {C_r[0][0][DATAWIDTH-1], C_r[2][0][OutputRangeEnd-1:OutputRangeStart]};
-                C[2][1] <= {C_r[0][0][DATAWIDTH-1], C_r[2][1][OutputRangeEnd-1:OutputRangeStart]};
-                C[2][2] <= {C_r[0][0][DATAWIDTH-1], C_r[2][2][OutputRangeEnd-1:OutputRangeStart]};
-                C[2][3] <= {C_r[0][0][DATAWIDTH-1], C_r[2][3][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][0] <= {C_r[2][0][2*DATAWIDTH-1], C_r[2][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][1] <= {C_r[2][1][2*DATAWIDTH-1], C_r[2][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][2] <= {C_r[2][2][2*DATAWIDTH-1], C_r[2][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[2][3] <= {C_r[2][3][2*DATAWIDTH-1], C_r[2][3][OutputRangeEnd-1:OutputRangeStart]};
 
-                C[3][0] <= {C_r[0][0][DATAWIDTH-1], C_r[3][0][OutputRangeEnd-1:OutputRangeStart]};
-                C[3][1] <= {C_r[0][0][DATAWIDTH-1], C_r[3][1][OutputRangeEnd-1:OutputRangeStart]};
-                C[3][2] <= {C_r[0][0][DATAWIDTH-1], C_r[3][2][OutputRangeEnd-1:OutputRangeStart]};
-                C[3][3] <= {C_r[0][0][DATAWIDTH-1], C_r[3][3][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][0] <= {C_r[3][0][2*DATAWIDTH-1], C_r[3][0][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][1] <= {C_r[3][1][2*DATAWIDTH-1], C_r[3][1][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][2] <= {C_r[3][2][2*DATAWIDTH-1], C_r[3][2][OutputRangeEnd-1:OutputRangeStart]};
+                C[3][3] <= {C_r[3][3][2*DATAWIDTH-1], C_r[3][3][OutputRangeEnd-1:OutputRangeStart]};
 
                 o_dv_r <= 1'b1;
                 o_ready_r <= 1'b1;
