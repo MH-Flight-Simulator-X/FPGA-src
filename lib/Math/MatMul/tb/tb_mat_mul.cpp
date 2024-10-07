@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "../../verilator_lib/fixed_point.h"
+#include "../../../../verilator_utils/fixed_point.h"
 
 #include "obj_dir/Vmat_mul.h"
 #include "obj_dir/Vmat_mul___024unit.h"
