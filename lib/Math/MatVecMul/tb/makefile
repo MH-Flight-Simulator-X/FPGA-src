@@ -1,5 +1,5 @@
 SRC_DIR = ../src
-MODULE=mat_vec_mul_dim_4
+MODULE=mat_vec_mul
 
 .PHONY:sim
 sim: waveform.vcd

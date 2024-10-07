@@ -3,9 +3,9 @@
 
 `timescale 1ns / 1ps
 
-module mat_vec_mul_dim_4
-    #(
-    parameter unsigned DATAWIDTH = 32
+module mat_vec_mul #(
+    parameter unsigned DATAWIDTH,
+    parameter unsigned FRACBITS
     ) (
     input clk,
     input rstn,

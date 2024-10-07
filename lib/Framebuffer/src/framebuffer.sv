@@ -1,9 +1,7 @@
 module framebuffer #(
-    parameter FB_WIDTH,
-    parameter FB_HEIGHT,
-    parameter DATA_WIDTH,
-    localparam FB_SIZE = FB_WIDTH * FB_HEIGHT,
-    localparam ADDR_WIDTH = $clog2(FB_SIZE)
+    parameter unsigned FB_WIDTH,
+    parameter unsigned FB_HEIGHT,
+    parameter unsigned DATA_WIDTH
 ) (
     input wire clk_write,
     input wire clk_read,
@@ -17,7 +15,10 @@ module framebuffer #(
     output reg clearing
 );
 
-    (* ram_style = "block" *) logic [DATA_WIDTH-1:0] buffer [0:FB_SIZE-1]; 
+    localparam FB_SIZE = FB_WIDTH * FB_HEIGHT;
+    localparam ADDR_WIDTH = $clog2(FB_SIZE);
+
+    (* ram_style = "block" *) logic [DATA_WIDTH-1:0] buffer [0:FB_SIZE-1];
 
     // Internal counter for clearing the buffer
     reg [ADDR_WIDTH-1:0] clear_counter = 0;
@@ -33,7 +34,7 @@ module framebuffer #(
             else begin
                 clear_counter <= clear_counter + 1;
             end
-        end 
+        end
         else if (write_enable) begin
             buffer[addr_write] <= data_in;
         end
