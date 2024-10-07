@@ -1,9 +1,10 @@
 SRC_DIR = ../src
-MODULE = framebuffer
+MODULE = rasterizer
 
-FB_WIDTH = 8
-FB_HEIGHT = 4
-DATA_WIDTH = 4
+VERTEX_WIDTH = 32
+FB_ADDR_WIDTH = 4
+FB_WIDTH = 32
+FB_HEIGHT = 16
 
 .PHONY:sim
 sim: waveform.vcd
@@ -35,7 +36,7 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
 	-cc $(SRC_DIR)/$(MODULE).sv --exe tb_$(MODULE).cpp \
-	-GFB_WIDTH=$(FB_WIDTH) -GFB_HEIGHT=$(FB_HEIGHT) -GDATA_WIDTH=$(DATA_WIDTH)
+	-GVERTEX_WIDTH=$(VERTEX_WIDTH) -GFB_ADDR_WIDTH=$(FB_ADDR_WIDTH) -GFB_WIDTH=$(FB_WIDTH) -GFB_HEIGHT=$(FB_HEIGHT)
 	@touch .stamp.verilate
 
 .PHONY:lint
