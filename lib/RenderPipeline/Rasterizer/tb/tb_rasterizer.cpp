@@ -3,7 +3,7 @@
 #include "obj_dir/Vrasterizer.h"
 
 
-#define MAX_SIM_TIME 32
+#define MAX_SIM_TIME 32*16
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 
@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
         dut->y2 = y2;
 
         if (dut->clk == 1) {
+            posedge_cnt++;
             if (posedge_cnt < 4) {
                 dut->rst = 1;
             }

@@ -14,13 +14,19 @@ module rasterizer #(
     input logic signed [VERTEX_WIDTH-1:0] x2,
     input logic signed [VERTEX_WIDTH-1:0] y2,
 
-    output reg [FB_ADDR_WIDTH-1:0] fb_addr_write,
+    output reg [FB_ADDR_WIDTH-1:0] fb_addr,
     output reg fb_write_enable,
     output reg done
 ); 
 
-    // Registers to hold bounding box coordinates
+    // Registers to store x and y coordinates while drawing
+    reg [VERTEX_WIDTH-1:0] x, y;
+
+    // Registers to store bounding box coordinates
     reg signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
+    
+    // Register to store a value used to jump to next line in bounding box
+    reg [FB_ADDR_WIDTH-1:0] line_jump_value;
 
     // Registers to store whether part of the bounding box is inside framebuffer
     reg min_x_is_right_of_fb_start;
@@ -38,9 +44,6 @@ module rasterizer #(
     reg x_is_inside;
     reg y_is_inside;
 
-    // Register to store a value used to jump to next line in bounding box
-    reg [FB_ADDR_WIDTH-1:0] line_jump_value;
-
     // State machine for bounding box calculation and drawing
     typedef enum logic [3:0] {
         COMPUTE_BBOX_STAGE_1,
@@ -50,7 +53,8 @@ module rasterizer #(
         CHECK_BBOX_IS_INSIDE_STAGE_3,
         VERIFY_BBOX,
         CLAMP_BBOX,
-        INIT_DRAW,
+        INIT_DRAW_STAGE_1,
+        INIT_DRAW_STAGE_2,
         DRAW,
         NEW_LINE,
         DONE
@@ -58,13 +62,8 @@ module rasterizer #(
 
     state_t state;
 
-    reg [VERTEX_WIDTH-1:0] x, y;
-
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            fb_write_enable <= 0;
-            fb_addr_write <= 0;
-
             done <= 1'b0;
 
             state <= COMPUTE_BBOX_STAGE_1;
@@ -143,21 +142,27 @@ module rasterizer #(
                     min_y <= (min_y < 0) ? 0 : min_y;
                     max_y <= (max_y > FB_HEIGHT-1) ? FB_HEIGHT-1 : max_y;
 
-                    state <= INIT_DRAW;
+                    state <= INIT_DRAW_STAGE_1;
                 end
 
-                INIT_DRAW: begin
+                INIT_DRAW_STAGE_1: begin
                     x <= min_x;
                     y <= min_y;
 
                     line_jump_value <= FB_WIDTH[FB_ADDR_WIDTH-1:0] - (max_x[FB_ADDR_WIDTH-1:0] - min_x[FB_ADDR_WIDTH-1:0]);
 
+                    state <= INIT_DRAW_STAGE_2;
+                end
+
+                INIT_DRAW_STAGE_2: begin
+                    fb_addr <= (y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + x[FB_ADDR_WIDTH-1:0];
+                    
                     state <= DRAW;
                 end
 
                 DRAW: begin
                     if (x < max_x) begin
-                        fb_addr_write <= fb_addr_write + 1;
+                        fb_addr <= fb_addr + 1;
                         fb_write_enable <= 1'b1;
                         x <= x + 1;
                     end 
@@ -169,7 +174,9 @@ module rasterizer #(
                 NEW_LINE: begin
                     if (y < max_y) begin
                         y <= y + 1; 
-                        fb_addr_write <= fb_addr_write + line_jump_value[FB_ADDR_WIDTH-1:0]; 
+                        fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0]; 
+
+                        x <= min_x;
 
                         state <= DRAW;
                     end
