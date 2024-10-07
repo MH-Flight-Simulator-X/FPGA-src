@@ -11,8 +11,8 @@ typedef enum logic [1:0] {
 } mat_mat_mul_state_t /*verilator public*/;
 
 module mat_mul #(
-    parameter unsigned DATAWIDTH = 16,
-    parameter unsigned FRACBITS = 8
+    parameter unsigned DATAWIDTH = 18,
+    parameter unsigned FRACBITS = 12
     ) (
     input clk,
     input rstn,

@@ -6,8 +6,8 @@
 #include "obj_dir/Vmat_mul.h"
 #include "obj_dir/Vmat_mul___024unit.h"
 
-#define FIXED_POINT_WIDTH 16
-#define FIXED_POINT_FRAC_WIDTH 8
+#define FIXED_POINT_WIDTH 18
+#define FIXED_POINT_FRAC_WIDTH 12
 
 #define RESET_CLKS 8
 
@@ -59,14 +59,9 @@ void get_matrix_data_input(Vmat_mul* dut, float A[4][4], float B[4][4]) {
 void get_matrix_data_output(Vmat_mul* dut, float C[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            std::bitset<16> bits(dut->C[i][j]);
-            std::cout << "Data: " << dut->C[i][j] << "\tBits: " << bits << std::endl;
             C[i][j] = FixedPoint<int32_t>(dut->C[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
-            std::cout << "C[" << i << "][" << j << "]: " << C[i][j] << std::endl;
         }
-        printf("\n");
     }
-    printf("\n");
 }
 
 void check_matrix_data(Vmat_mul* dut) {
