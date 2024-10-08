@@ -1,8 +1,12 @@
 module rasterizer #(
     parameter VERTEX_WIDTH,
     parameter FB_ADDR_WIDTH,
-    parameter signed [VERTEX_WIDTH-1:0] FB_WIDTH,
-    parameter signed [VERTEX_WIDTH-1:0] FB_HEIGHT
+    parameter [VERTEX_WIDTH-1:0] FB_WIDTH,
+    parameter [VERTEX_WIDTH-1:0] FB_HEIGHT
+    // parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X,
+    // parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X,
+    // parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y,
+    // parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y
 ) (
     input logic clk,
     input logic rst,
@@ -23,16 +27,41 @@ module rasterizer #(
     logic signed [VERTEX_WIDTH-1:0] x, y;
 
     // logic to store bounding box coordinates
-    logic signed [VERTEX_WIDTH-1:0] i_min_x, i_max_x, i_min_y, i_max_y;
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
     
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
 
     // logic to store whether bounding box is inside framebuffer
-    logic bbox_is_valid;
+    logic bounding_box_is_valid;
 
-    // State machine for bounding box calculation and drawing
+    localparam TILE_MIN_X = 0;
+    localparam TILE_MIN_Y = 0;
+
+    bounding_box #(
+        .TILE_MIN_X(TILE_MIN_X),
+        .TILE_MAX_X(FB_WIDTH),
+        .TILE_MIN_Y(TILE_MIN_Y),
+        .TILE_MAX_Y(FB_HEIGHT),
+
+        .COORD_WIDTH(VERTEX_WIDTH)
+    ) bounding_box_inst (
+        .x0(x0),
+        .y0(y0),
+        .x1(x1),
+        .y1(y1),
+        .x2(x2),
+        .y2(y2),
+
+        .min_x(min_x),
+        .max_x(max_x),
+        .min_y(min_y),
+        .max_y(max_y),
+
+        .valid(bounding_box_is_valid)
+    );
+
+    // State machine
     typedef enum logic [3:0] {
         VERIFY_BBOX,
         INIT_DRAW,
@@ -43,23 +72,6 @@ module rasterizer #(
 
     state_t state;
 
-    always_comb begin
-        // Calculate bbox of vertex 0, 1 and 2
-        i_min_x = (x0 < x1) ? ((x0 < x2) ? x0 : x2) : ((x1 < x2) ? x1 : x2);
-        i_max_x = (x0 > x1) ? ((x0 > x2) ? x0 : x2) : ((x1 > x2) ? x1 : x2);
-        i_min_y = (y0 < y1) ? ((y0 < y2) ? y0 : y2) : ((y1 < y2) ? y1 : y2);
-        i_max_y = (y0 > y1) ? ((y0 > y2) ? y0 : y2) : ((y1 > y2) ? y1 : y2);
-
-        // Clamp min and max values of bbox to edges of framebuffer
-        min_x = (i_min_x < 0) ? 0 : i_min_x;
-        max_x = (i_max_x > FB_WIDTH-1) ? FB_WIDTH-1 : i_max_x;
-        min_y = (i_min_y < 0) ? 0 : i_min_y;
-        max_y = (i_max_y > FB_HEIGHT-1) ? FB_HEIGHT-1 : i_max_y;
-
-        // Check if bbox is inside of framebuffer
-        bbox_is_valid = (min_x < max_x) && (min_y < max_y);
-    end
-
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 1'b0;
@@ -69,7 +81,7 @@ module rasterizer #(
         else begin
             case (state)
                 VERIFY_BBOX: begin
-                    if (bbox_is_valid) begin
+                    if (bounding_box_is_valid) begin
                         state <= INIT_DRAW;
                     end
                     else begin

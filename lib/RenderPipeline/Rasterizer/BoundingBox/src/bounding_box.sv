@@ -3,6 +3,7 @@ module bounding_box #(
     parameter signed TILE_MAX_X = 32,
     parameter signed TILE_MIN_Y = 0,
     parameter signed TILE_MAX_Y = 16,
+
     parameter COORD_WIDTH = 10
 ) (
     input logic signed [COORD_WIDTH-1:0] x0,
