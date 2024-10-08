@@ -18,7 +18,10 @@ module bounding_box #(
     output logic signed [COORD_WIDTH-1:0] max_y,
 
     output logic valid
-)
+);
+
+    // logic to store intermediate bbox coordinates
+    logic signed [COORD_WIDTH-1:0] i_min_x, i_max_x, i_min_y, i_max_y;
 
     always_comb begin
         // Calculate bbox of vertex 0, 1 and 2
@@ -28,10 +31,10 @@ module bounding_box #(
         i_max_y = (y0 > y1) ? ((y0 > y2) ? y0 : y2) : ((y1 > y2) ? y1 : y2);
 
         // Clamp min and max values of bbox to edges tile
-        min_x = (i_min_x < 0) ? 0 : i_min_x;
-        max_x = (i_max_x > FB_WIDTH-1) ? FB_WIDTH-1 : i_max_x;
-        min_y = (i_min_y < 0) ? 0 : i_min_y;
-        max_y = (i_max_y > FB_HEIGHT-1) ? FB_HEIGHT-1 : i_max_y;
+        min_x = (i_min_x < TILE_MIN_X) ? TILE_MIN_X : i_min_x;
+        max_x = (i_max_x > TILE_MAX_X) ? TILE_MAX_X : i_max_x;
+        min_y = (i_min_y < TILE_MIN_Y) ? TILE_MIN_Y : i_min_y;
+        max_y = (i_max_y > TILE_MAX_Y) ? TILE_MAX_Y : i_max_y;
 
         // Check if bbox is inside tile
         valid = (min_x < max_x) && (min_y < max_y);
