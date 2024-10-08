@@ -29,19 +29,12 @@ module rasterizer #(
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
 
-    // logic to store whether part of the bounding box is inside framebuffer
-    logic min_x_is_inside;
-    logic max_x_is_inside;
-    logic min_y_is_inside; 
-    logic max_y_is_inside;
-    logic top_left_is_inside;
-    logic top_right_is_inside;
-    logic bottom_left_is_inside;
-    logic bottom_rigth_is_inside;
+    // logic to store whether bounding box is inside framebuffer
+    logic bbox_is_valid;
 
     // State machine for bounding box calculation and drawing
     typedef enum logic [3:0] {
-        COMPUTE_BBOX,
+        VERIFY_BBOX,
         INIT_DRAW,
         DRAW,
         NEW_LINE,
@@ -57,43 +50,29 @@ module rasterizer #(
         i_min_y = (y0 < y1) ? ((y0 < y2) ? y0 : y2) : ((y1 < y2) ? y1 : y2);
         i_max_y = (y0 > y1) ? ((y0 > y2) ? y0 : y2) : ((y1 > y2) ? y1 : y2);
 
-        min_x_is_inside = ((0 <= i_min_x) && (i_min_x < FB_WIDTH));
-        max_x_is_inside = ((0 <= i_max_x) && (i_max_x < FB_WIDTH));
-        min_y_is_inside = ((0 <= i_min_y) && (i_min_y < FB_HEIGHT));
-        max_y_is_inside = ((0 <= i_max_y) && (i_max_y < FB_HEIGHT));
+        // Clamp min and max values of bbox to edges of framebuffer
+        min_x = (i_min_x < 0) ? 0 : i_min_x;
+        max_x = (i_max_x > FB_WIDTH-1) ? FB_WIDTH-1 : i_max_x;
+        min_y = (i_min_y < 0) ? 0 : i_min_y;
+        max_y = (i_max_y > FB_HEIGHT-1) ? FB_HEIGHT-1 : i_max_y;
 
-        // Check if corners are inside framebuffer
-        top_left_is_inside = (min_x_is_inside && min_y_is_inside);
-        top_right_is_inside = (max_x_is_inside && min_y_is_inside);
-        bottom_left_is_inside = (min_x_is_inside && max_y_is_inside);
-        bottom_rigth_is_inside = (max_x_is_inside && max_y_is_inside);
+        // Check if bbox is inside of framebuffer
+        bbox_is_valid = (min_x < max_x) && (min_y < max_y);
     end
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 1'b0;
 
-            state <= COMPUTE_BBOX;
+            state <= VERIFY_BBOX;
         end
         else begin
             case (state)
-                COMPUTE_BBOX: begin
-                    // Verify that at least one corner is inside
-                    if (top_left_is_inside || top_right_is_inside || bottom_left_is_inside || bottom_rigth_is_inside) begin
-                        // Clamp bbox inside framebuffer
-                        min_x <= (i_min_x < 0) ? 0 : i_min_x;
-                        max_x <= (i_max_x > FB_WIDTH-1) ? FB_WIDTH-1 : i_max_x;
-                        min_y <= (i_min_y < 0) ? 0 : i_min_y;
-                        max_y <= (i_max_y > FB_HEIGHT-1) ? FB_HEIGHT-1 : i_max_y;
-
+                VERIFY_BBOX: begin
+                    if (bbox_is_valid) begin
                         state <= INIT_DRAW;
                     end
                     else begin
-                        min_x <= i_min_x;
-                        min_y <= i_min_y;
-                        max_x <= i_max_x;
-                        max_y <= i_max_y;
-
                         state <= DONE;
                     end
                 end 
