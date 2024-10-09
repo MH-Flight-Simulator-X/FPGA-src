@@ -5,9 +5,9 @@
 `timescale 1ns / 1ps
 
 typedef enum logic [1:0] {
-    IDLE = 2'b00,
-    PROCESSING = 2'b01,
-    DONE = 2'b10
+    MAT_MUL_IDLE = 2'b00,
+    MAT_MUL_PROCESSING = 2'b01,
+    MAT_MUL_DONE = 2'b10
 } mat_mat_mul_state_t /*verilator public*/;
 
 module mat_mul #(
@@ -42,7 +42,7 @@ module mat_mul #(
                                                     // with only using DATAWIDTH for
                                                     // intermediate calculation
 
-    mat_mat_mul_state_t current_state = IDLE, next_state = IDLE;
+    mat_mat_mul_state_t current_state = MAT_MUL_IDLE, next_state = MAT_MUL_IDLE;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
@@ -50,7 +50,7 @@ module mat_mul #(
             foreach (B_r[i,j]) B_r[i][j] <= '0;
 
             i_dv_r <= 1'b0;
-            current_state <= IDLE;
+            current_state <= MAT_MUL_IDLE;
 
         end else begin
             current_state <= next_state;
@@ -78,23 +78,23 @@ module mat_mul #(
         next_state = current_state;
 
         case (current_state)
-            IDLE: begin
+            MAT_MUL_IDLE: begin
                 if (i_dv_r == 1'b1) begin
-                    next_state = PROCESSING;
+                    next_state = MAT_MUL_PROCESSING;
                 end
             end
 
-            PROCESSING: begin
+            MAT_MUL_PROCESSING: begin
                 if (index == 2'b11) begin
-                    next_state = DONE;
+                    next_state = MAT_MUL_DONE;
                 end
             end
 
-            DONE: begin
-                next_state = IDLE;
+            MAT_MUL_DONE: begin
+                next_state = MAT_MUL_IDLE;
             end
 
-            default: next_state = IDLE;
+            default: next_state = MAT_MUL_IDLE;
         endcase
     end
 
@@ -103,7 +103,7 @@ module mat_mul #(
         if (~rstn) begin
             index <= 2'b00;
             foreach (C_r[i,j]) C_r[i][j] <= '0;
-        end else if (current_state == PROCESSING) begin
+        end else if (current_state == MAT_MUL_PROCESSING) begin
             // DO COMPUTATION
             C_r[0][0] <= C_r[0][0] + (A_r[0][index] * B_r[index][0]);
             C_r[0][1] <= C_r[0][1] + (A_r[0][index] * B_r[index][1]);
@@ -136,11 +136,11 @@ module mat_mul #(
             o_ready_r <= 1'b1;
         end
         else begin
-            if (current_state == IDLE) begin
+            if (current_state == MAT_MUL_IDLE) begin
                 o_ready_r <= 1'b1;
                 o_dv_r <= 1'b0;
                 foreach (C[i, j]) C[i][j] <= '0;
-            end else if (current_state == PROCESSING) begin
+            end else if (current_state == MAT_MUL_PROCESSING) begin
                 foreach (C[i, j]) C[i][j] <= '0;
                 o_ready_r <= 1'b0;
                 o_dv_r <= 1'b0;
