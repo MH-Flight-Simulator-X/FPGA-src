@@ -1,144 +1,113 @@
+// Project F Library - Division: Signed Fixed-Point with Gaussian Rounding
+// (C)2023 Will Green, Open source hardware released under the MIT License
+// Learn more at https://projectf.io/verilog-lib/
+
+`default_nettype none
 `timescale 1ns / 1ps
 
-typedef enum logic [2:0] {
-    FIXED_POINT_DIVIDE_IDLE,
-    FIXED_POINT_DIVIDE_INIT,
-    FIXED_POINT_DIVIDE_CALC,
-    FIXED_POINT_DIVIDE_ROUND,
-    FIXED_POINT_DIVIDE_SIGN
-} fixed_point_divide_state_t;
-
 module fixed_point_divide #(
-        parameter unsigned WIDTH = 18,
-        parameter unsigned FRACBITS = 12
+    parameter WIDTH=18,  // width of numbers in bits (integer and fractional)
+    parameter FBITS=12   // fractional bits within WIDTH
     ) (
-        input logic clk,
-        input logic rstn,
-
-        // Control signals
-        input logic start,
-        output logic busy,
-        output logic done,
-        output logic valid,
-
-        // Output flags
-        output logic dbz,       // Divide by zero flag
-        output logic ovf,       // Overflow flag
-
-        // Input data
-        input logic signed [WIDTH-1:0] a, // Dividend (top)
-        input logic signed [WIDTH-1:0] b, // Divisor  (bottom)
-
-        // Output data
-        output logic signed [WIDTH-1:0] val
+    input wire logic clk,    // clock
+    input wire logic rstn,   // reset
+    input wire logic start,  // start calculation
+    output     logic busy,   // calculation in progress
+    output     logic done,   // calculation is complete (high for one tick)
+    output     logic valid,  // result is valid
+    output     logic dbz,    // divide by zero
+    output     logic ovf,    // overflow
+    input wire logic signed [WIDTH-1:0] a,   // dividend (numerator)
+    input wire logic signed [WIDTH-1:0] b,   // divisor (denominator)
+    output     logic signed [WIDTH-1:0] val  // result value: quotient
     );
 
-    // Make sure that the widths are valid
-    if (WIDTH <= 0) begin: g_WIDTH_CHECK
-        $fatal("WIDTH must be greater than 0");
-    end
+    localparam WIDTHU = WIDTH - 1;                 // unsigned widths are 1 bit narrower
+    localparam FBITSW = (FBITS == 0) ? 1 : FBITS;  // avoid negative vector width when FBITS=0
+    localparam SMALLEST = {1'b1, {WIDTHU{1'b0}}};  // smallest negative number
 
-    if (FRACBITS >= WIDTH & FRACBITS > 0) begin: g_FRACBITS_CHECK
-        $fatal("FRACBITS must be less than WIDTH and greater than 0");
-    end
+    localparam ITER = WIDTHU + FBITS;  // iteration count: unsigned input width + fractional bits
+    logic [$clog2(ITER):0] i;          // iteration counter (allow ITER+1 iterations for rounding)
 
-    // Constants
-    localparam unsigned WIDTHU = WIDTH - 1;                 // Unsigned width
-    localparam unsigned SMALLEST = {1'b1, {WIDTHU{1'b0}}};  // Smallest number
+    logic a_sig, b_sig, sig_diff;      // signs of inputs and whether different
+    logic [WIDTHU-1:0] au, bu;         // absolute version of inputs (unsigned)
+    logic [WIDTHU-1:0] quo, quo_next;  // intermediate quotients (unsigned)
+    logic [WIDTHU:0] acc, acc_next;    // accumulator (unsigned but 1 bit wider)
 
-    localparam unsigned ITER = WIDTHU + FRACBITS;           // Number of iterations
-    logic [$clog2(ITER)-1:0] iter;                          // Iteration counter
-
-    // Internal signals
-    logic a_sign, b_sign, sign_diff;                        // Sign bits & if they are different
-    logic [WIDTHU-1:0] a_u, b_u;                            // Unsigned versions of a and b
-    logic [WIDTHU-1:0] quo, quo_next;                       // Quotient
-    logic [WIDTHU:0] acc, acc_next;                       // Accumulator
-
-    // Input signs
+    // input signs
     always_comb begin
-        a_sign = a[WIDTHU];
-        b_sign = b[WIDTHU];
+        a_sig = a[WIDTH-1+:1];
+        b_sig = b[WIDTH-1+:1];
     end
 
-    // Division algorithm iteration
+    // division algorithm iteration
     always_comb begin
-        if (acc >= {1'b0, b_u}) begin
-            acc_next = acc - b_u;
-            {acc_next, quo_next} = {acc_next[WIDTHU-1:0], quo, 1'b0};
+        if (acc >= {1'b0, bu}) begin
+            acc_next = acc - bu;
+            {acc_next, quo_next} = {acc_next[WIDTHU-1:0], quo, 1'b1};
         end else begin
             {acc_next, quo_next} = {acc, quo} << 1;
         end
     end
 
-    // State
-    fixed_point_divide_state_t state;
+    // calculation state machine
+    enum {IDLE, INIT, CALC, ROUND, SIGN} state;
     always_ff @(posedge clk) begin
         done <= 0;
         case (state)
-            FIXED_POINT_DIVIDE_IDLE: begin
-                state <= FIXED_POINT_DIVIDE_CALC;
+            INIT: begin
+                state <= CALC;
                 ovf <= 0;
-                iter <= 0;
-                {acc, quo} <= {{WIDTHU{1'b0}}, a_u, 1'b0};
+                i <= 0;
+                {acc, quo} <= {{WIDTHU{1'b0}}, au, 1'b0};  // initialize calculation
             end
-
-            FIXED_POINT_DIVIDE_CALC: begin
-                if (iter == WIDTHU-1 && quo_next[WIDTHU-1:WIDTHU-FRACBITS] != 0) begin
-                    state <= FIXED_POINT_DIVIDE_IDLE;
+            CALC: begin
+                if (i == WIDTHU-1 && quo_next[WIDTHU-1:WIDTHU-FBITSW] != 0) begin  // overflow
+                    state <= IDLE;
                     busy <= 0;
                     done <= 1;
                     ovf <= 1;
                 end else begin
-                    if (iter == ITER - 1) begin
-                        state <= FIXED_POINT_DIVIDE_ROUND;
-                    end
-                    iter <= iter + 1;
+                    if (i == ITER-1) state <= ROUND;  // calculation complete after next iteration
+                    i <= i + 1;
                     acc <= acc_next;
                     quo <= quo_next;
                 end
             end
-
-            FIXED_POINT_DIVIDE_ROUND: begin
-                state <= FIXED_POINT_DIVIDE_SIGN;
-                if (quo_next[0] == 1'b1) begin
-                    if (quo[0] == 1'b1 || acc_next[WIDTHU:1] != 0) begin
-                        quo <= quo + 1;
-                    end
+            ROUND: begin  // Gaussian rounding
+                state <= SIGN;
+                if (quo_next[0] == 1'b1) begin  // next digit is 1, so consider rounding
+                    // round up if quotient is odd or remainder is non-zero
+                    if (quo[0] == 1'b1 || acc_next[WIDTHU:1] != 0) quo <= quo + 1;
                 end
             end
-
-            FIXED_POINT_DIVIDE_SIGN: begin
-                state <= FIXED_POINT_DIVIDE_IDLE;
-                if (quo != 0) begin
-                    val <= (sign_diff) ? {1'b1, -quo} : {1'b0, quo};
-                end
+            SIGN: begin  // adjust quotient sign if non-zero and input signs differ
+                state <= IDLE;
+                if (quo != 0) val <= (sig_diff) ? {1'b1, -quo} : {1'b0, quo};
                 busy <= 0;
                 done <= 1;
                 valid <= 1;
             end
-
-            default: begin
+            default: begin  // IDLE
                 if (start) begin
                     valid <= 0;
-
-                    if (b == 0) begin
-                        state <= FIXED_POINT_DIVIDE_IDLE;
+                    if (b == 0) begin  // divide by zero
+                        state <= IDLE;
                         busy <= 0;
                         done <= 1;
                         dbz <= 1;
                         ovf <= 0;
-                    end else if (a == SMALLEST || b == SMALLEST) begin
-                        state <= FIXED_POINT_DIVIDE_IDLE;
+                    end else if (a == SMALLEST || b == SMALLEST) begin  // overflow
+                        state <= IDLE;
                         busy <= 0;
                         done <= 1;
                         dbz <= 0;
                         ovf <= 1;
                     end else begin
-                        state <= FIXED_POINT_DIVIDE_INIT;
-                        a_u <= (a_sign) ? -a[WIDTHU-1:0] : a[WIDTHU-1:0];
-                        b_u <= (b_sign) ? -b[WIDTHU-1:0] : b[WIDTHU-1:0];
-                        sign_diff <= (a_sign ^ b_sign);
+                        state <= INIT;
+                        au <= (a_sig) ? -a[WIDTHU-1:0] : a[WIDTHU-1:0];  // register abs(a)
+                        bu <= (b_sig) ? -b[WIDTHU-1:0] : b[WIDTHU-1:0];  // register abs(b)
+                        sig_diff <= (a_sig ^ b_sig);  // register input sign difference
                         busy <= 1;
                         dbz <= 0;
                         ovf <= 0;
@@ -147,7 +116,7 @@ module fixed_point_divide #(
             end
         endcase
         if (~rstn) begin
-            state <= FIXED_POINT_DIVIDE_IDLE;
+            state <= IDLE;
             busy <= 0;
             done <= 0;
             valid <= 0;
