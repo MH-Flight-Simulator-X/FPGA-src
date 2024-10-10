@@ -1,125 +1,58 @@
 `timescale 1ns / 1ps
 
-typedef enum logic [2:0] {
-    VERETX_SHADER_IDLE,
-    VERETX_SHADER_VIEW_PROJ_CALC,
-    VERETX_SHADER_MVP_CALC,
-    VERTEX_SHADER_COMPUTE,
+typedef enum logic [1:0] {
+    VERTEX_SHADER_IDLE,
+    VERTEX_SHADER_COMPUTING,
     VERTEX_SHADER_FINISHED
 } vertex_shader_state_t;
 
 module vertex_shader #(
-        parameter unsigned NUM_CORES = 1,
         parameter unsigned DATAWIDTH = 18,
         parameter unsigned FRACBITS = 12
     )(
         input clk,
-        input rstn,
+        input logic rstn,
 
         // Control signals
-        output logic o_vertex_ready,    // Ready to process vertexes (i.e. mat_mul finished)
-        output logic o_dv,
+        output logic o_ready,    // Ready to process vertexes (i.e. mvp matrix set)
         output logic o_finished,
 
         // Matrix Data
-        input logic signed [DATAWIDTH-1:0] model_mat[4][4],
-        input logic signed [DATAWIDTH-1:0] view_mat[4][4],
-        input logic signed [DATAWIDTH-1:0] proj_mat[4][4],
-
-        input logic i_model_dv,
-        input logic i_view_dv,
+        input logic signed [DATAWIDTH-1:0] i_mvp_mat[4][4],
+        input logic i_mvp_dv,
 
         // Vertex Data
-        input logic signed [DATAWIDTH-1:0] vertex_data[3],
+        input logic signed [DATAWIDTH-1:0] i_vertex[3],
         input logic i_vertex_dv,
         input logic i_vertex_last,
 
         // Output Data
-        output logic signed [DATAWIDTH-1:0] vertex_out[4]
+        output logic signed [DATAWIDTH-1:0] o_vertex[4],
+        output logic o_vertex_dv
     );
+
+    localparam logic signed [DATAWIDTH-1:0] FixedPointOne = 1 << FRACBITS;
 
     // Vertex Shader State
     vertex_shader_state_t current_state = VERTEX_SHADER_IDLE, next_state = VERTEX_SHADER_IDLE;
 
-    // Control signals
-    logic r_vertex_ready;
-    logic r_o_dv;
-    logic r_finished;
-
-    // Input and output signals for matrix multiplier
-    logic signed [DATAWIDTH-1:0] r_mat_a[4][4];
-    logic signed [DATAWIDTH-1:0] r_mat_b[4][4];
-    logic r_mat_mul_i_dv;
-
-    logic signed [DATAWIDTH-1:0] w_mat_c[4][4];
-    logic w_mat_mul_o_dv;
-    logic w_mat_mul_o_ready;
-
-    // Store the model and view matricies
-    logic signed [DATAWIDTH-1:0] r_model_mat[4][4];
-    logic signed [DATAWIDTH-1:0] r_view_mat[4][4];
-    logic r_model_valid;
-    logic r_view_valdi;
-
-    // Finished matricies
-    logic signed [DATAWIDTH-1:0] r_view_proj_mat;
-    logic signed [DATAWIDTH-1:0] r_mvp_mat;
-    logic mvp_valid;
+    // Store the mvp matrix
+    logic signed [DATAWIDTH-1:0] r_mvp_mat[4][4];
+    logic r_mvp_valid = 1'b0;
 
     // Input and output signals for matrix vector multiplier
     logic signed [DATAWIDTH-1:0] r_mat_vec_x[4];
-    logic r_mat_vec_i_dv;
+    logic r_mat_vec_i_dv = 1'b0;
 
-    logic signed [DATAWIDTH-1:0] w_mat_vec_y[4];
-    logic w_mat_vec_o_dv;
-
-    // Set input matrix registers
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
-            foreach (r_model_mat[i,j]) r_model_mat[i][j] <= '0;
-            foreach (r_view_mat[i,j]) r_view_mat[i][j] <= '0;
-            r_model_valid <= 1'b0;
-            r_view_valid <= 1'b0;
-        end else begin
-            if (i_model_dv) begin
-                r_model_valid <= 1'b1;
-                r_model_mat[0] <= model_mat[0];
-                r_model_mat[1] <= model_mat[1];
-                r_model_mat[2] <= model_mat[2];
-                r_model_mat[3] <= model_mat[3];
-            end
-            if (i_view_dv) begin
-                r_view_valid <= 1'b1;
-                r_view_mat[0] <= view_mat[0];
-                r_view_mat[1] <= view_mat[1];
-                r_view_mat[2] <= view_mat[2];
-                r_view_mat[3] <= view_mat[3];
-            end
-        end
-    end
-
-    // Matrix Matrix Multiplication Unit Instance
-    mat_mul #(
-        .DATAWIDTH(DATAWIDTH),
-        .FRACBITS(FRACBITS)
-    ) mat_mul_inst (
-        .clk(clk),
-        .rstn(rstn),
-
-        .A(r_mat_a),
-        .B(r_mat_b),
-        .i_dv(r_mat_mul_i_dv),
-
-        .C(w_mat_c),
-        .o_dv(w_mat_mul_o_dv),
-        .o_ready(w_mat_mul_o_ready)
-    );
+    // Shift register for the vertex_last -- will set state to VERTEX_SHADER_FINISHED when
+    // this input vertex is finnished processing
+    logic [4:0] vertex_last_finished = '0;
 
     // Matrix Vector Multiplication Unit Instance
     mat_vec_mul #(
         .DATAWIDTH(DATAWIDTH),
         .FRACBITS(FRACBITS)
-    ) mat_vec_mul_inst (
+        ) mat_vec_mul_inst (
         .clk(clk),
         .rstn(rstn),
 
@@ -127,23 +60,84 @@ module vertex_shader #(
         .x(r_mat_vec_x),
         .i_dv(r_mat_vec_i_dv),
 
-        .y(w_mat_vec_y),
-        .o_dv(w_mat_vec_o_dv)
+        .y(o_vertex),
+        .o_dv(o_vertex_dv)
     );
+
+    // Set input matrix registers
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            // Reset vertex last finished
+            vertex_last_finished <= '0;
+
+            // Reset MVP Matrix
+            foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
+            r_mvp_valid <= 1'b0;
+        end else begin
+            // Propagate finished signal
+            vertex_last_finished[0] <= i_vertex_last;
+            vertex_last_finished[1] <= vertex_last_finished[0];
+            vertex_last_finished[2] <= vertex_last_finished[1];
+            vertex_last_finished[3] <= vertex_last_finished[2];
+            vertex_last_finished[4] <= vertex_last_finished[3];
+
+            // Set MVP Matrix
+            if (current_state == VERTEX_SHADER_FINISHED) begin
+                foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
+                r_mvp_valid <= 1'b0;
+            end else if (i_mvp_dv) begin
+                foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= i_mvp_mat[i][j];
+                r_mvp_valid <= 1'b1;
+            end
+
+            r_mat_vec_i_dv <= i_vertex_dv;
+            r_mat_vec_x[0] <= i_vertex[0];
+            r_mat_vec_x[1] <= i_vertex[1];
+            r_mat_vec_x[2] <= i_vertex[2];
+            r_mat_vec_x[3] <= FixedPointOne;
+        end
+    end
+
 
     // State
     always_ff @(posedge clk) begin
         if (~rstn) begin
+            // Reset State
             current_state <= VERTEX_SHADER_IDLE;
+
         end else begin
+            // Assign state
             current_state <= next_state;
         end
     end
 
     always_comb begin
+        o_finished = 1'b0;
+        o_ready = 1'b0;
+
         case (current_state)
             VERTEX_SHADER_IDLE: begin
+                if (r_mvp_valid) begin
+                    next_state = VERTEX_SHADER_COMPUTING;
+                end else begin
+                    next_state = VERTEX_SHADER_IDLE;
+                end
+            end
 
+            VERTEX_SHADER_COMPUTING: begin
+                if (vertex_last_finished[4]) begin
+                    next_state = VERTEX_SHADER_FINISHED;
+                end else begin
+                    next_state = VERTEX_SHADER_COMPUTING;
+                end
+
+                o_ready = 1'b1;
+            end
+
+            VERTEX_SHADER_FINISHED: begin
+                next_state = VERTEX_SHADER_IDLE;
+
+                o_finished = 1'b1;
             end
 
             default: begin

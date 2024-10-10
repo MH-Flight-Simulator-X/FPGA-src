@@ -4,8 +4,8 @@
 `timescale 1ns / 1ps
 
 module mat_vec_mul #(
-    parameter unsigned DATAWIDTH = 32,
-    parameter unsigned FRACBITS = 16
+    parameter unsigned DATAWIDTH = 18,
+    parameter unsigned FRACBITS = 12
     ) (
     input clk,
     input rstn,
@@ -44,7 +44,7 @@ module mat_vec_mul #(
     logic signed [2 * DATAWIDTH:0] y_inter_2 [4];
     logic signed [2 * DATAWIDTH:0] y_inter_3 [4];
 
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (~rstn) begin
             foreach (A_r_0[i,j]) A_r_0[i][j] <= '0;
             foreach (x_r_0[i]) x_r_0[i] <= '0;
@@ -128,7 +128,7 @@ module mat_vec_mul #(
     end
 
     // Register outputs
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (~rstn) begin
             foreach (y[i]) y[i] <= '0;
             o_dv <= '0;
