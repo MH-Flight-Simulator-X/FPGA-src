@@ -119,7 +119,7 @@ def update_screen_and_depth_buffer(x, y, z, color, depth_buffer, screen):
 def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
     min_x, max_x, min_y, max_y = compute_bounding_box(v1, v2, v3, screen_width, screen_height)
 
-    # Compute the edge functions at the top-left corner of the bounding box (min_x, min_y)
+    # Compute the edge functions at the top-left corner of bounding box
     e1 = edge_function(v1, v2, (min_x, min_y))
     e2 = edge_function(v2, v3, (min_x, min_y))
     e3 = edge_function(v3, v1, (min_x, min_y))
@@ -134,39 +134,62 @@ def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
     e3_dx = v1[1] - v3[1]
     e3_dy = -(v1[0] - v3[0])
 
-    area = edge_function(v1, v2, v3)
-
+    area = edge_function(v1, v2, v3) 
     if (area == 0):
         return
 
+    # Compute barycentric weights at top-left corner of bounding box
+    w1 = e1 / area
+    w2 = e2 / area
+    w3 = e3 / area
+
+    # Compute increments for barycentric weights
+    w1_dx = e1_dx / area
+    w1_dy = e1_dy / area
+
+    w2_dx = e2_dx / area
+    w2_dy = e2_dy / area
+
+    w3_dx = e3_dx / area
+    w3_dy = e3_dy / area
+
+    # Initialize z at the top-left corner
+    z = (w1 * v1[2]) + (w2 * v2[2]) + (w3 * v3[2])
+
+    # Compute z increments
+    z_dx = (w1_dx * v1[2]) + (w2_dx * v2[2]) + (w3_dx * v3[2])
+    z_dy = (w1_dy * v1[2]) + (w2_dy * v2[2]) + (w3_dy * v3[2]) 
+
+    
     for y in range(min_y, max_y + 1):
         # Store the initial edge values at the start of each row
         e1_row = e1
         e2_row = e2
         e3_row = e3
 
+        # Initialize z for the current row
+        z_row = z
+
         for x in range(min_x, max_x + 1):
             # Check if the point (x, y) is inside the triangle
-            if e1_row >= 0 and e2_row >= 0 and e3_row >= 0:
-
-                # Barycentric weights
-                w1 = e1_row / area
-                w2 = e2_row / area
-                w3 = e3_row / area
-
-                z = w1 * v1[2] + w2 * v2[2] + w3 * v3[2]
-
-                update_screen_and_depth_buffer(x, y, z, color, depth_buffer, screen)
+            if e1_row >= 0 and e2_row >= 0 and e3_row >= 0: 
+                update_screen_and_depth_buffer(x, y, z_row, color, depth_buffer, screen)
 
             # Increment edge function values for the next pixel in the row
             e1_row += e1_dx
             e2_row += e2_dx
             e3_row += e3_dx
 
-        # At the end of each row, increment the edge values vertically
+            # Increment z for the next pixel in the row
+            z_row += z_dx
+
+        # Increment the edge values vertically
         e1 += e1_dy
         e2 += e2_dy
         e3 += e3_dy
+
+        # Increment z for the next row
+        z += z_dy
 
 
 def draw_model(model, pos, rotation, depth_buffer, screen):
