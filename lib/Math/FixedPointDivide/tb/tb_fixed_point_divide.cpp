@@ -17,8 +17,8 @@ vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 
 void assign_dividend_and_divisor(Vfixed_point_divide* dut, float dividend, float divisor) {
-    dut->a = FixedPoint<int32_t>::fromFloat(dividend, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
-    dut->b = FixedPoint<int32_t>::fromFloat(divisor, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
+    dut->A = FixedPoint<int32_t>::fromFloat(dividend, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
+    dut->B = FixedPoint<int32_t>::fromFloat(divisor, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
 }
 
 float generate_random_in_range(int min, int max) {
@@ -41,8 +41,8 @@ int main(int argc, char** argv) {
         dut->eval();
 
         dut->rstn = 0;
-        dut->a = 0;
-        dut->b = 0;
+        dut->A = 0;
+        dut->B = 0;
     }
     dut->rstn = 1;
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
             dut->start = 0;
 
             if (dut->done) {
-                float result = FixedPoint<int32_t>(dut->val, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
+                float result = FixedPoint<int32_t>(dut->Q, FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat();
                 printf("Result: %.4f\n", result);
             }
             if (!dut->busy) {
