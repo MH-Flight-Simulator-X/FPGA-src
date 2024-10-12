@@ -34,9 +34,16 @@ module rasterizer #(
     logic signed [VERTEX_WIDTH-1:0] e1;
     logic signed [VERTEX_WIDTH-1:0] e2;
     
-    // logic signed [VERTEX_WIDTH-1:0] e0_row;
-    // logic signed [VERTEX_WIDTH-1:0] e1_row;
-    // logic signed [VERTEX_WIDTH-1:0] e2_row;
+    logic signed [VERTEX_WIDTH-1:0] e0_row_start;
+    logic signed [VERTEX_WIDTH-1:0] e1_row_start;
+    logic signed [VERTEX_WIDTH-1:0] e2_row_start;
+
+    logic signed [VERTEX_WIDTH-1:0] e0_dx;
+    logic signed [VERTEX_WIDTH-1:0] e0_dy;
+    logic signed [VERTEX_WIDTH-1:0] e1_dx;
+    logic signed [VERTEX_WIDTH-1:0] e1_dy;
+    logic signed [VERTEX_WIDTH-1:0] e2_dx;
+    logic signed [VERTEX_WIDTH-1:0] e2_dy;
 
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
@@ -81,10 +88,15 @@ module rasterizer #(
         edge_function = (p_x - v1_x) * (v2_y - v1_y) - (p_y - v1_y) * (v2_x - v1_x);
     endfunction
 
+    always_comb begin
+        
+    end
+
     // State machine
     typedef enum logic [3:0] {
         VERIFY_BBOX,
         INIT_DRAW,
+        INIT_DRAW_2,
         DRAW,
         DONE
     } state_t;
@@ -94,6 +106,7 @@ module rasterizer #(
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 1'b0;
+            fb_write_enable <= 1'b0;
 
             state <= VERIFY_BBOX;
         end
@@ -116,6 +129,27 @@ module rasterizer #(
 
                     fb_addr <= (min_y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + min_x[FB_ADDR_WIDTH-1:0];
 
+                    e0 <= edge_function(x0, y0, x1, y1, min_x, min_y);
+                    e1 <= edge_function(x1, y1, x2, y2, min_x, min_y);
+                    e2 <= edge_function(x2, y2, x0, y0, min_y, min_x);
+
+                    e0_dx <= y1 - y0;
+                    e0_dy <= -(x1 - x0);
+
+                    e1_dx <= y2 - y1; 
+                    e1_dy <= -(x2 - x1);
+
+                    e2_dx <= y0 - y2;
+                    e2_dy <= -(x0 - x2);
+
+                    state <= INIT_DRAW_2;
+                end
+
+                INIT_DRAW_2: begin
+                    e0_row_start <= e0;
+                    e1_row_start <= e1;
+                    e2_row_start <= e2;
+
                     state <= DRAW;
                 end
 
@@ -123,21 +157,22 @@ module rasterizer #(
                     if (x < max_x) begin
                         fb_addr <= fb_addr + 1;
 
-                        e0 <= edge_function(x0, y0, x1, y1, x, y);
-                        e1 <= edge_function(x1, y1, x2, y2, x, y);
-                        e2 <= edge_function(x2, y2, x0, y0, x, y);
-
-                        if (e0 > 0 && e1 > 0 && e2 > 0) begin
-                            fb_write_enable <= 1'b1;
-                        end
-                        else begin
-                            fb_write_enable <= 1'b0;
-                        end
+                        e0 <= e0 + e0_dx;
+                        e1 <= e1 + e1_dx;
+                        e2 <= e2 + e2_dx; 
 
                         x <= x + 1;
                     end 
                     else begin
                         if (y < max_y) begin
+                            e0 <= e0_row_start + e0_dy;
+                            e1 <= e1_row_start + e1_dy;
+                            e2 <= e2_row_start + e2_dy;
+
+                            e0_row_start <= e0_row_start + e0_dy;
+                            e1_row_start <= e1_row_start + e1_dy;
+                            e2_row_start <= e2_row_start + e2_dy;
+
                             y <= y + 1; 
                             fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0]; 
 
@@ -148,7 +183,14 @@ module rasterizer #(
                             state <= DONE;
                         end
                     end 
-                end
+
+                    if (e0 > 0 && e1 > 0 && e2 > 0) begin
+                            fb_write_enable <= 1'b1;
+                        end
+                        else begin
+                            fb_write_enable <= 1'b0;
+                        end
+                    end
 
                 DONE: begin
                     fb_write_enable <= 1'b0;
