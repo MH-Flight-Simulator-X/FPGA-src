@@ -1,7 +1,7 @@
 module bram_dp #(
     parameter unsigned WIDTH,
     parameter unsigned DEPTH,
-    parameter FILE = ""
+    parameter string FILE = ""
 ) (
     input wire clk_write,
     input wire clk_read,
@@ -12,8 +12,8 @@ module bram_dp #(
     output reg [WIDTH-1:0] data_out
 );
 
-    logic [WIDTH-1:0] memory [0:DEPTH-1];
-    
+    logic [WIDTH-1:0] memory [DEPTH];
+
     initial begin
         if (FILE != 0) begin
             $readmemh(FILE, memory);
