@@ -1,0 +1,39 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sat Oct 12 23:27:18 2024
+[*]
+[dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Memory/FIFO/tb/waveform.vcd"
+[dumpfile_mtime] "Sat Oct 12 23:26:53 2024"
+[dumpfile_size] 3109
+[savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Memory/FIFO/tb/setup.gtkw"
+[timestart] 0
+[size] 2490 1536
+[pos] -101 -101
+*-3.237864 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[sst_width] 233
+[signals_width] 142
+[sst_expanded] 1
+[sst_vpaned_height] 470
+@22
+TOP.sync_fifo.data_in[31:0]
+TOP.sync_fifo.data_out[31:0]
+TOP.sync_fifo.fifo(0)[31:0]
+TOP.sync_fifo.fifo(1)[31:0]
+TOP.sync_fifo.fifo(2)[31:0]
+TOP.sync_fifo.fifo(3)[31:0]
+TOP.sync_fifo.fifo(4)[31:0]
+TOP.sync_fifo.fifo(5)[31:0]
+TOP.sync_fifo.fifo(6)[31:0]
+TOP.sync_fifo.fifo(7)[31:0]
+@28
+TOP.sync_fifo.full
+TOP.sync_fifo.empty
+TOP.sync_fifo.write_en
+TOP.sync_fifo.write_clk
+TOP.sync_fifo.read_en
+TOP.sync_fifo.read_clk
+@29
+TOP.sync_fifo.read_prev
+[pattern_trace] 1
+[pattern_trace] 0
