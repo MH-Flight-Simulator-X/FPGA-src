@@ -13,10 +13,9 @@ module sync_fifo #(
     input logic read_en,
     input logic write_en,
 
-    output logic read_prev,
-
     input logic  [DATAWIDTH-1:0] data_in,
     output logic [DATAWIDTH-1:0] data_out,
+    output logic o_dv,
 
     output logic empty,
     output logic full
@@ -45,13 +44,13 @@ module sync_fifo #(
     always_ff @(posedge read_clk) begin
         if (~rstn) begin
             read_ptr <= 0;
-            read_prev <= 0;
+            o_dv <= 0;
         end else begin
             if (read_en & ~empty) begin
                 data_out <= fifo[read_ptr];
                 read_ptr <= read_ptr + 1;
             end
-            read_prev <= read_en;
+            o_dv <= read_en;
         end
     end
 

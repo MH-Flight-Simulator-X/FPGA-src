@@ -22,7 +22,7 @@ void write_random_data(Vsync_fifo* dut) {
 
     vluint32_t data = (vluint32_t)((float)rand() / RAND_MAX * (max_write - min_write) + min_write);
     write_data(dut, data);
-    printf("Wrote data: %d (%ld / %ld)\n", data, posedge_cnt_write, sim_time);
+    printf("-- Wrote data: %d (%ld / %ld)\n", data, posedge_cnt_write, sim_time);
 }
 
 int main(int argc, char** argv) {
@@ -87,8 +87,8 @@ int main(int argc, char** argv) {
                 dut->read_en = 0;
             }
 
-            if (dut->read_prev) {
-                printf("Read data: %d (%ld / %ld)\n", dut->data_out, posedge_cnt_read, sim_time);
+            if (dut->o_dv) {
+                printf("** Read data: %d (%ld / %ld)\n", dut->data_out, posedge_cnt_read, sim_time);
             }
         }
         read_clk_last = dut->read_clk;
