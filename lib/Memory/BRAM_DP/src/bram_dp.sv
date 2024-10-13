@@ -15,7 +15,7 @@ module bram_dp #(
     logic [WIDTH-1:0] memory [DEPTH];
 
     initial begin
-        if (FILE != 0) begin
+        if (FILE != "") begin
             $readmemh(FILE, memory);
         end
     end
