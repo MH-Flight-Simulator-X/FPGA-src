@@ -2,11 +2,11 @@ module rasterizer #(
     parameter VERTEX_WIDTH,
     parameter FB_ADDR_WIDTH,
     parameter [VERTEX_WIDTH-1:0] FB_WIDTH,
-    parameter [VERTEX_WIDTH-1:0] FB_HEIGHT
-    // parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X,
-    // parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X,
-    // parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y,
-    // parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y
+    parameter [VERTEX_WIDTH-1:0] FB_HEIGHT,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y
 ) (
     input logic clk,
     input logic rst,
@@ -48,17 +48,14 @@ module rasterizer #(
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
 
-    // logic to store whether bounding box is inside framebuffer
+    // logic to store whether bounding box is inside tile
     logic bounding_box_is_valid;
-
-    localparam TILE_MIN_X = 0;
-    localparam TILE_MIN_Y = 0;
 
     bounding_box #(
         .TILE_MIN_X(TILE_MIN_X),
-        .TILE_MAX_X(FB_WIDTH),
+        .TILE_MAX_X(TILE_MAX_X),
         .TILE_MIN_Y(TILE_MIN_Y),
-        .TILE_MAX_Y(FB_HEIGHT),
+        .TILE_MAX_Y(TILE_MAX_Y),
 
         .COORD_WIDTH(VERTEX_WIDTH)
     ) bounding_box_inst (
@@ -127,7 +124,7 @@ module rasterizer #(
 
                     line_jump_value <= FB_WIDTH[FB_ADDR_WIDTH-1:0] - (max_x[FB_ADDR_WIDTH-1:0] - min_x[FB_ADDR_WIDTH-1:0]);
 
-                    fb_addr <= (min_y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + min_x[FB_ADDR_WIDTH-1:0];
+                    fb_addr <= (min_y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + min_x[FB_ADDR_WIDTH-1:0] - 1;
 
                     e0 <= edge_function(x0, y0, x1, y1, min_x, min_y);
                     e1 <= edge_function(x1, y1, x2, y2, min_x, min_y);
@@ -162,6 +159,13 @@ module rasterizer #(
                         e2 <= e2 + e2_dx; 
 
                         x <= x + 1;
+
+                        if (e0 + e0_dx > 0 && e1 + e1_dx > 0 && e2 + e2_dx > 0) begin
+                                fb_write_enable <= 1'b1;
+                        end
+                        else begin
+                            fb_write_enable <= 1'b0;
+                        end
                     end 
                     else begin
                         if (y < max_y) begin
@@ -177,20 +181,20 @@ module rasterizer #(
                             fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0]; 
 
                             x <= min_x;
+
+                            if (e0_row_start + e0_dy > 0 && e1_row_start + e1_dy > 0 && e2_row_start + e2_dy > 0) begin
+                                    fb_write_enable <= 1'b1;
+                            end
+                            else begin
+                                fb_write_enable <= 1'b0;
+                            end
                         end
                         else begin
                             done <= 1'b1;
                             state <= DONE;
                         end
                     end 
-
-                    if (e0 > 0 && e1 > 0 && e2 > 0) begin
-                            fb_write_enable <= 1'b1;
-                        end
-                        else begin
-                            fb_write_enable <= 1'b0;
-                        end
-                    end
+                end
 
                 DONE: begin
                     fb_write_enable <= 1'b0;
