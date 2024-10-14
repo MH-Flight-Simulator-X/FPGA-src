@@ -216,8 +216,8 @@ def draw_model(model, pos, rotation, depth_buffer, screen):
         rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], colors[i%4], depth_buffer, screen)
 
         
-tetrahedron = read_obj_file("tetrahedron.obj")
-monkey = read_obj_file("suzanne.obj")
+tetrahedron = read_obj_file("tree_tri.obj")
+monkey = read_obj_file("tree_tri.obj")
 
 angle = 0
 

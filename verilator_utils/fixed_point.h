@@ -33,7 +33,7 @@ public:
 
     bool operator==(const float& f) const {
         float uncertainty = (float)1 / (1 << fracBits);
-        return std::fabs(this->toFloat - f) <= uncertainty;
+        return std::fabs(this->toFloat() - f) <= uncertainty;
     }
 
     static FixedPoint fromFloat(float f, int fracBits, int totalBits) {
