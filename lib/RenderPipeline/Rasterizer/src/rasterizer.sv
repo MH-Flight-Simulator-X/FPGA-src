@@ -2,7 +2,6 @@ module rasterizer #(
     parameter VERTEX_WIDTH,
     parameter FB_ADDR_WIDTH,
     parameter [VERTEX_WIDTH-1:0] FB_WIDTH,
-    parameter [VERTEX_WIDTH-1:0] FB_HEIGHT,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y,
@@ -13,37 +12,39 @@ module rasterizer #(
 
     input logic signed [VERTEX_WIDTH-1:0] x0,
     input logic signed [VERTEX_WIDTH-1:0] y0,
+    input logic signed [VERTEX_WIDTH-1:0] z0,
     input logic signed [VERTEX_WIDTH-1:0] x1,
     input logic signed [VERTEX_WIDTH-1:0] y1,
+    input logic signed [VERTEX_WIDTH-1:0] z1,
     input logic signed [VERTEX_WIDTH-1:0] x2,
     input logic signed [VERTEX_WIDTH-1:0] y2,
+    input logic signed [VERTEX_WIDTH-1:0] z2,
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
     output logic fb_write_enable,
+    output logic [VERTEX_WIDTH-1:0] depth_data,
     output logic done
 ); 
 
     // logic to store x and y coordinates while drawing
     logic signed [VERTEX_WIDTH-1:0] x, y;
+    logic signed [VERTEX_WIDTH*2 + RECIPROCAL_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
+
+    always_comb begin
+        depth_data = z >>> (VERTEX_WIDTH + RECIPROCAL_WIDTH);
+    end 
 
     // logic to store bounding box coordinates
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
     
     // edge functions
-    logic signed [VERTEX_WIDTH-1:0] e0;
-    logic signed [VERTEX_WIDTH-1:0] e1;
-    logic signed [VERTEX_WIDTH-1:0] e2;
-    
-    logic signed [VERTEX_WIDTH-1:0] e0_row_start;
-    logic signed [VERTEX_WIDTH-1:0] e1_row_start;
-    logic signed [VERTEX_WIDTH-1:0] e2_row_start;
+    logic signed [VERTEX_WIDTH-1:0] e0, e1, e2; 
+    logic signed [VERTEX_WIDTH-1:0] e0_row_start, e1_row_start, e2_row_start;
+    logic signed [VERTEX_WIDTH-1:0] e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy;
 
-    logic signed [VERTEX_WIDTH-1:0] e0_dx;
-    logic signed [VERTEX_WIDTH-1:0] e0_dy;
-    logic signed [VERTEX_WIDTH-1:0] e1_dx;
-    logic signed [VERTEX_WIDTH-1:0] e1_dy;
-    logic signed [VERTEX_WIDTH-1:0] e2_dx;
-    logic signed [VERTEX_WIDTH-1:0] e2_dy;
+    // barycentric weights
+    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] w0, w1, w2;
+    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy;
 
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
@@ -74,6 +75,24 @@ module rasterizer #(
         .valid(bounding_box_is_valid)
     );
 
+    localparam RECIPROCAL_SIZE = 1000;
+    localparam RECIPROCAL_FILE = "reciprocal.mem";
+    localparam RECIPROCAL_WIDTH = 12;
+
+    logic [RECIPROCAL_WIDTH-1:0] area_reciprocal;
+    logic [RECIPROCAL_WIDTH-1:0] reciprocal;
+    logic [9:0] area;
+
+    clut #(
+        .SIZE(RECIPROCAL_SIZE),
+        .COLOR_WIDTH(RECIPROCAL_WIDTH),
+        .FILE(RECIPROCAL_FILE)
+    ) reciprocal_inst (
+        .clk(clk),
+        .addr(area),
+        .color(area_reciprocal)
+    );
+
     function signed [VERTEX_WIDTH-1:0] edge_function (
         input signed [VERTEX_WIDTH-1:0] v1_x,
         input signed [VERTEX_WIDTH-1:0] v1_y,
@@ -85,15 +104,14 @@ module rasterizer #(
         edge_function = (p_x - v1_x) * (v2_y - v1_y) - (p_y - v1_y) * (v2_x - v1_x);
     endfunction
 
-    always_comb begin
-        
-    end
 
     // State machine
     typedef enum logic [3:0] {
         VERIFY_BBOX,
         INIT_DRAW,
         INIT_DRAW_2,
+        INIT_DRAW_3,
+        INIT_DRAW_4,
         DRAW,
         DONE
     } state_t;
@@ -139,6 +157,8 @@ module rasterizer #(
                     e2_dx <= y0 - y2;
                     e2_dy <= -(x0 - x2);
 
+                    area <= edge_function(x0, y0, x1, y1, x2, y2);
+
                     state <= INIT_DRAW_2;
                 end
 
@@ -146,6 +166,42 @@ module rasterizer #(
                     e0_row_start <= e0;
                     e1_row_start <= e1;
                     e2_row_start <= e2;
+
+                    // Compute barycentric weights at top-left corner of bounding box
+                    w0 <= e0 * area_reciprocal;
+                    w1 <= e1 * area_reciprocal;
+                    w2 <= e2 * area_reciprocal;
+                    // w0_temp <= e0 * area_reciprocal;
+                    // w1_temp <= e1 * area_reciprocal;
+                    // w2_temp <= e2 * area_reciprocal;
+
+                    // Compute increments for barycentric weights
+                    w0_dx <= e0_dx * area_reciprocal; 
+                    w0_dy <= e0_dy * area_reciprocal;
+
+                    w1_dx <= e1_dx * area_reciprocal;
+                    w1_dy <= e1_dy * area_reciprocal;
+
+                    w2_dx <= e2_dx * area_reciprocal;
+                    w2_dy <= e2_dy * area_reciprocal;
+
+                    state <= INIT_DRAW_3;
+                end
+
+                INIT_DRAW_3: begin
+                    //depth_data <= area_reciprocal;
+                    // Initialize z at the top-left corner
+                    z <= (w0 * z0) + (w1 * z1) + (w2 * z2);
+
+                    // Compute z increments
+                    z_dx <= (w0_dx * z0) + (w1_dx * z1) + (w2_dx * z2);
+                    z_dy <= (w0_dy * z0) + (w1_dy * z1) + (w2_dy * z2);
+
+                    state <= INIT_DRAW_4;
+                end
+
+                INIT_DRAW_4: begin
+                    z_row_start <= z;
 
                     state <= DRAW;
                 end
@@ -160,8 +216,10 @@ module rasterizer #(
 
                         x <= x + 1;
 
+                        z <= z + z_dx;
+
                         if (e0 + e0_dx > 0 && e1 + e1_dx > 0 && e2 + e2_dx > 0) begin
-                                fb_write_enable <= 1'b1;
+                            fb_write_enable <= 1'b1;
                         end
                         else begin
                             fb_write_enable <= 1'b0;
@@ -181,6 +239,9 @@ module rasterizer #(
                             fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0]; 
 
                             x <= min_x;
+
+                            z_row_start <= z_row_start + z_dy;
+                            z <= z_row_start + z_dy;
 
                             if (e0_row_start + e0_dy > 0 && e1_row_start + e1_dy > 0 && e2_row_start + e2_dy > 0) begin
                                     fb_write_enable <= 1'b1;

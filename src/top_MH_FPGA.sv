@@ -22,9 +22,7 @@ module top_MH_FPGA (
        .clk_100m,
        .rst(!btn_rst_n),  // reset button is active low
        .clk_pix,
-       /* verilator lint_off PINCONNECTEMPTY */
        .clk_pix_5x(),  // not used for VGA output
-       /* verilator lint_on PINCONNECTEMPTY */
        .clk_pix_locked
     );
     always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
@@ -46,23 +44,69 @@ module top_MH_FPGA (
         .line()
     );
 
-    // colour parameters
-    localparam CHANW = 4;        // colour channel width (bits)
-    localparam COLRW = 3*CHANW;  // colour width: three channels (bits)
-    localparam BG_COLR = 'h137;  // background colour
+    // color parameters
+    localparam CHANW = 4;        // color channel width (bits)
+    localparam COLRW = 3*CHANW;  // color width: three channels (bits)
+    localparam BG_COLR = 'h137;  // background color
 
     // framebuffer (FB)
     localparam FB_WIDTH  = 160;  // framebuffer width in pixels
     localparam FB_HEIGHT = 120;  // framebuffer width in pixels
     localparam FB_PIXELS = FB_WIDTH * FB_HEIGHT;  // total pixels in buffer
     localparam FB_ADDRW  = $clog2(FB_PIXELS);  // address width
-    localparam FB_DATAW  = 4;  // colour bits per pixel
+    localparam FB_DATAW  = 4;  // color bits per pixel
     localparam FB_IMAGE  = "image.mem";  // bitmap file
 
-    // pixel read address and colour
+    // pixel read address and color
     logic [FB_ADDRW-1:0] fb_addr_read;
     logic [FB_ADDRW-1:0] fb_addr_write;
     logic [FB_DATAW-1:0] fb_colr_read;
+    logic fb_write_enable;
+
+    localparam signed X0 = 3;
+    localparam signed Y0 = 4;
+    localparam signed Z0 = 4;
+    localparam signed X1 = 40;
+    localparam signed Y1 = 90;
+    localparam signed Z1 = 4;
+    localparam signed X2 = 111;
+    localparam signed Y2 = 20;
+    localparam signed Z2 = 1000;
+
+    localparam signed TILE_MIN_X = 0;
+    localparam signed TILE_MIN_Y = 0;
+    localparam signed TILE_MAX_X = 160;
+    localparam signed TILE_MAX_Y = 120;
+
+    logic [11:0] depth_data_in;
+
+    rasterizer #(
+        .VERTEX_WIDTH(CORDW),
+        .FB_ADDR_WIDTH(FB_ADDRW),
+        .FB_WIDTH(FB_WIDTH),
+        .TILE_MIN_X(TILE_MIN_X),
+        .TILE_MIN_Y(TILE_MIN_Y),
+        .TILE_MAX_X(TILE_MAX_X),
+        .TILE_MAX_Y(TILE_MAX_Y)
+    ) rasterizer_inst (
+        .clk(clk_100m),
+        .rst(btn[2]),
+
+        .x0(X0),
+        .y0(Y0),
+        .z0(Z0),
+        .x1(X1),
+        .y1(Y1),
+        .z1(Z1),
+        .x2(X2),
+        .y2(Y2),
+        .z2(Z2),
+
+        .fb_addr(fb_addr_write),
+        .fb_write_enable(fb_write_enable),
+        .depth_data(depth_data_in),
+        .done()
+    );
 
     // framebuffer memory
     framebuffer #(
@@ -73,7 +117,7 @@ module top_MH_FPGA (
     ) fb_inst (
         .clk_write(clk_100m),
         .clk_read(clk_pix),
-        .write_enable(btn[0]),
+        .write_enable(fb_write_enable),
         .clear(btn[1]),
         .clear_value(sw),
         .addr_write(fb_addr_write),
@@ -81,27 +125,32 @@ module top_MH_FPGA (
         .data_in(sw),
         .data_out(fb_colr_read)
     );
+
+    localparam DB_CLEAR_VALUE = 4095;
+    localparam DB_DATA_WIDTH = 12;
+
+    logic [FB_ADDRW-1:0] db_addr_read;
+    //logic [FB_ADDRW-1:0] db_addr_write;
+    logic [11:0] db_data_out;
+    //logic db_write_enable = 1'b0;
+
+    // depth buffer memory
+    framebuffer #(
+        .FB_WIDTH(FB_WIDTH),
+        .FB_HEIGHT(FB_HEIGHT),
+        .DATA_WIDTH(DB_DATA_WIDTH)
+    ) db_inst (
+        .clk_write(clk_100m),
+        .clk_read(clk_pix),
+        .write_enable(fb_write_enable),
+        .clear(btn[1]),
+        .clear_value(DB_CLEAR_VALUE),
+        .addr_write(fb_addr_write),
+        .addr_read(db_addr_read),
+        .data_in(depth_data_in),
+        .data_out(db_data_out)
+    );
     
-    localparam DIV_BY = 27'd100_000_000;  // 100 million
-
-    logic stb;
-    logic [26:0] cnt = 0;
-    always_ff @(posedge clk_100m) begin
-        if (cnt != DIV_BY-1) begin
-            stb <= 0;
-            cnt <= cnt + 1;
-        end else begin
-            stb <= 1;
-            cnt <= 0;
-        end
-    end
-
-    always_ff @(posedge clk_100m) begin
-        if (stb) begin
-            led <= led + 1;
-            fb_addr_write <= fb_addr_write + 1;
-        end
-    end
 
     // calculate framebuffer read address for display output
     logic read_fb;
@@ -111,6 +160,16 @@ module top_MH_FPGA (
             fb_addr_read <= 0;
         end else if (read_fb) begin  // increment address in painting area
             fb_addr_read <= fb_addr_read + 1;
+        end
+    end
+
+    logic read_db;
+    always_ff @(posedge clk_pix) begin
+        read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
+        if (frame) begin  // reset address at start of frame
+            db_addr_read <= 0;
+        end else if (read_db) begin  // increment address in painting area
+            db_addr_read <= db_addr_read + 1;
         end
     end
     
@@ -129,13 +188,25 @@ module top_MH_FPGA (
         .addr(fb_colr_read),
         .color(fb_pix_colr)
     );
+    
 
     // paint screen
-    logic paint_area;  // area of framebuffer to paint
-    logic [CHANW-1:0] paint_r, paint_g, paint_b;  // colour channels
+    logic paint_fb;
+    logic paint_db;
+    logic [CHANW-1:0] paint_r, paint_g, paint_b;  // color channels
     always_comb begin
-        paint_area = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-        {paint_r, paint_g, paint_b} = paint_area ? fb_pix_colr : BG_COLR;
+        paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
+        paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
+        if (paint_fb) begin
+            {paint_r, paint_g, paint_b} = fb_pix_colr;
+        end
+        else if (paint_db) begin
+            //{paint_r, paint_g, paint_b} = {depth_data[3:0], 8'b00000000};
+            {paint_r, paint_g, paint_b} = db_data_out;
+        end
+        else begin
+            {paint_r, paint_g, paint_b} =  BG_COLR;
+        end
     end
 
     // display colour: paint colour but black in blanking interval
