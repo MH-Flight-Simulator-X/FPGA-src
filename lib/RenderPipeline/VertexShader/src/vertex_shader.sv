@@ -7,8 +7,8 @@ typedef enum logic [1:0] {
 } vertex_shader_state_t;
 
 module vertex_shader #(
-        parameter unsigned DATAWIDTH = 18,
-        parameter unsigned FRACBITS = 12
+        parameter unsigned DATAWIDTH = 24,
+        parameter unsigned FRACBITS = 13
     )(
         input clk,
         input logic rstn,
@@ -73,6 +73,11 @@ module vertex_shader #(
             // Reset MVP Matrix
             foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
             r_mvp_valid <= 1'b0;
+
+            r_mat_vec_x[0] <= '0;
+            r_mat_vec_x[1] <= '0;
+            r_mat_vec_x[2] <= '0;
+            r_mat_vec_x[3] <= '0;
         end else begin
             // Propagate finished signal
             vertex_last_finished[0] <= i_vertex_last;
@@ -91,10 +96,12 @@ module vertex_shader #(
             end
 
             r_mat_vec_i_dv <= i_vertex_dv;
-            r_mat_vec_x[0] <= i_vertex[0];
-            r_mat_vec_x[1] <= i_vertex[1];
-            r_mat_vec_x[2] <= i_vertex[2];
-            r_mat_vec_x[3] <= FixedPointOne;
+            if (i_vertex_dv) begin
+                r_mat_vec_x[0] <= i_vertex[0];
+                r_mat_vec_x[1] <= i_vertex[1];
+                r_mat_vec_x[2] <= i_vertex[2];
+                r_mat_vec_x[3] <= FixedPointOne;
+            end
         end
     end
 

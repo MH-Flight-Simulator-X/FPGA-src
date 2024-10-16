@@ -81,8 +81,9 @@ module fixed_point_divide #(
             done <= 0;
             case (state)
                 FPD_IDLE: begin
+                    valid <= 0;
                     if (start) begin
-                        valid <= 0;
+                        Q <= 0;
 
                         if (B == 0) begin
                             // Divide by zero

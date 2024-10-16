@@ -31,7 +31,7 @@ module vertex_post_processor #(
         parameter unsigned INPUT_VERTEX_DATAWIDTH = 24,     // Data width of the incomming data
         parameter unsigned INPUT_VERTEX_FRACBITS = 13,      // Num of fractional bits for incomming data
 
-        parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 10,    // Data width of outgoing pixel coordinates
+        parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 12,    // Data width of outgoing pixel coordinates
         parameter unsigned OUTPUT_DEPTH_FRACBITS = 11,      // Num of fracbits used for outgoing z-value
                                                             //  - Format will be Q1.OUTPUT_DEPTH_FRACBITS
 

@@ -3,7 +3,7 @@
 module tb_transform_pipeline #(
     parameter unsigned INPUT_VERTEX_DATAWIDTH = 24,
     parameter unsigned INPUT_VERTEX_FRACBITS = 13,
-    parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 10,
+    parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 12,
     parameter unsigned OUTPUT_DEPTH_FRACBITS = 11,
 
     parameter unsigned SCREEN_WIDTH = 320,
@@ -22,8 +22,8 @@ module tb_transform_pipeline #(
     input logic i_vertex_dv,
     input logic i_vertex_last,
 
-    output logic signed [INPUT_VERTEX_DATAWIDTH-1:0] o_vertex_vs[4],
-    output logic o_vertex_vs_dv,
+    output logic signed [INPUT_VERTEX_DATAWIDTH-1:0] o_vs_vertex[4],
+    output logic o_vs_vertex_dv,
 
     output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] o_vertex_pixel[2],
     output logic signed [OUTPUT_DEPTH_FRACBITS:0] o_vertex_z,
@@ -166,12 +166,11 @@ module tb_transform_pipeline #(
     assign w_fifo_read_en = w_vpp_ready & !w_fifo_empty;
     assign w_fifo_write_en = w_vs_o_vertex_dv & !w_fifo_full;
 
-    // For testing only
-    assign o_vertex_vs[0] = w_vs_o_vertex[0];
-    assign o_vertex_vs[1] = w_vs_o_vertex[1];
-    assign o_vertex_vs[2] = w_vs_o_vertex[2];
-    assign o_vertex_vs[3] = w_vs_o_vertex[3];
-    assign o_vertex_vs_dv = w_vs_o_vertex_dv;
+    assign o_vs_vertex[0] = r_vpp_i_vertex[0];
+    assign o_vs_vertex[1] = r_vpp_i_vertex[1];
+    assign o_vs_vertex[2] = r_vpp_i_vertex[2];
+    assign o_vs_vertex[3] = r_vpp_i_vertex[3];
+    assign o_vs_vertex_dv = r_vpp_i_vertex_dv;
 
     assign ready = w_vs_ready & !w_fifo_full;
 endmodule
