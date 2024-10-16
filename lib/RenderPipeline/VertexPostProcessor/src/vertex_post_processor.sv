@@ -3,7 +3,7 @@
 // later be processed by the rasterizer and turned into pixels on the scrren.
 //
 // The output format of the vertices will be two integers screen.x and
-// screen.y, as well as a fixed-point z-value in the format Q1.O_ZBITS. This
+// screen.y, as well as a fixed-point z-value in the format Q1.OUTPUT_DEPTH_FRACBITS. This
 // means that the z-value will be in the range [-1:1].
 //
 // clip space to ndc is as follows:
@@ -28,58 +28,53 @@ typedef enum logic [1:0] {
 
 /* verilator lint_off UNUSED */
 module vertex_post_processor #(
-    parameter unsigned I_DATAWIDTH = 24,    // Data width of the incomming data
-    parameter unsigned I_FRACBITS = 13,     // Num of fractional bits for incomming data
+        parameter unsigned INPUT_VERTEX_DATAWIDTH = 24,     // Data width of the incomming data
+        parameter unsigned INPUT_VERTEX_FRACBITS = 13,      // Num of fractional bits for incomming data
 
-    parameter unsigned O_DATAWIDTH = 10,    // Data width of outgoing pixel coordinates
-    parameter unsigned O_ZBITS = 11,        // Num of fractional bits used for outgoing z-values
-                                            //      - Format will be Q1.O_ZBITS
+        parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 10,    // Data width of outgoing pixel coordinates
+        parameter unsigned OUTPUT_DEPTH_FRACBITS = 11,      // Num of fracbits used for outgoing z-value
+                                                            //  - Format will be Q1.OUTPUT_DEPTH_FRACBITS
 
-    parameter logic signed [I_DATAWIDTH-1:0] SCREEN_WIDTH = 320,
-    parameter logic signed [I_DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
+        parameter logic signed [INPUT_VERTEX_DATAWIDTH-1:0] SCREEN_WIDTH = 320,
+        parameter logic signed [INPUT_VERTEX_DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
 
-    parameter real ZFAR = 100.0,
-    parameter real ZNEAR = 0.1
+        parameter real ZFAR = 100.0,
+        parameter real ZNEAR = 0.1
     ) (
-    input logic clk,
-    input logic rstn,
+        input logic clk,
+        input logic rstn,
 
-    input logic signed [I_DATAWIDTH-1:0] i_vertex[4],         // Vertex after vertex shader
-    input logic i_vertex_dv,
+        input logic signed [INPUT_VERTEX_DATAWIDTH-1:0] i_vertex[4],         // Vertex after vertex shader
+        input logic i_vertex_dv,
 
-    output logic signed [O_DATAWIDTH-1:0] o_vertex_pixel[2],  // Output pixel coordinates of vertex
-    output logic signed [O_ZBITS:0] o_vertex_z,               // Z-value of the output pixel [-1:1]
-    output logic o_vertex_dv,
-    output logic o_invalid,                                   // If outside clip-space
+        output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] o_vertex_pixel[2],  // Output pixel coordinates of vertex
+        output logic signed [OUTPUT_DEPTH_FRACBITS:0] o_vertex_z,               // Z-value of the output pixel [-1:1]
+        output logic o_vertex_dv,
+        output logic o_invalid,                                   // If outside clip-space
 
-    output logic ready
+        output logic ready
     );
 
-    localparam signed [I_DATAWIDTH-1:0] FPOne = (1 <<< I_FRACBITS);
-    localparam signed [I_DATAWIDTH-1:0] WidthFP = (SCREEN_WIDTH << I_FRACBITS);
-    localparam signed [I_DATAWIDTH-1:0] HeightFP = (SCREEN_HEIGHT << I_FRACBITS);
+    localparam signed [INPUT_VERTEX_DATAWIDTH-1:0] FPOne = (1 <<< INPUT_VERTEX_FRACBITS);
+    localparam signed [INPUT_VERTEX_DATAWIDTH-1:0] WidthFP = (SCREEN_WIDTH << INPUT_VERTEX_FRACBITS);
+    localparam signed [INPUT_VERTEX_DATAWIDTH-1:0] HeightFP = (SCREEN_HEIGHT << INPUT_VERTEX_FRACBITS);
 
-    localparam unsigned OutPixIndStart = 2 * I_FRACBITS;
-    localparam unsigned OutPixIndEnd = O_DATAWIDTH + 2 * I_FRACBITS - 2;
-
-    initial begin
-        $display(SCREEN_WIDTH);
-        $display(WidthFP);
-    end
+    localparam unsigned OutPixIndStart = 2 * INPUT_VERTEX_FRACBITS;
+    localparam unsigned OutPixIndEnd = OUTPUT_VERTEX_DATAWIDTH + 2 * INPUT_VERTEX_FRACBITS - 2;
 
     // State
     vertex_post_processor_state_t current_state = VPP_IDLE, next_state = VPP_IDLE;
 
     // Register input vertex data
-    logic signed [I_DATAWIDTH-1:0] r_clip_x;
-    logic signed [I_DATAWIDTH-1:0] r_clip_y;
-    logic signed [I_DATAWIDTH-1:0] r_clip_z;
-    logic signed [I_DATAWIDTH-1:0] r_clip_w;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] r_clip_x;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] r_clip_y;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] r_clip_z;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] r_clip_w;
 
     // CLIP-NDC Signals
-    logic signed [I_DATAWIDTH-1:0] w_ndc_x;
-    logic signed [I_DATAWIDTH-1:0] w_ndc_y;
-    logic signed [I_DATAWIDTH-1:0] w_ndc_z;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] w_ndc_x;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] w_ndc_y;
+    logic signed [INPUT_VERTEX_DATAWIDTH-1:0] w_ndc_z;
 
     logic w_ndc_x_valid;
     logic w_ndc_x_busy;
@@ -105,19 +100,21 @@ module vertex_post_processor #(
     logic ndc_divide_start;
 
     // NDC-SCREEN Signals
-    logic signed [2 * I_DATAWIDTH:0] w_screen_x_inter;
-    logic signed [2 * I_DATAWIDTH:0] w_screen_y_inter;
+    logic signed [2 * INPUT_VERTEX_DATAWIDTH:0] w_screen_x_inter;
+    logic signed [2 * INPUT_VERTEX_DATAWIDTH:0] w_screen_y_inter;
 
     // Start signal for perspective divide
     always_comb begin
-        ndc_divide_start = (current_state == VPP_PERSPECTIVE_DIVIDE) &&
-                             ~(w_ndc_x_busy || w_ndc_x_done);
+        ndc_divide_start = (current_state == VPP_PERSPECTIVE_DIVIDE)
+                           && ~(w_ndc_x_busy || w_ndc_x_done)
+                           && ~(w_ndc_y_busy || w_ndc_y_done)
+                           && ~(w_ndc_z_busy || w_ndc_z_done);
     end
 
     // Clip to ndc dividers
     fixed_point_divide #(
-        .WIDTH(I_DATAWIDTH),
-        .FRACBITS(I_FRACBITS)
+        .WIDTH(INPUT_VERTEX_DATAWIDTH),
+        .FRACBITS(INPUT_VERTEX_FRACBITS)
     ) ndc_divide_x_inst (
         .clk(clk),
         .rstn(rstn),
@@ -137,8 +134,8 @@ module vertex_post_processor #(
     );
 
     fixed_point_divide #(
-        .WIDTH(I_DATAWIDTH),
-        .FRACBITS(I_FRACBITS)
+        .WIDTH(INPUT_VERTEX_DATAWIDTH),
+        .FRACBITS(INPUT_VERTEX_FRACBITS)
     ) ndc_divide_y_inst (
         .clk(clk),
         .rstn(rstn),
@@ -158,8 +155,8 @@ module vertex_post_processor #(
     );
 
     fixed_point_divide #(
-        .WIDTH(I_DATAWIDTH),
-        .FRACBITS(I_FRACBITS)
+        .WIDTH(INPUT_VERTEX_DATAWIDTH),
+        .FRACBITS(INPUT_VERTEX_FRACBITS)
     ) ndc_divide_z_inst (
         .clk(clk),
         .rstn(rstn),
@@ -211,14 +208,14 @@ module vertex_post_processor #(
             if (current_state == VPP_SCREEN_SPACE_TRANSFORM) begin
                 // o_vertex_pixel.x = w_screen_x_inter / 2
                 // o_vertex_pixel.y = w_screen_y_inter / 2
-                // o_vertex_z = w_ndc_z -- but with different O_ZBITS fracbits
+                // o_vertex_z = w_ndc_z -- but with different OUTPUT_DEPTH_FRACBITS fracbits
 
-                o_vertex_pixel[0] <= {w_screen_x_inter[2 * I_DATAWIDTH - 1],
+                o_vertex_pixel[0] <= {w_screen_x_inter[2 * INPUT_VERTEX_DATAWIDTH - 1],
                                       w_screen_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
 
-                o_vertex_pixel[1] <= {w_screen_y_inter[2 * I_DATAWIDTH - 1],
+                o_vertex_pixel[1] <= {w_screen_y_inter[2 * INPUT_VERTEX_DATAWIDTH - 1],
                                       w_screen_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
-                o_vertex_z <= {w_ndc_z[I_DATAWIDTH-1], w_ndc_z[I_FRACBITS-1:I_FRACBITS-O_ZBITS]};
+                o_vertex_z <= {w_ndc_z[INPUT_VERTEX_DATAWIDTH-1], w_ndc_z[INPUT_VERTEX_FRACBITS-1:INPUT_VERTEX_FRACBITS-OUTPUT_DEPTH_FRACBITS]};
                 o_vertex_dv <= 1;
             end else begin
                 o_vertex_dv <= 0;
@@ -242,8 +239,8 @@ module vertex_post_processor #(
             end
 
             VPP_PERSPECTIVE_DIVIDE: begin
-                if (w_ndc_x_done) begin
-                    if (w_ndc_x_valid) begin
+                if (w_ndc_x_done && w_ndc_y_done && w_ndc_z_done) begin
+                    if (w_ndc_x_valid & w_ndc_y_valid & w_ndc_z_valid) begin
                         next_state = VPP_SCREEN_SPACE_TRANSFORM;
                     end else begin
                         // Something went wrong in the division, i.e. dbz or ovf
