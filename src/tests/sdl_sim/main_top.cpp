@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
                 int e2_dy = interpret_as_nbit_signed(top->e2_dy, VERTEX_WIDTH);
 
                 printf("e0_dx: %d e0_dy: %d e1_dx: %d e1_dy: %d, e2_dx: %d e2_dy %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy);
-                return 0;
+                // return 0;
             }
         }
     }

@@ -2,13 +2,15 @@
 `timescale 1ns / 1ps
 
 module rasterizer #(
-    parameter VERTEX_WIDTH = 16,
-    parameter FB_ADDR_WIDTH = 4,
-    parameter [VERTEX_WIDTH-1:0] FB_WIDTH = 32,
+    parameter unsigned VERTEX_WIDTH = 16,
+    parameter unsigned FB_ADDR_WIDTH = 4,
+    parameter unsigned [VERTEX_WIDTH-1:0] FB_WIDTH = 32,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X = 0,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 32,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y = 0,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 16
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 16,
+    parameter unsigned RECIPROCAL_SIZE = 65000,
+    parameter string RECIPROCAL_FILE = "reciprocal.mem"
 ) (
     input logic clk,
     input logic rst,
@@ -27,7 +29,7 @@ module rasterizer #(
     output logic fb_write_enable,
     output logic [VERTEX_WIDTH-1:0] depth_data,
     output logic done
-); 
+);
 
     localparam RECIPROCAL_WIDTH = 12;
     localparam Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
@@ -42,7 +44,7 @@ module rasterizer #(
 
     // logic to store bounding box coordinates
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
-    
+
     // edge functions
     logic signed [VERTEX_WIDTH-1:0] e0, e1, e2; 
     logic signed [VERTEX_WIDTH-1:0] e0_row_start, e1_row_start, e2_row_start;
@@ -80,9 +82,6 @@ module rasterizer #(
 
         .valid(bounding_box_is_valid)
     );
-
-    localparam RECIPROCAL_SIZE = 65000;
-    localparam RECIPROCAL_FILE = "reciprocal.mem";
 
     logic [RECIPROCAL_WIDTH-1:0] area_reciprocal;
     logic [VERTEX_WIDTH-1:0] area;

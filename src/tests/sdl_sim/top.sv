@@ -80,6 +80,9 @@ module top (
 
     logic [11:0] depth_data_in;
 
+    localparam unsigned RECIPROCAL_SIZE = 65000;
+    localparam string RECIPROCAL_FILE = "../../reciprocal.mem";
+
     rasterizer #(
         .VERTEX_WIDTH(CORDW),
         .FB_ADDR_WIDTH(FB_ADDRW),
@@ -87,7 +90,9 @@ module top (
         .TILE_MIN_X(TILE_MIN_X),
         .TILE_MIN_Y(TILE_MIN_Y),
         .TILE_MAX_X(TILE_MAX_X),
-        .TILE_MAX_Y(TILE_MAX_Y)
+        .TILE_MAX_Y(TILE_MAX_Y),
+        .RECIPROCAL_SIZE(RECIPROCAL_SIZE),
+        .RECIPROCAL_FILE(RECIPROCAL_FILE)
     ) rasterizer_inst (
         .clk(clk_100m),
         .rst(),
