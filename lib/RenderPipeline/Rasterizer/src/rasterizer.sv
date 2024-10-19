@@ -149,7 +149,7 @@ module rasterizer #(
 
                     e0 <= edge_function(x0, y0, x1, y1, min_x, min_y);
                     e1 <= edge_function(x1, y1, x2, y2, min_x, min_y);
-                    e2 <= edge_function(x2, y2, x0, y0, min_y, min_x);
+                    e2 <= edge_function(x2, y2, x0, y0, min_x, min_y);
 
                     e0_dx <= y1 - y0;
                     e0_dy <= -(x1 - x0);
