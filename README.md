@@ -3,8 +3,11 @@ The source files for the FPGA system, written in SystemVerilog.
 
 ## Overview 
 The project is splitt into multiple modules and accompanying documentation in **Documentation/**.
-The following is an overview of the project structure
 
+A figure showing the top-level design overview:
+![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
+
+The following is an overview of the project structure  
 <pre>
 <strong>FPGA-src</strong>
 ├── src/  
@@ -37,9 +40,6 @@ The following is an overview of the project structure
 ├── README.md  
 └── LICENSE  
 </pre>
-
-A figure showing the top-level design overview:
-![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
   
 ## Documentation
 The spesification for the system can be found here:
