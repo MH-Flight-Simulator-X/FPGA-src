@@ -17,7 +17,7 @@ typedef struct Pixel {
 } Pixel;
 
 
-vluint64_t clk_100m_cnt = 0;
+int clk_100m_cnt = 0;
 
 
 int interpret_as_nbit_signed(int value, int n) {
@@ -117,6 +117,16 @@ int main(int argc, char* argv[]) {
             p->r = top->sdl_r;
         }
 
+        int e0 = interpret_as_nbit_signed(top->e0, VERTEX_WIDTH);
+        int e1 = interpret_as_nbit_signed(top->e1, VERTEX_WIDTH);
+        int e2 = interpret_as_nbit_signed(top->e2, VERTEX_WIDTH);
+
+        // prinyf("clk_100m_cnt: %d\n", clk_100m_cnt);
+        // printf("e0: %d\ne1: %d\ne2: %d\n###\n", e0, e1, e2);
+        // if (clk_100m_cnt > 10) {
+        //     return 0;
+        // }
+
         // update texture once per frame (in blanking)
         if (top->frame) { 
 
@@ -136,19 +146,23 @@ int main(int argc, char* argv[]) {
             SDL_RenderPresent(sdl_renderer);
             frame_count++;
             
-            if (top->done) {
-                printf("min_x: %d max_x: %d min_y: %d max_y: %d\n", top->min_x, top->max_x, top->min_y, top->max_y);
-
-                int e0_dx = interpret_as_nbit_signed(top->e0_dx, VERTEX_WIDTH);
-                int e0_dy = interpret_as_nbit_signed(top->e0_dy, VERTEX_WIDTH);
-                int e1_dx = interpret_as_nbit_signed(top->e1_dx, VERTEX_WIDTH);
-                int e1_dy = interpret_as_nbit_signed(top->e1_dy, VERTEX_WIDTH);
-                int e2_dx = interpret_as_nbit_signed(top->e2_dx, VERTEX_WIDTH);
-                int e2_dy = interpret_as_nbit_signed(top->e2_dy, VERTEX_WIDTH);
-
-                printf("e0_dx: %d e0_dy: %d e1_dx: %d e1_dy: %d, e2_dx: %d e2_dy %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy);
-                // return 0;
-            }
+            // if (top->done) {
+            //     printf("min_x: %d max_x: %d min_y: %d max_y: %d\n", top->min_x, top->max_x, top->min_y, top->max_y);
+            //
+            //     int e0_dx = interpret_as_nbit_signed(top->e0_dx, VERTEX_WIDTH);
+            //     int e0_dy = interpret_as_nbit_signed(top->e0_dy, VERTEX_WIDTH);
+            //     int e1_dx = interpret_as_nbit_signed(top->e1_dx, VERTEX_WIDTH);
+            //     int e1_dy = interpret_as_nbit_signed(top->e1_dy, VERTEX_WIDTH);
+            //     int e2_dx = interpret_as_nbit_signed(top->e2_dx, VERTEX_WIDTH);
+            //     int e2_dy = interpret_as_nbit_signed(top->e2_dy, VERTEX_WIDTH);
+            //
+            //     printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy);
+            //     return 0;
+            // }
+            // 
+            // else {
+                
+            // }
         }
     }
 
