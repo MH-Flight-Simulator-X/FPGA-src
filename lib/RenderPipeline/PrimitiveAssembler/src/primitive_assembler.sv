@@ -16,9 +16,15 @@ module primitive_assembler #(
         output logic ready,
 
         // Index buffer size
-        input logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] 
+        input logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] i_num_triangles,
+        output logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] o_triangle_addr,
+        output logic o_triangle_read_en,
 
-        input logic signed [INPUT_VERTEX_DATAWIDTH - 1:0] ,
+        input logic [$clog2(3 * MAX_TRIANGLE_COUNT)-1:0] i_triangle_idx[3],
+
+        output logic [$clog2(3 * MAX_TRIANGLE_COUNT)-1:0] o_vertex_addr,
+        output logic o_vertex_read_en,
+        input logic signed [INPUT_VERTEX_DATAWIDTH - 1:0] i_vertex[3][3],
 
         // Output primitive
         output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] o_vertex_pixel[3][2],

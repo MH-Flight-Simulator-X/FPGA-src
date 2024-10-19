@@ -1,8 +1,8 @@
 module bounding_box #(
-    parameter unsigned TILE_MIN_X = 0,
-    parameter unsigned TILE_MAX_X = 32,
-    parameter unsigned TILE_MIN_Y = 0,
-    parameter unsigned TILE_MAX_Y = 16,
+    parameter signed TILE_MIN_X = 0,
+    parameter signed TILE_MAX_X = 32,
+    parameter signed TILE_MIN_Y = 0,
+    parameter signed TILE_MAX_Y = 16,
 
     parameter unsigned COORD_WIDTH = 10
 ) (
