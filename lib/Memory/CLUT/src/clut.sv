@@ -3,24 +3,24 @@
 `timescale 1ns / 1ps
 
 module clut#(
-    parameter SIZE,
-    parameter COLOR_WIDTH,
-    parameter FILE,
-    localparam ADDR_WIDTH = $clog2(SIZE)
+    parameter unsigned SIZE,
+    parameter unsigned COLOR_WIDTH,
+    parameter unsigned FILE,
+    parameter unsigned ADDR_WIDTH = $clog2(SIZE)
     ) (
     input wire clk,
     input wire [ADDR_WIDTH-1:0] addr,
     output reg [COLOR_WIDTH-1:0] color
     );
 
-    logic [COLOR_WIDTH-1:0] colors [0:SIZE-1];
+    logic [COLOR_WIDTH-1:0] colors [SIZE];
 
     initial begin
         $readmemh(FILE, colors);
     end
 
-    always_ff @(clk) begin
-        color <= colors[addr]; 
+    always_ff @(posedge clk) begin
+        color <= colors[addr];
     end
 
 endmodule
