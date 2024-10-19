@@ -14,6 +14,7 @@ typedef struct Pixel {
     uint8_t r;
 } Pixel;
 
+
 int main(int argc, char* argv[]) {
     printf("Program started\n");
     Verilated::commandArgs(argc, argv);
@@ -60,12 +61,12 @@ int main(int argc, char* argv[]) {
 
     // reset
     top->sim_rst = 1;
-    top->clk_pix = 0;
+    top->clk = 0;
     top->eval();
-    top->clk_pix = 1;
+    top->clk = 1;
     top->eval();
     top->sim_rst = 0;
-    top->clk_pix = 0;
+    top->clk = 0;
     top->eval();
 
     // initialize frame rate
@@ -75,9 +76,9 @@ int main(int argc, char* argv[]) {
     // main loop
     while (true) {
         // cycle the clock
-        top->clk_pix = 1;
+        top->clk = 1;
         top->eval();
-        top->clk_pix = 0;
+        top->clk = 0;
         top->eval();
 
         // update pixel if not in blanking interval
