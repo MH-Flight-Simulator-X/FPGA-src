@@ -1,11 +1,14 @@
+`default_nettype none
+`timescale 1ns / 1ps
+
 module rasterizer #(
-    parameter VERTEX_WIDTH,
-    parameter FB_ADDR_WIDTH,
-    parameter [VERTEX_WIDTH-1:0] FB_WIDTH,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y
+    parameter VERTEX_WIDTH = 16,
+    parameter FB_ADDR_WIDTH = 4,
+    parameter [VERTEX_WIDTH-1:0] FB_WIDTH = 32,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X = 0,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 32,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y = 0,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 16
 ) (
     input logic clk,
     input logic rst,
@@ -26,13 +29,16 @@ module rasterizer #(
     output logic done
 ); 
 
-    // logic to store x and y coordinates while drawing
-    logic signed [VERTEX_WIDTH-1:0] x, y;
-    logic signed [VERTEX_WIDTH*2 + RECIPROCAL_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
+    localparam RECIPROCAL_WIDTH = 12;
+    localparam Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
+    localparam SHIFT_AMOUNT = VERTEX_WIDTH + RECIPROCAL_WIDTH;
 
-    always_comb begin
-        depth_data = z >>> (VERTEX_WIDTH + RECIPROCAL_WIDTH);
-    end 
+    // Logic to store x and y coordinates while drawing
+    logic signed [VERTEX_WIDTH-1:0] x, y;
+    logic signed [Z_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
+
+    // Adjust the assignment to depth_data
+    assign depth_data = z[Z_WIDTH - 1 : SHIFT_AMOUNT];
 
     // logic to store bounding box coordinates
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
@@ -75,13 +81,11 @@ module rasterizer #(
         .valid(bounding_box_is_valid)
     );
 
-    localparam RECIPROCAL_SIZE = 1000;
+    localparam RECIPROCAL_SIZE = 65000;
     localparam RECIPROCAL_FILE = "reciprocal.mem";
-    localparam RECIPROCAL_WIDTH = 12;
 
     logic [RECIPROCAL_WIDTH-1:0] area_reciprocal;
-    logic [RECIPROCAL_WIDTH-1:0] reciprocal;
-    logic [9:0] area;
+    logic [VERTEX_WIDTH-1:0] area;
 
     clut #(
         .SIZE(RECIPROCAL_SIZE),
@@ -171,9 +175,6 @@ module rasterizer #(
                     w0 <= e0 * area_reciprocal;
                     w1 <= e1 * area_reciprocal;
                     w2 <= e2 * area_reciprocal;
-                    // w0_temp <= e0 * area_reciprocal;
-                    // w1_temp <= e1 * area_reciprocal;
-                    // w2_temp <= e2 * area_reciprocal;
 
                     // Compute increments for barycentric weights
                     w0_dx <= e0_dx * area_reciprocal; 
@@ -189,7 +190,6 @@ module rasterizer #(
                 end
 
                 INIT_DRAW_3: begin
-                    //depth_data <= area_reciprocal;
                     // Initialize z at the top-left corner
                     z <= (w0 * z0) + (w1 * z1) + (w2 * z2);
 
@@ -269,3 +269,4 @@ module rasterizer #(
         end
     end
 endmodule
+
