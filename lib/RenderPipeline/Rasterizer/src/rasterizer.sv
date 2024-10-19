@@ -31,9 +31,9 @@ module rasterizer #(
     output logic done
 );
 
-    localparam RECIPROCAL_WIDTH = 12;
-    localparam Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
-    localparam SHIFT_AMOUNT = VERTEX_WIDTH + RECIPROCAL_WIDTH;
+    localparam unsigned RECIPROCAL_WIDTH = 12;
+    localparam unsigned Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
+    localparam unsigned SHIFT_AMOUNT = VERTEX_WIDTH + RECIPROCAL_WIDTH;
 
     // Logic to store x and y coordinates while drawing
     logic signed [VERTEX_WIDTH-1:0] x, y;
@@ -97,12 +97,12 @@ module rasterizer #(
     );
 
     function automatic signed [VERTEX_WIDTH-1:0] edge_function (
-        input signed [VERTEX_WIDTH-1:0] v1_x,
-        input signed [VERTEX_WIDTH-1:0] v1_y,
-        input signed [VERTEX_WIDTH-1:0] v2_x,
-        input signed [VERTEX_WIDTH-1:0] v2_y,
-        input signed [VERTEX_WIDTH-1:0] p_x,
-        input signed [VERTEX_WIDTH-1:0] p_y
+        input logic signed [VERTEX_WIDTH-1:0] v1_x,
+        input logic signed [VERTEX_WIDTH-1:0] v1_y,
+        input logic signed [VERTEX_WIDTH-1:0] v2_x,
+        input logic signed [VERTEX_WIDTH-1:0] v2_y,
+        input logic signed [VERTEX_WIDTH-1:0] p_x,
+        input logic signed [VERTEX_WIDTH-1:0] p_y
     );
         edge_function = (p_x - v1_x) * (v2_y - v1_y) - (p_y - v1_y) * (v2_x - v1_x);
     endfunction

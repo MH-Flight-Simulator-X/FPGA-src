@@ -1,17 +1,17 @@
 module bounding_box #(
-    parameter signed TILE_MIN_X = 0,
-    parameter signed TILE_MAX_X = 32,
-    parameter signed TILE_MIN_Y = 0,
-    parameter signed TILE_MAX_Y = 16,
+    parameter unsigned TILE_MIN_X = 0,
+    parameter unsigned TILE_MAX_X = 32,
+    parameter unsigned TILE_MIN_Y = 0,
+    parameter unsigned TILE_MAX_Y = 16,
 
-    parameter COORD_WIDTH = 10
+    parameter unsigned COORD_WIDTH = 10
 ) (
     input logic signed [COORD_WIDTH-1:0] x0,
     input logic signed [COORD_WIDTH-1:0] y0,
     input logic signed [COORD_WIDTH-1:0] x1,
     input logic signed [COORD_WIDTH-1:0] y1,
     input logic signed [COORD_WIDTH-1:0] x2,
-    input logic signed [COORD_WIDTH-1:0] y2, 
+    input logic signed [COORD_WIDTH-1:0] y2,
 
     output logic signed [COORD_WIDTH-1:0] min_x,
     output logic signed [COORD_WIDTH-1:0] max_x,

@@ -1,8 +1,8 @@
 module framebuffer #(
-    parameter FB_WIDTH,
-    parameter FB_HEIGHT,
-    parameter DATA_WIDTH,
-    parameter FILE = ""
+    parameter unsigned FB_WIDTH,
+    parameter unsigned FB_HEIGHT,
+    parameter unsigned DATA_WIDTH,
+    parameter string FILE = ""
 ) (
     input logic clk_write,
     input logic clk_read,
@@ -15,7 +15,7 @@ module framebuffer #(
     input logic [ADDR_WIDTH-1:0] addr_read,
 
     input logic [DATA_WIDTH-1:0] clear_value,
-    input logic [DATA_WIDTH-1:0] data_in, 
+    input logic [DATA_WIDTH-1:0] data_in,
     output logic [DATA_WIDTH-1:0] data_out
 );
 
@@ -63,6 +63,10 @@ module framebuffer #(
                     state <= IDLE;
                     ready <= 1'b1;
                 end
+            end
+
+            default: begin
+                state <= IDLE;
             end
         endcase
     end

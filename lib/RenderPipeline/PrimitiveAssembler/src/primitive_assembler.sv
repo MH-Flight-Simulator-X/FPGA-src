@@ -16,7 +16,7 @@ module primitive_assembler #(
         output logic ready,
 
         // Index buffer size
-        input logic 
+        input logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] 
 
         input logic signed [INPUT_VERTEX_DATAWIDTH - 1:0] ,
 
