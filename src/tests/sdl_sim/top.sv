@@ -10,8 +10,22 @@ module top (
     output      logic [7:0] sdl_r,         // 8-bit red
     output      logic [7:0] sdl_g,         // 8-bit green
     output      logic [7:0] sdl_b,         // 8-bit blue
-    output      logic frame
+    output      logic frame,
+
+    output logic signed [CORDW-1:0] min_x,
+    output logic signed [CORDW-1:0] max_x,
+    output logic signed [CORDW-1:0] min_y,
+    output logic signed [CORDW-1:0] max_y,
+    output logic signed [VERTEX_WIDTH-1:0] e0_dx, 
+    output logic signed [VERTEX_WIDTH-1:0] e0_dy, 
+    output logic signed [VERTEX_WIDTH-1:0] e1_dx, 
+    output logic signed [VERTEX_WIDTH-1:0] e1_dy, 
+    output logic signed [VERTEX_WIDTH-1:0] e2_dx, 
+    output logic signed [VERTEX_WIDTH-1:0] e2_dy,
+    output logic done
     );
+
+    parameter VERTEX_WIDTH = 16;
 
     // display sync signals and coordinates
     localparam CORDW = 16;  // signed coordinate width (bits)
@@ -49,7 +63,7 @@ module top (
     logic [FB_DATAW-1:0] fb_colr_read;
     logic fb_write_enable;
 
-    localparam signed X0 = 3;
+    localparam signed X0 = 12;
     localparam signed Y0 = 4;
     localparam signed Z0 = 4;
     localparam signed X1 = 40;
@@ -91,8 +105,20 @@ module top (
         .fb_addr(fb_addr_write),
         .fb_write_enable(fb_write_enable),
         .depth_data(),
-        .done()
+        .done
     );
+
+    assign min_x = rasterizer_inst.min_x;
+    assign max_x = rasterizer_inst.max_x;
+    assign min_y = rasterizer_inst.min_y;
+    assign max_y = rasterizer_inst.max_y;
+
+    assign e0_dx = rasterizer_inst.e0_dx;
+    assign e0_dy = rasterizer_inst.e0_dy;
+    assign e1_dx = rasterizer_inst.e1_dx;
+    assign e1_dy = rasterizer_inst.e1_dy;
+    assign e2_dx = rasterizer_inst.e2_dx;
+    assign e2_dy = rasterizer_inst.e2_dy;
 
     // framebuffer memory
     framebuffer #(
@@ -179,8 +205,8 @@ module top (
     
 
     // paint screen
-    logic paint_fb;
     logic paint_db;
+    logic paint_fb;
     logic [CHANW-1:0] paint_r, paint_g, paint_b;  // color channels
     always_comb begin
         paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);

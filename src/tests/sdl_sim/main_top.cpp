@@ -7,6 +7,8 @@
 const int H_RES = 640;
 const int V_RES = 480;
 
+const int VERTEX_WIDTH = 16;
+
 typedef struct Pixel {
     uint8_t a;
     uint8_t b;
@@ -16,6 +18,22 @@ typedef struct Pixel {
 
 
 vluint64_t clk_100m_cnt = 0;
+
+
+int interpret_as_nbit_signed(int value, int n) {
+    // Mask the value to the n-bit width
+    int mask = (1 << n) - 1;
+    value &= mask;
+
+    // Check if the sign bit (the n-th bit) is set
+    int sign_bit = 1 << (n - 1);
+    if (value & sign_bit) {
+        // Sign extend the value by setting all bits above the n-th bit
+        value |= ~mask;
+    }
+    
+    return value;
+}
 
 
 int main(int argc, char* argv[]) {
@@ -100,7 +118,8 @@ int main(int argc, char* argv[]) {
         }
 
         // update texture once per frame (in blanking)
-        if (top->frame) {
+        if (top->frame) { 
+
             // check for quit event
             SDL_Event e;
             if (SDL_PollEvent(&e)) {
@@ -116,6 +135,20 @@ int main(int argc, char* argv[]) {
             SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
             SDL_RenderPresent(sdl_renderer);
             frame_count++;
+            
+            if (top->done) {
+                printf("min_x: %d max_x: %d min_y: %d max_y: %d\n", top->min_x, top->max_x, top->min_y, top->max_y);
+
+                int e0_dx = interpret_as_nbit_signed(top->e0_dx, VERTEX_WIDTH);
+                int e0_dy = interpret_as_nbit_signed(top->e0_dy, VERTEX_WIDTH);
+                int e1_dx = interpret_as_nbit_signed(top->e1_dx, VERTEX_WIDTH);
+                int e1_dy = interpret_as_nbit_signed(top->e1_dy, VERTEX_WIDTH);
+                int e2_dx = interpret_as_nbit_signed(top->e2_dx, VERTEX_WIDTH);
+                int e2_dy = interpret_as_nbit_signed(top->e2_dy, VERTEX_WIDTH);
+
+                printf("e0_dx: %d e0_dy: %d e1_dx: %d e1_dy: %d, e2_dx: %d e2_dy %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy);
+                return 0;
+            }
         }
     }
 
