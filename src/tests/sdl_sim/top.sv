@@ -16,6 +16,11 @@ module top (
     output logic signed [CORDW-1:0] max_x,
     output logic signed [CORDW-1:0] min_y,
     output logic signed [CORDW-1:0] max_y,
+
+    output logic signed [VERTEX_WIDTH-1:0] e0,
+    output logic signed [VERTEX_WIDTH-1:0] e1,
+    output logic signed [VERTEX_WIDTH-1:0] e2,
+
     output logic signed [VERTEX_WIDTH-1:0] e0_dx, 
     output logic signed [VERTEX_WIDTH-1:0] e0_dy, 
     output logic signed [VERTEX_WIDTH-1:0] e1_dx, 
@@ -95,7 +100,7 @@ module top (
         .RECIPROCAL_FILE(RECIPROCAL_FILE)
     ) rasterizer_inst (
         .clk(clk_100m),
-        .rst(),
+        .rst(sim_rst),
 
         .x0(X0),
         .y0(Y0),
@@ -117,6 +122,10 @@ module top (
     assign max_x = rasterizer_inst.max_x;
     assign min_y = rasterizer_inst.min_y;
     assign max_y = rasterizer_inst.max_y;
+
+    assign e0 = rasterizer_inst.e0;
+    assign e1 = rasterizer_inst.e1;
+    assign e2 = rasterizer_inst.e2;
 
     assign e0_dx = rasterizer_inst.e0_dx;
     assign e0_dy = rasterizer_inst.e0_dy;

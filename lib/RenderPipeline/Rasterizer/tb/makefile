@@ -1,11 +1,7 @@
 SRC_DIR = ../src
 BOUNDING_BOX_FILE = ../BoundingBox/src/bounding_box.sv
+CLUT_FILE = ../../../Memory/CLUT/src/clut.sv
 MODULE = rasterizer
-
-VERTEX_WIDTH = 32
-FB_ADDR_WIDTH = 4
-FB_WIDTH = 32
-FB_HEIGHT = 16
 
 .PHONY:sim
 sim: waveform.vcd
@@ -36,8 +32,7 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-	-cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX_FILE) --exe tb_$(MODULE).cpp \
-	-GVERTEX_WIDTH=$(VERTEX_WIDTH) -GFB_ADDR_WIDTH=$(FB_ADDR_WIDTH) -GFB_WIDTH=$(FB_WIDTH) -GFB_HEIGHT=$(FB_HEIGHT)
+	-cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX_FILE) $(CLUT_FILE) --exe tb_$(MODULE).cpp
 	@touch .stamp.verilate
 
 .PHONY:lint

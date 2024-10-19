@@ -3,8 +3,11 @@ The source files for the FPGA system, written in SystemVerilog.
 
 ## Overview 
 The project is splitt into multiple modules and accompanying documentation in **Documentation/**.
-The following is an overview of the project structure
 
+A figure showing the top-level design overview:
+![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
+
+The following is an overview of the project structure  
 <pre>
 <strong>FPGA-src</strong>
 ├── src/  
@@ -37,13 +40,12 @@ The following is an overview of the project structure
 ├── README.md  
 └── LICENSE  
 </pre>
-
-A figure showing the top-level design overview:
-![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
   
 ## Documentation
 The spesification for the system can be found here:
-[Project Specification](Documentation/Specification/FPGA-Specification.pdf)
+[Project Specification](Documentation/Specification/FPGA-Specification.pdf)  
+**THIS IS OUTDATED, A MORE UP TO DATE VERSION WILL COME (I SWEAR)**
+
 ## Testing
 For each of the modules in the **lib/** directory, a __src__ and a __tb__ directories are provided.
 The testbenches for the src files are provided in the tb directory. All testbenches are written in C++
