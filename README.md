@@ -43,7 +43,9 @@ A figure showing the top-level design overview:
   
 ## Documentation
 The spesification for the system can be found here:
-[Project Specification](Documentation/Specification/FPGA-Specification.pdf)
+[Project Specification](Documentation/Specification/FPGA-Specification.pdf)  
+**THIS IS OUTDATED, A MORE UP TO DATE VERSION WILL COME (I SWEAR)**
+
 ## Testing
 For each of the modules in the **lib/** directory, a __src__ and a __tb__ directories are provided.
 The testbenches for the src files are provided in the tb directory. All testbenches are written in C++
