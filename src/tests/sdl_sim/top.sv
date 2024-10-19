@@ -1,7 +1,8 @@
 `timescale 1ns / 1ps
 
 module top (
-    input  wire logic clk,                 // clock
+    input  wire logic clk_100m,            // 100MHz clock
+    input  wire logic clk_pix,             // pixel clock
     input  wire logic sim_rst,             // sim reset
     output      logic [CORDW-1:0] sdl_sx,  // horizontal SDL position
     output      logic [CORDW-1:0] sdl_sy,  // vertical SDL position
@@ -18,7 +19,7 @@ module top (
     logic hsync, vsync;
     logic de;
     projectf_display_480p #(.CORDW(CORDW)) display_inst (
-        .clk_pix(clk),
+        .clk_pix,
         .rst_pix(sim_rst),
         .sx,
         .sy,
@@ -74,7 +75,7 @@ module top (
         .TILE_MAX_X(TILE_MAX_X),
         .TILE_MAX_Y(TILE_MAX_Y)
     ) rasterizer_inst (
-        .clk,
+        .clk(clk_100m),
         .rst(),
 
         .x0(X0),
@@ -100,8 +101,8 @@ module top (
         .DATA_WIDTH(FB_DATAW),
         .FILE(FB_IMAGE)
     ) fb_inst (
-        .clk_write(clk),
-        .clk_read(clk),
+        .clk_write(clk_100m),
+        .clk_read(clk_pix),
         .write_enable(fb_write_enable),
         .clear(),
         .ready(),
@@ -126,8 +127,8 @@ module top (
         .FB_HEIGHT(FB_HEIGHT),
         .DATA_WIDTH(DB_DATA_WIDTH)
     ) db_inst (
-        .clk_write(clk),
-        .clk_read(clk),
+        .clk_write(clk_100m),
+        .clk_read(clk_pix),
         .write_enable(fb_write_enable),
         .clear(),
         .ready(),
@@ -141,7 +142,7 @@ module top (
 
     // calculate framebuffer read address for display output
     logic read_fb;
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk_pix) begin
         read_fb <= (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
         if (frame) begin  // reset address at start of frame
             fb_addr_read <= 0;
@@ -151,7 +152,7 @@ module top (
     end
 
     logic read_db;
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk_pix) begin
         read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
         if (frame) begin  // reset address at start of frame
             db_addr_read <= 0;
@@ -171,7 +172,7 @@ module top (
         .COLOR_WIDTH(CLUT_COLOR_WIDTH),
         .FILE(PALETE_FILE)
     ) clut_inst (
-        .clk,
+        .clk(clk_100m),
         .addr(fb_colr_read),
         .color(fb_pix_colr)
     );
@@ -197,7 +198,7 @@ module top (
     end
 
     // SDL output (8 bits per colour channel)
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk_pix) begin
         sdl_sx <= sx;
         sdl_sy <= sy;
         sdl_de <= de;

@@ -15,6 +15,9 @@ typedef struct Pixel {
 } Pixel;
 
 
+vluint64_t clk_100m_cnt = 0;
+
+
 int main(int argc, char* argv[]) {
     printf("Program started\n");
     Verilated::commandArgs(argc, argv);
@@ -61,12 +64,13 @@ int main(int argc, char* argv[]) {
 
     // reset
     top->sim_rst = 1;
-    top->clk = 0;
+    top->clk_100m = 0;
     top->eval();
-    top->clk = 1;
+    top->clk_100m = 1;
     top->eval();
     top->sim_rst = 0;
-    top->clk = 0;
+    top->clk_100m = 0;
+    top->clk_pix = 0;
     top->eval();
 
     // initialize frame rate
@@ -75,11 +79,16 @@ int main(int argc, char* argv[]) {
 
     // main loop
     while (true) {
-        // cycle the clock
-        top->clk = 1;
-        top->eval();
-        top->clk = 0;
-        top->eval();
+        // update main clock
+        top->clk_100m ^= 1;
+        clk_100m_cnt++;
+
+        // pixel clock runs at 25MHz, so it should run 4 times as slow as main clock
+        if (clk_100m_cnt%4) {
+            top->clk_pix ^= 1;
+        }
+
+        top->eval(); 
 
         // update pixel if not in blanking interval
         if (top->sdl_de) {
