@@ -15,15 +15,7 @@ module rasterizer #(
     input logic clk,
     input logic rst,
 
-    input logic signed [VERTEX_WIDTH-1:0] x0,
-    input logic signed [VERTEX_WIDTH-1:0] y0,
-    input logic signed [VERTEX_WIDTH-1:0] z0,
-    input logic signed [VERTEX_WIDTH-1:0] x1,
-    input logic signed [VERTEX_WIDTH-1:0] y1,
-    input logic signed [VERTEX_WIDTH-1:0] z1,
-    input logic signed [VERTEX_WIDTH-1:0] x2,
-    input logic signed [VERTEX_WIDTH-1:0] y2,
-    input logic signed [VERTEX_WIDTH-1:0] z2,
+    input logic signed [VERTEX_WIDTH-1:0] vertex[3][3], 
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
     output logic fb_write_enable,
@@ -68,12 +60,12 @@ module rasterizer #(
 
         .COORD_WIDTH(VERTEX_WIDTH)
     ) bounding_box_inst (
-        .x0(x0),
-        .y0(y0),
-        .x1(x1),
-        .y1(y1),
-        .x2(x2),
-        .y2(y2),
+        .x0(vertex[0][0]),
+        .y0(vertex[0][1]),
+        .x1(vertex[1][0]),
+        .y1(vertex[1][1]),
+        .x2(vertex[2][0]),
+        .y2(vertex[2][1]),
 
         .min_x(min_x),
         .max_x(max_x),
@@ -147,20 +139,20 @@ module rasterizer #(
 
                     fb_addr <= (min_y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + min_x[FB_ADDR_WIDTH-1:0] - 1;
 
-                    e0 <= edge_function(x0, y0, x1, y1, min_x, min_y);
-                    e1 <= edge_function(x1, y1, x2, y2, min_x, min_y);
-                    e2 <= edge_function(x2, y2, x0, y0, min_x, min_y);
+                    e0 <= edge_function(vertex[0][0], vertex[0][1], vertex[1][0], vertex[1][1], min_x, min_y);
+                    e1 <= edge_function(vertex[1][0], vertex[1][1], vertex[2][0], vertex[2][1], min_x, min_y);
+                    e2 <= edge_function(vertex[2][0], vertex[2][1], vertex[0][0], vertex[0][1], min_x, min_y);
 
-                    e0_dx <= y1 - y0;
-                    e0_dy <= -(x1 - x0);
+                    e0_dx <= vertex[1][1] - vertex[0][1];
+                    e0_dy <= -(vertex[1][0] - vertex[0][0]);
 
-                    e1_dx <= y2 - y1;
-                    e1_dy <= -(x2 - x1);
+                    e1_dx <= vertex[2][1] - vertex[1][1];
+                    e1_dy <= -(vertex[2][0] - vertex[1][0]);
 
-                    e2_dx <= y0 - y2;
-                    e2_dy <= -(x0 - x2);
+                    e2_dx <= vertex[0][1] - vertex[2][1];
+                    e2_dy <= -(vertex[0][0] - vertex[2][0]);
 
-                    area <= edge_function(x0, y0, x1, y1, x2, y2);
+                    area <= edge_function(vertex[0][0], vertex[0][1], vertex[1][0], vertex[1][1], vertex[2][0], vertex[2][1]);
 
                     state <= INIT_DRAW_2;
                 end
@@ -190,11 +182,11 @@ module rasterizer #(
 
                 INIT_DRAW_3: begin
                     // Initialize z at the top-left corner
-                    z <= (w0 * z0) + (w1 * z1) + (w2 * z2);
+                    z <= (w0 * vertex[0][2]) + (w1 * vertex[1][2]) + (w2 * vertex[2][2]);
 
                     // Compute z increments
-                    z_dx <= (w0_dx * z0) + (w1_dx * z1) + (w2_dx * z2);
-                    z_dy <= (w0_dy * z0) + (w1_dy * z1) + (w2_dy * z2);
+                    z_dx <= (w0_dx * vertex[0][2]) + (w1_dx * vertex[1][2]) + (w2_dx * vertex[2][2]);
+                    z_dy <= (w0_dy * vertex[0][2]) + (w1_dy * vertex[1][2]) + (w2_dy * vertex[2][2]);
 
                     state <= INIT_DRAW_4;
                 end

@@ -88,6 +88,22 @@ module top (
     localparam unsigned RECIPROCAL_SIZE = 65000;
     localparam string RECIPROCAL_FILE = "../../reciprocal.mem";
 
+    logic signed [VERTEX_WIDTH-1:0] vertex[3][3];
+
+    initial begin
+        vertex[0][0] = X0;  // X0
+        vertex[0][1] = Y0;  // Y0
+        vertex[0][2] = Z0;  // Z0
+        
+        vertex[1][0] = X1;  // X1
+        vertex[1][1] = Y1;  // Y1
+        vertex[1][2] = Z1;  // Z1
+
+        vertex[2][0] = X2;  // X2
+        vertex[2][1] = Y2;  // Y2
+        vertex[2][2] = Z2;  // Z2    
+    end
+
     rasterizer #(
         .VERTEX_WIDTH(CORDW),
         .FB_ADDR_WIDTH(FB_ADDRW),
@@ -102,15 +118,7 @@ module top (
         .clk(clk_100m),
         .rst(sim_rst),
 
-        .x0(X0),
-        .y0(Y0),
-        .z0(Z0),
-        .x1(X1),
-        .y1(Y1),
-        .z1(Z1),
-        .x2(X2),
-        .y2(Y2),
-        .z2(Z2),
+        .vertex,
 
         .fb_addr(fb_addr_write),
         .fb_write_enable(fb_write_enable),
@@ -212,7 +220,7 @@ module top (
         .COLOR_WIDTH(CLUT_COLOR_WIDTH),
         .FILE(PALETE_FILE)
     ) clut_inst (
-        .clk(clk_100m),
+        .clk(clk_pix),
         .addr(fb_colr_read),
         .color(fb_pix_colr)
     );
