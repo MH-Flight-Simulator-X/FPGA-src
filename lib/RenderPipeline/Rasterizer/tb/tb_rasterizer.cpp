@@ -20,10 +20,13 @@ int main(int argc, char** argv) {
 
     int x0 = 3;
     int y0 = 4;
+    int z0 = 4;
     int x1 = 21;
+    int z1 = 4;
     int y1 = 8;
     int x2 = 17;
     int y2 = 14;
+    int z2 = 4;
 
     while (sim_time < MAX_SIM_TIME) {
         dut->clk ^= 1; 
@@ -31,10 +34,13 @@ int main(int argc, char** argv) {
 
         dut->x0 = x0;
         dut->y0 = y0;
+        dut->z0 = z0;
         dut->x1 = x1;
         dut->y1 = y1;
+        dut->z1 = z1;
         dut->x2 = x2;
         dut->y2 = y2;
+        dut->z2 = z2;
 
         if (dut->clk == 1) {
             posedge_cnt++;
@@ -54,4 +60,5 @@ int main(int argc, char** argv) {
 
     exit(EXIT_SUCCESS);
 }
+
 
