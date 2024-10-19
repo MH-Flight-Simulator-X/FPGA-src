@@ -46,7 +46,7 @@ module rasterizer #(
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
 
     // edge functions
-    logic signed [VERTEX_WIDTH-1:0] e0, e1, e2; 
+    logic signed [VERTEX_WIDTH-1:0] e0, e1, e2;
     logic signed [VERTEX_WIDTH-1:0] e0_row_start, e1_row_start, e2_row_start;
     logic signed [VERTEX_WIDTH-1:0] e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy;
 
@@ -96,7 +96,7 @@ module rasterizer #(
         .color(area_reciprocal)
     );
 
-    function signed [VERTEX_WIDTH-1:0] edge_function (
+    function automatic signed [VERTEX_WIDTH-1:0] edge_function (
         input signed [VERTEX_WIDTH-1:0] v1_x,
         input signed [VERTEX_WIDTH-1:0] v1_y,
         input signed [VERTEX_WIDTH-1:0] v2_x,
@@ -137,7 +137,7 @@ module rasterizer #(
                     else begin
                         state <= DONE;
                     end
-                end 
+                end
 
                 INIT_DRAW: begin
                     x <= min_x;
@@ -154,7 +154,7 @@ module rasterizer #(
                     e0_dx <= y1 - y0;
                     e0_dy <= -(x1 - x0);
 
-                    e1_dx <= y2 - y1; 
+                    e1_dx <= y2 - y1;
                     e1_dy <= -(x2 - x1);
 
                     e2_dx <= y0 - y2;
@@ -176,7 +176,7 @@ module rasterizer #(
                     w2 <= e2 * area_reciprocal;
 
                     // Compute increments for barycentric weights
-                    w0_dx <= e0_dx * area_reciprocal; 
+                    w0_dx <= e0_dx * area_reciprocal;
                     w0_dy <= e0_dy * area_reciprocal;
 
                     w1_dx <= e1_dx * area_reciprocal;
@@ -211,7 +211,7 @@ module rasterizer #(
 
                         e0 <= e0 + e0_dx;
                         e1 <= e1 + e1_dx;
-                        e2 <= e2 + e2_dx; 
+                        e2 <= e2 + e2_dx;
 
                         x <= x + 1;
 
@@ -223,7 +223,7 @@ module rasterizer #(
                         else begin
                             fb_write_enable <= 1'b0;
                         end
-                    end 
+                    end
                     else begin
                         if (y < max_y) begin
                             e0 <= e0_row_start + e0_dy;
@@ -234,8 +234,8 @@ module rasterizer #(
                             e1_row_start <= e1_row_start + e1_dy;
                             e2_row_start <= e2_row_start + e2_dy;
 
-                            y <= y + 1; 
-                            fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0]; 
+                            y <= y + 1;
+                            fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0];
 
                             x <= min_x;
 
@@ -253,12 +253,12 @@ module rasterizer #(
                             done <= 1'b1;
                             state <= DONE;
                         end
-                    end 
+                    end
                 end
 
                 DONE: begin
                     fb_write_enable <= 1'b0;
-                    done <= 1'b1; 
+                    done <= 1'b1;
                     state <= DONE;
                 end
 
