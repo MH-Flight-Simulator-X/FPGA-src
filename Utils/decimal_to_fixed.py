@@ -34,8 +34,9 @@ def generate_fixed_point_hex_string(num, integer_bits, decimal_bits, signed):
     bit_string = bit_string.replace(".", "", 1)
     return hex(int(bit_string, 2))
 
+print(generate_fixed_point_hex_string(0.6, 0, 16, False))
 
-with open("reciprocal.mem", "w") as f:
-    for i in range(1, 1000):
-        f.write(generate_fixed_point_hex_string(1/i, 0, 12, False)[2:].zfill(3) + "\n")
+# with open("reciprocal.mem", "w") as f:
+#     for i in range(1, 1000):
+#         f.write(generate_fixed_point_hex_string(1/i, 0, 12, False)[2:].zfill(3) + "\n")
 

@@ -107,6 +107,7 @@ module rasterizer #(
         INIT_DRAW_2,
         INIT_DRAW_3,
         INIT_DRAW_4,
+        INIT_DRAW_5,
         DRAW,
         DONE
     } state_t;
@@ -156,6 +157,11 @@ module rasterizer #(
                 end
 
                 INIT_DRAW_2: begin
+                    // Wait for reciprocal_area
+                    state <= INIT_DRAW_3;
+                end
+
+                INIT_DRAW_3: begin
                     foreach (edge_row_start[i]) begin
                         edge_row_start[i] <= edge_val[i];
                     end
@@ -163,6 +169,7 @@ module rasterizer #(
                     // Compute barycentric weights at top-left corner of bounding box
                     foreach (bar_weight[i]) begin
                         bar_weight[i] <= edge_val[i] * area_reciprocal;
+                        // bar_weight[i] <= edge_val[i] * 6;
                     end
 
                     // Compute increments for barycentric weights
@@ -171,10 +178,10 @@ module rasterizer #(
                         bar_weight_delta[i][1] <= edge_delta[i][1] * area_reciprocal;
                     end
 
-                    state <= INIT_DRAW_3;
+                    state <= INIT_DRAW_4;
                 end
 
-                INIT_DRAW_3: begin
+                INIT_DRAW_4: begin
                     // Initialize z at the top-left corner
                     z <= (bar_weight[0] * vertex[0][2]) + (bar_weight[1] * vertex[1][2]) + (bar_weight[2] * vertex[2][2]);
 
@@ -182,10 +189,10 @@ module rasterizer #(
                     z_dx <= (bar_weight_delta[0][0] * vertex[0][2]) + (bar_weight_delta[1][0] * vertex[1][2]) + (bar_weight_delta[2][0] * vertex[2][2]);
                     z_dy <= (bar_weight_delta[0][1] * vertex[0][2]) + (bar_weight_delta[1][1] * vertex[1][2]) + (bar_weight_delta[2][1] * vertex[2][2]);
 
-                    state <= INIT_DRAW_4;
+                    state <= INIT_DRAW_5;
                 end
 
-                INIT_DRAW_4: begin
+                INIT_DRAW_5: begin
                     z_row_start <= z;
 
                     state <= DRAW;
