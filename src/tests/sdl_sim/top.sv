@@ -131,16 +131,16 @@ module top (
     assign min_y = rasterizer_inst.min_y;
     assign max_y = rasterizer_inst.max_y;
 
-    assign e0 = rasterizer_inst.e0;
-    assign e1 = rasterizer_inst.e1;
-    assign e2 = rasterizer_inst.e2;
+    assign e0 = rasterizer_inst.edge_val[0];
+    assign e1 = rasterizer_inst.edge_val[1];
+    assign e2 = rasterizer_inst.edge_val[2];
 
-    assign e0_dx = rasterizer_inst.e0_dx;
-    assign e0_dy = rasterizer_inst.e0_dy;
-    assign e1_dx = rasterizer_inst.e1_dx;
-    assign e1_dy = rasterizer_inst.e1_dy;
-    assign e2_dx = rasterizer_inst.e2_dx;
-    assign e2_dy = rasterizer_inst.e2_dy;
+    assign e0_dx = rasterizer_inst.edge_delta[0][0];
+    assign e0_dy = rasterizer_inst.edge_delta[0][1];
+    assign e1_dx = rasterizer_inst.edge_delta[1][0];
+    assign e1_dy = rasterizer_inst.edge_delta[1][1];
+    assign e2_dx = rasterizer_inst.edge_delta[2][0];
+    assign e2_dy = rasterizer_inst.edge_delta[2][1];
 
     // framebuffer memory
     framebuffer #(
