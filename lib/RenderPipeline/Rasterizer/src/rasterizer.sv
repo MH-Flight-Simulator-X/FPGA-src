@@ -43,8 +43,8 @@ module rasterizer #(
     logic signed [VERTEX_WIDTH-1:0] edge_delta[3][2];
 
     // barycentric weights
-    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] w0, w1, w2;
-    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy;
+    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] bar_weight[3];
+    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] bar_weight_delta[3][2];
 
     // logic to store a value used to jump to next line in bounding box
     logic [FB_ADDR_WIDTH-1:0] line_jump_value;
@@ -161,30 +161,26 @@ module rasterizer #(
                     end
 
                     // Compute barycentric weights at top-left corner of bounding box
-                    w0 <= edge_val[0] * area_reciprocal;
-                    w1 <= edge_val[1] * area_reciprocal;
-                    w2 <= edge_val[2] * area_reciprocal;
+                    foreach (bar_weight[i]) begin
+                        bar_weight[i] <= edge_val[i] * area_reciprocal;
+                    end
 
                     // Compute increments for barycentric weights
-                    w0_dx <= edge_delta[0][0] * area_reciprocal;
-                    w0_dy <= edge_delta[0][1] * area_reciprocal;
-
-                    w1_dx <= edge_delta[1][0] * area_reciprocal;
-                    w1_dy <= edge_delta[1][1] * area_reciprocal;
-
-                    w2_dx <= edge_delta[2][0] * area_reciprocal;
-                    w2_dy <= edge_delta[2][1] * area_reciprocal;
+                    foreach (bar_weight_delta[i]) begin
+                        bar_weight_delta[i][0] <= edge_delta[i][0] * area_reciprocal;
+                        bar_weight_delta[i][1] <= edge_delta[i][1] * area_reciprocal;
+                    end
 
                     state <= INIT_DRAW_3;
                 end
 
                 INIT_DRAW_3: begin
                     // Initialize z at the top-left corner
-                    z <= (w0 * vertex[0][2]) + (w1 * vertex[1][2]) + (w2 * vertex[2][2]);
+                    z <= (bar_weight[0] * vertex[0][2]) + (bar_weight[1] * vertex[1][2]) + (bar_weight[2] * vertex[2][2]);
 
                     // Compute z increments
-                    z_dx <= (w0_dx * vertex[0][2]) + (w1_dx * vertex[1][2]) + (w2_dx * vertex[2][2]);
-                    z_dy <= (w0_dy * vertex[0][2]) + (w1_dy * vertex[1][2]) + (w2_dy * vertex[2][2]);
+                    z_dx <= (bar_weight_delta[0][0] * vertex[0][2]) + (bar_weight_delta[1][0] * vertex[1][2]) + (bar_weight_delta[2][0] * vertex[2][2]);
+                    z_dy <= (bar_weight_delta[0][1] * vertex[0][2]) + (bar_weight_delta[1][1] * vertex[1][2]) + (bar_weight_delta[2][1] * vertex[2][2]);
 
                     state <= INIT_DRAW_4;
                 end
