@@ -1,25 +1,107 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Mon Oct 14 01:16:19 2024
+[*] Mon Oct 21 11:44:07 2024
 [*]
 [dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/VertexPostProcessor/tb/waveform.vcd"
-[dumpfile_mtime] "Mon Oct 14 01:15:23 2024"
-[dumpfile_size] 17566
+[dumpfile_mtime] "Mon Oct 21 11:40:51 2024"
+[dumpfile_size] 21905
 [savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/VertexPostProcessor/tb/setup.gtkw"
 [timestart] 0
 [size] 2490 1536
-[pos] -51 -51
-*-4.237864 78 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -101 -101
+*-2.237864 11 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [sst_width] 233
-[signals_width] 206
+[signals_width] 214
 [sst_expanded] 1
 [sst_vpaned_height] 470
-@421
-TOP.vertex_post_processor.SCREEN_HEIGHT[9:0]
-TOP.vertex_post_processor.w_ndc_y[17:0]
-TOP.vertex_post_processor.w_screen_y_inter[27:0]
-TOP.vertex_post_processor.w_test_first[27:0]
-TOP.vertex_post_processor.w_test_second[17:0]
+@28
+TOP.vertex_post_processor.clk
+TOP.vertex_post_processor.rstn
+TOP.vertex_post_processor.ready
+TOP.vertex_post_processor.invalid
+TOP.vertex_post_processor.done
+TOP.vertex_post_processor.current_state[2:0]
+TOP.vertex_post_processor.next_state[2:0]
+@22
+TOP.vertex_post_processor.i_vertex(0)[23:0]
+TOP.vertex_post_processor.i_vertex(1)[23:0]
+TOP.vertex_post_processor.i_vertex(2)[23:0]
+TOP.vertex_post_processor.i_vertex(3)[23:0]
+@28
+TOP.vertex_post_processor.i_vertex_dv
+@22
+TOP.vertex_post_processor.r_clip_w[23:0]
+TOP.vertex_post_processor.r_clip_x[23:0]
+TOP.vertex_post_processor.r_clip_y[23:0]
+TOP.vertex_post_processor.r_clip_z[23:0]
+@29
+TOP.vertex_post_processor.z_invalid
+@28
+TOP.vertex_post_processor.ndc_divide_start
+@c00022
+TOP.vertex_post_processor.w_ndc_x[23:0]
+@28
+(0)TOP.vertex_post_processor.w_ndc_x[23:0]
+(1)TOP.vertex_post_processor.w_ndc_x[23:0]
+(2)TOP.vertex_post_processor.w_ndc_x[23:0]
+(3)TOP.vertex_post_processor.w_ndc_x[23:0]
+(4)TOP.vertex_post_processor.w_ndc_x[23:0]
+(5)TOP.vertex_post_processor.w_ndc_x[23:0]
+(6)TOP.vertex_post_processor.w_ndc_x[23:0]
+(7)TOP.vertex_post_processor.w_ndc_x[23:0]
+(8)TOP.vertex_post_processor.w_ndc_x[23:0]
+(9)TOP.vertex_post_processor.w_ndc_x[23:0]
+(10)TOP.vertex_post_processor.w_ndc_x[23:0]
+(11)TOP.vertex_post_processor.w_ndc_x[23:0]
+(12)TOP.vertex_post_processor.w_ndc_x[23:0]
+(13)TOP.vertex_post_processor.w_ndc_x[23:0]
+(14)TOP.vertex_post_processor.w_ndc_x[23:0]
+(15)TOP.vertex_post_processor.w_ndc_x[23:0]
+(16)TOP.vertex_post_processor.w_ndc_x[23:0]
+(17)TOP.vertex_post_processor.w_ndc_x[23:0]
+(18)TOP.vertex_post_processor.w_ndc_x[23:0]
+(19)TOP.vertex_post_processor.w_ndc_x[23:0]
+(20)TOP.vertex_post_processor.w_ndc_x[23:0]
+(21)TOP.vertex_post_processor.w_ndc_x[23:0]
+(22)TOP.vertex_post_processor.w_ndc_x[23:0]
+(23)TOP.vertex_post_processor.w_ndc_x[23:0]
+@1401200
+-group_end
+@28
+TOP.vertex_post_processor.w_ndc_x_done
+TOP.vertex_post_processor.w_ndc_x_valid
+@22
+TOP.vertex_post_processor.w_ndc_y[23:0]
+@28
+TOP.vertex_post_processor.w_ndc_y_done
+TOP.vertex_post_processor.w_ndc_y_valid
+@22
+TOP.vertex_post_processor.w_ndc_z[23:0]
+@28
+TOP.vertex_post_processor.w_ndc_z_done
+TOP.vertex_post_processor.w_ndc_z_valid
+@22
+TOP.vertex_post_processor.w_ss_x_inter[48:0]
+TOP.vertex_post_processor.w_ss_y_inter[48:0]
+TOP.vertex_post_processor.o_vertex_pixel(1)[11:0]
+TOP.vertex_post_processor.o_vertex_pixel(0)[11:0]
+@c00022
+TOP.vertex_post_processor.o_vertex_z[11:0]
+@28
+(0)TOP.vertex_post_processor.o_vertex_z[11:0]
+(1)TOP.vertex_post_processor.o_vertex_z[11:0]
+(2)TOP.vertex_post_processor.o_vertex_z[11:0]
+(3)TOP.vertex_post_processor.o_vertex_z[11:0]
+(4)TOP.vertex_post_processor.o_vertex_z[11:0]
+(5)TOP.vertex_post_processor.o_vertex_z[11:0]
+(6)TOP.vertex_post_processor.o_vertex_z[11:0]
+(7)TOP.vertex_post_processor.o_vertex_z[11:0]
+(8)TOP.vertex_post_processor.o_vertex_z[11:0]
+(9)TOP.vertex_post_processor.o_vertex_z[11:0]
+(10)TOP.vertex_post_processor.o_vertex_z[11:0]
+(11)TOP.vertex_post_processor.o_vertex_z[11:0]
+@1401200
+-group_end
 [pattern_trace] 1
 [pattern_trace] 0
