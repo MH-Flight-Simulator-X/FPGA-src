@@ -1,0 +1,75 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Mon Oct 21 18:05:58 2024
+[*]
+[dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/PrimitiveAssembler/tb/waveform.vcd"
+[dumpfile_mtime] "Mon Oct 21 18:04:25 2024"
+[dumpfile_size] 20401
+[savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/PrimitiveAssembler/tb/setup.gtkw"
+[timestart] 9
+[size] 2490 1536
+[pos] -101 -101
+*-2.237864 38 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[sst_width] 233
+[signals_width] 238
+[sst_expanded] 1
+[sst_vpaned_height] 470
+@28
+TOP.primitive_assembler.clk
+TOP.primitive_assembler.rstn
+TOP.primitive_assembler.ready
+TOP.primitive_assembler.start
+TOP.primitive_assembler.finished
+TOP.primitive_assembler.current_state[2:0]
+@420
+TOP.primitive_assembler.i_num_triangles[10:0]
+@421
+TOP.primitive_assembler.r_triangle_cnt[10:0]
+@22
+TOP.primitive_assembler.i_vertex_idxs(0)[12:0]
+TOP.primitive_assembler.i_vertex_idxs(1)[12:0]
+TOP.primitive_assembler.i_vertex_idxs(2)[12:0]
+TOP.primitive_assembler.o_index_buff_addr[10:0]
+@28
+TOP.primitive_assembler.o_index_buff_read_en
+TOP.primitive_assembler.r_index_buff_read_last
+@22
+TOP.primitive_assembler.o_vertex_addr(0)[12:0]
+TOP.primitive_assembler.o_vertex_addr(1)[12:0]
+TOP.primitive_assembler.o_vertex_addr(2)[12:0]
+@28
+TOP.primitive_assembler.o_vertex_read_en
+@22
+TOP.primitive_assembler.i_v0(0)[11:0]
+TOP.primitive_assembler.i_v0(1)[11:0]
+@28
+TOP.primitive_assembler.i_v0_invalid
+@22
+TOP.primitive_assembler.i_v0_z[11:0]
+TOP.primitive_assembler.i_v1(0)[11:0]
+TOP.primitive_assembler.i_v1(1)[11:0]
+@28
+TOP.primitive_assembler.i_v1_invalid
+@22
+TOP.primitive_assembler.i_v1_z[11:0]
+TOP.primitive_assembler.i_v2(0)[11:0]
+TOP.primitive_assembler.i_v2(1)[11:0]
+@28
+TOP.primitive_assembler.i_v2_invalid
+@22
+TOP.primitive_assembler.i_v2_z[11:0]
+@28
+TOP.primitive_assembler.r_finished_wait_last
+TOP.primitive_assembler.r_vertex_read_last
+@22
+TOP.primitive_assembler.o_vertex_pixel(0)(0)[11:0]
+TOP.primitive_assembler.o_vertex_pixel(0)(1)[11:0]
+TOP.primitive_assembler.o_vertex_pixel(1)(0)[11:0]
+TOP.primitive_assembler.o_vertex_pixel(1)(1)[11:0]
+TOP.primitive_assembler.o_vertex_pixel(2)(0)[11:0]
+TOP.primitive_assembler.o_vertex_pixel(2)(1)[11:0]
+@28
+TOP.primitive_assembler.o_dv
+[pattern_trace] 1
+[pattern_trace] 0
