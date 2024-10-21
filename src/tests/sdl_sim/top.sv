@@ -11,26 +11,35 @@ module top (
     output      logic [7:0] sdl_g,         // 8-bit green
     output      logic [7:0] sdl_b,         // 8-bit blue
     output      logic frame,
-
+    
     output logic signed [CORDW-1:0] min_x,
     output logic signed [CORDW-1:0] max_x,
     output logic signed [CORDW-1:0] min_y,
     output logic signed [CORDW-1:0] max_y,
 
-    output logic signed [VERTEX_WIDTH-1:0] e0,
-    output logic signed [VERTEX_WIDTH-1:0] e1,
-    output logic signed [VERTEX_WIDTH-1:0] e2,
+    output logic signed [VERTEX_WIDTH-1:0] edge_val[3], 
+    output logic signed [VERTEX_WIDTH-1:0] edge_delta[3][2], 
 
-    output logic signed [VERTEX_WIDTH-1:0] e0_dx, 
-    output logic signed [VERTEX_WIDTH-1:0] e0_dy, 
-    output logic signed [VERTEX_WIDTH-1:0] e1_dx, 
-    output logic signed [VERTEX_WIDTH-1:0] e1_dy, 
-    output logic signed [VERTEX_WIDTH-1:0] e2_dx, 
-    output logic signed [VERTEX_WIDTH-1:0] e2_dy,
+    output logic signed [VERTEX_WIDTH-1:0] area,
+    output logic unsigned [RECIPROCAL_WIDTH-1:0] area_reciprocal,
+
+    output logic unsigned [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight[3],
+    output logic unsigned [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight_delta[3][2],
+
+    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] test,
+
+    logic [3:0] state,
+ 
     output logic done
     );
 
     parameter VERTEX_WIDTH = 16;
+    parameter RECIPROCAL_WIDTH = 12;
+
+    logic signed [VERTEX_WIDTH-1:0] val1 = 600;
+    logic signed [RECIPROCAL_WIDTH-1:0] val2 = 6;
+
+    assign test = val1 * val2;
 
     // display sync signals and coordinates
     localparam CORDW = 16;  // signed coordinate width (bits)
@@ -71,10 +80,10 @@ module top (
     localparam signed X0 = 12;
     localparam signed Y0 = 4;
     localparam signed Z0 = 4;
-    localparam signed X1 = 40;
-    localparam signed Y1 = 90;
+    localparam signed X1 = 20;
+    localparam signed Y1 = 30;
     localparam signed Z1 = 4;
-    localparam signed X2 = 111;
+    localparam signed X2 = 40;
     localparam signed Y2 = 20;
     localparam signed Z2 = 1000;
 
@@ -86,7 +95,23 @@ module top (
     logic [11:0] depth_data_in;
 
     localparam unsigned RECIPROCAL_SIZE = 65000;
-    localparam string RECIPROCAL_FILE = "../../reciprocal.mem";
+    localparam RECIPROCAL_FILE = "../../reciprocal.mem";
+
+    logic signed [VERTEX_WIDTH-1:0] vertex[3][3];
+
+    initial begin
+        vertex[0][0] = X0;  // X0
+        vertex[0][1] = Y0;  // Y0
+        vertex[0][2] = Z0;  // Z0
+        
+        vertex[1][0] = X1;  // X1
+        vertex[1][1] = Y1;  // Y1
+        vertex[1][2] = Z1;  // Z1
+
+        vertex[2][0] = X2;  // X2
+        vertex[2][1] = Y2;  // Y2
+        vertex[2][2] = Z2;  // Z2    
+    end
 
     rasterizer #(
         .VERTEX_WIDTH(CORDW),
@@ -102,15 +127,7 @@ module top (
         .clk(clk_100m),
         .rst(sim_rst),
 
-        .x0(X0),
-        .y0(Y0),
-        .z0(Z0),
-        .x1(X1),
-        .y1(Y1),
-        .z1(Z1),
-        .x2(X2),
-        .y2(Y2),
-        .z2(Z2),
+        .vertex,
 
         .fb_addr(fb_addr_write),
         .fb_write_enable(fb_write_enable),
@@ -123,16 +140,16 @@ module top (
     assign min_y = rasterizer_inst.min_y;
     assign max_y = rasterizer_inst.max_y;
 
-    assign e0 = rasterizer_inst.e0;
-    assign e1 = rasterizer_inst.e1;
-    assign e2 = rasterizer_inst.e2;
+    assign edge_val = rasterizer_inst.edge_val;
+    assign edge_delta = rasterizer_inst.edge_delta;
 
-    assign e0_dx = rasterizer_inst.e0_dx;
-    assign e0_dy = rasterizer_inst.e0_dy;
-    assign e1_dx = rasterizer_inst.e1_dx;
-    assign e1_dy = rasterizer_inst.e1_dy;
-    assign e2_dx = rasterizer_inst.e2_dx;
-    assign e2_dy = rasterizer_inst.e2_dy;
+    assign area = rasterizer_inst.area;
+    assign area_reciprocal = rasterizer_inst.area_reciprocal;
+    
+    assign bar_weight = rasterizer_inst.bar_weight;
+    assign bar_weight_delta = rasterizer_inst.bar_weight_delta;
+
+    assign state = rasterizer_inst.state;
 
     // framebuffer memory
     framebuffer #(
@@ -212,7 +229,7 @@ module top (
         .COLOR_WIDTH(CLUT_COLOR_WIDTH),
         .FILE(PALETE_FILE)
     ) clut_inst (
-        .clk(clk_100m),
+        .clk(clk_pix),
         .addr(fb_colr_read),
         .color(fb_pix_colr)
     );

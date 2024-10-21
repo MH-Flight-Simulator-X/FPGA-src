@@ -5,7 +5,7 @@
 module clut#(
     parameter unsigned SIZE,
     parameter unsigned COLOR_WIDTH,
-    parameter unsigned FILE,
+    parameter string FILE,
     parameter unsigned ADDR_WIDTH = $clog2(SIZE)
     ) (
     input wire clk,

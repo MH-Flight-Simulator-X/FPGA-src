@@ -8,6 +8,7 @@ const int H_RES = 640;
 const int V_RES = 480;
 
 const int VERTEX_WIDTH = 16;
+const int RECIPROCAL_WIDTH = 12;
 
 typedef struct Pixel {
     uint8_t a;
@@ -20,7 +21,7 @@ typedef struct Pixel {
 int clk_100m_cnt = 0;
 
 
-int interpret_as_nbit_signed(int value, int n) {
+int interpretAsNbitSigned(int value, int n) {
     // Mask the value to the n-bit width
     int mask = (1 << n) - 1;
     value &= mask;
@@ -33,6 +34,25 @@ int interpret_as_nbit_signed(int value, int n) {
     }
     
     return value;
+}
+
+
+float unsignedFixedPointToFloat(unsigned int fixed_point_int, int fractional_bits) {
+    // Convert the unsigned fixed-point number to float
+    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << fractional_bits);
+}
+
+
+float signedFixedPointToFloat(int fixed_point_int, int fractional_bits, int total_bits) {
+    // Perform sign extension if necessary
+    // total_bits includes both the integer and fractional parts
+    if (fixed_point_int & (1 << (total_bits - 1))) {
+        // If the sign bit is set, perform sign extension
+        fixed_point_int |= ~((1 << total_bits) - 1);  // Sign-extend to the full int width
+    }
+
+    // Convert the signed fixed-point number to float
+    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << fractional_bits);
 }
 
 
@@ -117,15 +137,48 @@ int main(int argc, char* argv[]) {
             p->r = top->sdl_r;
         }
 
-        int e0 = interpret_as_nbit_signed(top->e0, VERTEX_WIDTH);
-        int e1 = interpret_as_nbit_signed(top->e1, VERTEX_WIDTH);
-        int e2 = interpret_as_nbit_signed(top->e2, VERTEX_WIDTH);
+        int e0 = interpretAsNbitSigned(top->edge_val[0], VERTEX_WIDTH);
+        int e1 = interpretAsNbitSigned(top->edge_val[1], VERTEX_WIDTH);
+        int e2 = interpretAsNbitSigned(top->edge_val[2], VERTEX_WIDTH);
 
-        // prinyf("clk_100m_cnt: %d\n", clk_100m_cnt);
-        // printf("e0: %d\ne1: %d\ne2: %d\n###\n", e0, e1, e2);
-        // if (clk_100m_cnt > 10) {
-        //     return 0;
-        // }
+        int e0_dx = interpretAsNbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
+        int e0_dy = interpretAsNbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
+        int e1_dx = interpretAsNbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
+        int e1_dy = interpretAsNbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
+        int e2_dx = interpretAsNbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
+        int e2_dy = interpretAsNbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
+
+        int area = interpretAsNbitSigned(top->area, VERTEX_WIDTH);
+        float area_reciprocal = unsignedFixedPointToFloat(top->area_reciprocal, RECIPROCAL_WIDTH);
+
+        float w0 = signedFixedPointToFloat(top->bar_weight[0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w1 = signedFixedPointToFloat(top->bar_weight[1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w2 = signedFixedPointToFloat(top->bar_weight[2], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+
+        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+
+        printf("\n\n########\n\n");
+        printf("clk_100m_cnt: %d\n", clk_100m_cnt);
+        printf("e0: %d\ne1: %d\ne2: %d\n", e0, e1, e2);
+        printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy); 
+        printf("area = %d\narea_reciprocal = %f\n", area, area_reciprocal);
+        printf("area_reciprocal_int = %d\n", top->area_reciprocal);
+        printf("w0_int = %d\n", top->bar_weight[0]);
+        printf("w1_int = %d\n", top->bar_weight[1]);
+        printf("w2_int = %d\n", top->bar_weight[2]);
+        printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
+        printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
+        printf("test = %f\n", signedFixedPointToFloat(top->test, RECIPROCAL_WIDTH, RECIPROCAL_WIDTH));
+        printf("state = %d\n", top->state);
+
+        if (clk_100m_cnt > 9) {
+            return 0;
+        }
 
         // update texture once per frame (in blanking)
         if (top->frame) { 
@@ -145,24 +198,6 @@ int main(int argc, char* argv[]) {
             SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
             SDL_RenderPresent(sdl_renderer);
             frame_count++;
-            
-            // if (top->done) {
-            //     printf("min_x: %d max_x: %d min_y: %d max_y: %d\n", top->min_x, top->max_x, top->min_y, top->max_y);
-            //
-            //     int e0_dx = interpret_as_nbit_signed(top->e0_dx, VERTEX_WIDTH);
-            //     int e0_dy = interpret_as_nbit_signed(top->e0_dy, VERTEX_WIDTH);
-            //     int e1_dx = interpret_as_nbit_signed(top->e1_dx, VERTEX_WIDTH);
-            //     int e1_dy = interpret_as_nbit_signed(top->e1_dy, VERTEX_WIDTH);
-            //     int e2_dx = interpret_as_nbit_signed(top->e2_dx, VERTEX_WIDTH);
-            //     int e2_dy = interpret_as_nbit_signed(top->e2_dy, VERTEX_WIDTH);
-            //
-            //     printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy);
-            //     return 0;
-            // }
-            // 
-            // else {
-                
-            // }
         }
     }
 
