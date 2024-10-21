@@ -20,6 +20,7 @@ blue = (0, 0, 255)
 
 colors = [white, red, green, blue]
 
+BACK_FACE_CULLING_ON = True
 
 def read_obj_file(path):
     with open(path, "r") as f:
@@ -135,8 +136,12 @@ def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
     e3_dy = -(v1[0] - v3[0])
 
     area = edge_function(v1, v2, v3) 
-    if (area == 0):
-        return
+    if (BACK_FACE_CULLING_ON):
+        if (area <= 0):
+            return
+    else:
+        if (area == 0):
+            return
 
     # Compute barycentric weights at top-left corner of bounding box
     w1 = e1 / area
@@ -216,8 +221,8 @@ def draw_model(model, pos, rotation, depth_buffer, screen):
         rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], colors[i%4], depth_buffer, screen)
 
         
-tetrahedron = read_obj_file("tree_tri.obj")
-monkey = read_obj_file("tree_tri.obj")
+tetrahedron = read_obj_file("tetrahedron.obj")
+monkey = read_obj_file("suzanne.obj")
 
 angle = 0
 
@@ -229,7 +234,17 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_b]:
+        BACK_FACE_CULLING_ON = True
+        print(f"Back-Face Culling: On")
+    elif keys[pygame.K_o]:
+        BACK_FACE_CULLING_ON = False
+        print(f"Back-Face Culling: Off")
+
     dt = clock.tick(60) / 1000.0
+    print(f"Framerate: {1/dt}")
+
     angle += dt
 
     screen.fill(black)
