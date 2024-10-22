@@ -20,7 +20,9 @@ module primitive_assembler #(
         input logic rstn,
 
         input logic start,
-        output logic ready,
+        input logic i_ready,    // Whether the next stage can take in a new triangle
+
+        output logic o_ready,
         output logic finished,
 
         // Number of triangles to be rendered for this model
@@ -66,7 +68,7 @@ module primitive_assembler #(
     // Check if triangle index buffer was read last clk
     logic r_index_buff_read_last = '0;
     logic r_vertex_read_last = '0;
-    logic r_finished_wait_last = '0;
+    logic [1:0] r_finished = '0;
 
     // Calculate primitive bounding box
     logic [IV_DATAWIDTH-1:0] w_bb_tl[2];
@@ -95,6 +97,39 @@ module primitive_assembler #(
         .valid(w_bb_valid)
     );
 
+    // Output FIFO
+    localparam int unsigned PAPipelineDepth = 3;
+    localparam int PAOutputWidth = 3 * 2 * IV_DATAWIDTH + 3 * IV_DEPTH_FRACBITS + 4 * IV_DATAWIDTH;
+
+    logic r_output_fifo_read_en;
+    logic r_output_fifo_write_en;
+    logic w_output_fifo_empty;
+    logic w_output_fifo_full;
+
+    logic w_output_fifo_dv;
+    logic [PAOutputWidth-1:0] r_output_fifo_data_in;
+    logic [PAOutputWidth-1:0] w_output_fifo_data_out;
+
+    sync_fifo #(
+        .DATAWIDTH(PAOutputWidth),
+        .DEPTH(PAPipelineDepth)
+    ) output_fifo (
+        .rstn(rstn),
+
+        .write_clk(clk),
+        .read_clk(clk),
+        .read_en(r_output_fifo_read_en),
+        .write_en(r_output_fifo_write_en),
+
+        .data_in(r_output_fifo_data_in),
+        .data_out(w_output_fifo_data_out),
+
+        .empty(w_output_fifo_empty),
+        .full(w_output_fifo_full),
+
+        .o_dv(w_output_fifo_dv)
+    );
+
     // State
     pa_state_t current_state = PA_IDLE, next_state = PA_IDLE;
     always_ff @(posedge clk) begin
@@ -109,14 +144,14 @@ module primitive_assembler #(
         next_state = current_state;
 
         finished = 0;
-        ready = 0;
+        o_ready = 0;
 
         case (current_state)
             PA_IDLE: begin
-                if (start) begin
+                if (start & ~w_output_fifo_full) begin
                     next_state = PA_ASSEMBLE;
                 end else begin
-                    ready = 1;
+                    o_ready = 1;
                 end
             end
 
@@ -127,7 +162,7 @@ module primitive_assembler #(
             end
 
             PA_WAIT_LAST: begin
-                if (r_finished_wait_last) begin
+                if (r_finished[1]) begin
                     next_state = PA_DONE;
                 end
             end
@@ -155,12 +190,12 @@ module primitive_assembler #(
             o_vertex_read_en <= '0;
 
             r_vertex_read_last <= '0;
-            r_finished_wait_last <= '0;
 
-            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
-            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
-            foreach (o_vertex_z[i]) o_vertex_z[i] <= '0;
-            o_dv <= '0;
+            // Output FIFO register output
+            r_output_fifo_data_in <= '0;
+            r_output_fifo_write_en <= '0;
+
+            r_finished <= '0;
         end else begin
             case (current_state)
                 PA_IDLE: begin
@@ -187,28 +222,30 @@ module primitive_assembler #(
                     end
 
                     if (r_vertex_read_last) begin
-                        o_vertex_pixel[0][0] <= i_v0[0];
-                        o_vertex_pixel[0][1] <= i_v0[1];
-                        o_vertex_z[0] <= i_v0_z;
+                        r_output_fifo_data_in <= {
+                            i_v0[0],
+                            i_v0[1],
+                            i_v0_z,
 
-                        o_vertex_pixel[1][0] <= i_v1[0];
-                        o_vertex_pixel[1][1] <= i_v1[1];
-                        o_vertex_z[1] <= i_v1_z;
+                            i_v1[0],
+                            i_v1[1],
+                            i_v1_z,
 
-                        o_vertex_pixel[2][0] <= i_v2[0];
-                        o_vertex_pixel[2][1] <= i_v2[1];
-                        o_vertex_z[2] <= i_v2_z;
+                            i_v2[0],
+                            i_v2[1],
+                            i_v2_z,
 
-                        bb_tl[0] <= w_bb_tl[0];
-                        bb_tl[1] <= w_bb_tl[1];
+                            w_bb_tl[0],
+                            w_bb_tl[1],
 
-                        bb_br[0] <= w_bb_br[0];
-                        bb_br[1] <= w_bb_br[1];
+                            w_bb_br[0],
+                            w_bb_br[1]
+                        };
 
                         if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
-                            o_dv <= '1;
+                            r_output_fifo_write_en <= '1;
                         end else begin
-                            o_dv <= '0;
+                            r_output_fifo_write_en <= '0;
                         end
                     end
                 end
@@ -221,33 +258,35 @@ module primitive_assembler #(
                     end
 
                     if (r_vertex_read_last) begin
-                        o_vertex_pixel[0][0] <= i_v0[0];
-                        o_vertex_pixel[0][1] <= i_v0[1];
-                        o_vertex_z[0] <= i_v0_z;
+                        r_output_fifo_data_in <= {
+                            i_v0[0],
+                            i_v0[1],
+                            i_v0_z,
 
-                        o_vertex_pixel[1][0] <= i_v1[0];
-                        o_vertex_pixel[1][1] <= i_v1[1];
-                        o_vertex_z[1] <= i_v1_z;
+                            i_v1[0],
+                            i_v1[1],
+                            i_v1_z,
 
-                        o_vertex_pixel[2][0] <= i_v2[0];
-                        o_vertex_pixel[2][1] <= i_v2[1];
-                        o_vertex_z[2] <= i_v2_z;
+                            i_v2[0],
+                            i_v2[1],
+                            i_v2_z,
 
-                        bb_tl[0] <= w_bb_tl[0];
-                        bb_tl[1] <= w_bb_tl[1];
+                            w_bb_tl[0],
+                            w_bb_tl[1],
 
-                        bb_br[0] <= w_bb_br[0];
-                        bb_br[1] <= w_bb_br[1];
+                            w_bb_br[0],
+                            w_bb_br[1]
+                        };
 
                         if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
-                            o_dv <= '1;
+                            r_output_fifo_write_en <= '1;
                         end else begin
-                            o_dv <= '0;
+                            r_output_fifo_write_en <= '0;
                         end
 
-                        r_finished_wait_last <= '1;
+                        r_finished[0] <= '1;
                     end else begin
-                        r_finished_wait_last <= '0;
+                        r_finished[0] <= '0;
                     end
                 end
 
@@ -259,5 +298,42 @@ module primitive_assembler #(
             endcase
         end
     end
+
+    // Register output data
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
+            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
+            foreach (o_vertex_z[i]) o_vertex_z[i] <= '0;
+        end else begin
+            r_finished[1] <= r_finished[0];
+
+            if (w_output_fifo_dv) begin
+                {
+                    o_vertex_pixel[0][0],
+                    o_vertex_pixel[0][1],
+                    o_vertex_z[0],
+
+                    o_vertex_pixel[1][0],
+                    o_vertex_pixel[1][1],
+                    o_vertex_z[1],
+
+                    o_vertex_pixel[2][0],
+                    o_vertex_pixel[2][1],
+                    o_vertex_z[2],
+
+                    bb_tl[0],
+                    bb_tl[1],
+
+                    bb_br[0],
+                    bb_br[1]
+                } <= w_output_fifo_data_out;
+            end
+        end
+    end
+
+    // Assign output fifo signals
+    assign r_output_fifo_read_en = i_ready & ~w_output_fifo_empty;
+    assign o_dv = i_ready & w_output_fifo_dv;
 
 endmodule
