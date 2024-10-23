@@ -227,9 +227,8 @@ module vertex_post_processor #(
             VPP_IDLE: begin
                 if (i_vertex_dv) begin
                     next_state = VPP_CLIP;
-                end else begin
-                    ready = 1;
                 end
+                ready = 1;
             end
 
             VPP_CLIP: begin

@@ -5,7 +5,7 @@ FIXED_POINT_DIVIDE = ../../../lib/Math/FixedPointDivide/src/fixed_point_divide.s
 MAT_VEC_MUL = ../../../lib/Math/MatVecMul/src/mat_vec_mul.sv
 VERTEX_SHADER = ../../../lib/RenderPipeline/VertexShader/src/vertex_shader.sv
 VERTEX_POST_PROCESSOR = ../../../lib/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv
-FIFO = ../../../lib/Memory/FIFO/src/sync_fifo.sv
+# FIFO = ../../../lib/Memory/FIFO/src/sync_fifo.sv
 
 .PHONY:sim
 sim: waveform.vcd
@@ -33,12 +33,12 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
 
 .stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(FIXED_POINT_DIVIDE) \
-				 $(MAT_VEC_MUL) $(VERTEX_SHADER) $(VERTEX_POST_PROCESSOR) $(FIFO) $(MODULE).cpp
+				 $(MAT_VEC_MUL) $(VERTEX_SHADER) $(VERTEX_POST_PROCESSOR) $(MODULE).cpp
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
 		-cc $(SRC_DIR)/$(MODULE).sv \
-			$(FIXED_POINT_DIVIDE) $(MAT_VEC_MUL) $(VERTEX_SHADER) $(VERTEX_POST_PROCESSOR) $(FIFO) \
+			$(FIXED_POINT_DIVIDE) $(MAT_VEC_MUL) $(VERTEX_SHADER) $(VERTEX_POST_PROCESSOR) \
 		--exe $(MODULE).cpp
 	@touch .stamp.verilate
 

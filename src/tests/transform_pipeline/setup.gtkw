@@ -1,52 +1,96 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Wed Oct 16 15:09:08 2024
+[*] Wed Oct 23 21:46:21 2024
 [*]
 [dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/src/tests/transform_pipeline/waveform.vcd"
-[dumpfile_mtime] "Wed Oct 16 15:03:52 2024"
-[dumpfile_size] 167224
+[dumpfile_mtime] "Wed Oct 23 21:24:30 2024"
+[dumpfile_size] 82487
 [savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/src/tests/transform_pipeline/setup.gtkw"
 [timestart] 0
-[size] 2490 1536
-[pos] -51 -51
-*-7.000000 300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 2560 1600
+[pos] -3841 -1
+*-4.591327 119 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.tb_transform_pipeline.
 [treeopen] TOP.tb_transform_pipeline.vertex_post_processor_inst.
-[sst_width] 233
-[signals_width] 214
+[treeopen] TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_x_inst.
+[treeopen] TOP.tb_transform_pipeline.vertex_shader_inst.
+[treeopen] TOP.tb_transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.
+[sst_width] 278
+[signals_width] 260
 [sst_expanded] 1
 [sst_vpaned_height] 992
 @28
 TOP.tb_transform_pipeline.vertex_post_processor_inst.clk
+TOP.tb_transform_pipeline.vertex_shader_inst.rstn
+TOP.tb_transform_pipeline.vertex_shader_inst.i_mvp_dv
+TOP.tb_transform_pipeline.vertex_shader_inst.i_enable
+@22
+TOP.tb_transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.i_dv_r[3:0]
+@28
+TOP.tb_transform_pipeline.vertex_shader_inst.o_ready
+@22
+TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex(0)[23:0]
+TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex(1)[23:0]
+TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex(2)[23:0]
+@28
+TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex_dv
+TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex_last
+@22
+TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(0)[23:0]
+TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(1)[23:0]
+TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(2)[23:0]
+TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(3)[23:0]
+@28
+[color] 2
+TOP.tb_transform_pipeline.vertex_post_processor_inst.ready
 @420
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex(0)[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex(1)[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex(2)[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex(3)[23:0]
+@29
+[color] 2
+TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex_dv
+@420
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.r_clip_x[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.r_clip_y[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.r_clip_z[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.r_clip_w[23:0]
 @28
-TOP.tb_transform_pipeline.vertex_post_processor_inst.i_vertex_dv
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_start
 @420
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_x[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_y[23:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_z[23:0]
 @28
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_x_valid
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_y_valid
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.w_ndc_z_valid
-TOP.tb_transform_pipeline.vertex_shader_inst.rstn
 @420
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.o_vertex_pixel(0)[11:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.o_vertex_pixel(1)[11:0]
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.o_vertex_z[11:0]
 @28
+[color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_x_inst.busy
-@23
-TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_x_inst.Q[23:0]
 [pattern_trace] 1
 [pattern_trace] 0

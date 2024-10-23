@@ -64,11 +64,12 @@ module primitive_assembler #(
 
     logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] r_num_triangles = '0;
     logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] r_triangle_cnt = '0;
+    logic r_valid_triangle_output = '0;
 
     // Check if triangle index buffer was read last clk
     logic r_index_buff_read_last = '0;
     logic r_vertex_read_last = '0;
-    logic [1:0] r_finished = '0;
+    logic r_finished = '0;
 
     // Calculate primitive bounding box
     logic [IV_DATAWIDTH-1:0] w_bb_tl[2];
@@ -95,39 +96,6 @@ module primitive_assembler #(
         .max_y(w_bb_br[1]),
 
         .valid(w_bb_valid)
-    );
-
-    // Output FIFO
-    localparam int unsigned PAPipelineDepth = 3;
-    localparam int PAOutputWidth = 3 * 2 * IV_DATAWIDTH + 3 * IV_DEPTH_FRACBITS + 4 * IV_DATAWIDTH;
-
-    logic r_output_fifo_read_en;
-    logic r_output_fifo_write_en;
-    logic w_output_fifo_empty;
-    logic w_output_fifo_full;
-
-    logic w_output_fifo_dv;
-    logic [PAOutputWidth-1:0] r_output_fifo_data_in;
-    logic [PAOutputWidth-1:0] w_output_fifo_data_out;
-
-    sync_fifo #(
-        .DATAWIDTH(PAOutputWidth),
-        .DEPTH(PAPipelineDepth)
-    ) output_fifo (
-        .rstn(rstn),
-
-        .write_clk(clk),
-        .read_clk(clk),
-        .read_en(r_output_fifo_read_en),
-        .write_en(r_output_fifo_write_en),
-
-        .data_in(r_output_fifo_data_in),
-        .data_out(w_output_fifo_data_out),
-
-        .empty(w_output_fifo_empty),
-        .full(w_output_fifo_full),
-
-        .o_dv(w_output_fifo_dv)
     );
 
     // State
@@ -162,7 +130,7 @@ module primitive_assembler #(
             end
 
             PA_WAIT_LAST: begin
-                if (r_finished[1]) begin
+                if (r_finished) begin
                     next_state = PA_DONE;
                 end
             end
@@ -207,86 +175,60 @@ module primitive_assembler #(
                 end
 
                 PA_ASSEMBLE: begin
-                    r_triangle_cnt <= r_triangle_cnt + 1;
-                    o_index_buff_addr <= r_triangle_cnt;
-                    o_index_buff_read_en <= '1;
-                    r_index_buff_read_last <= '1;
+                    if (i_ready) begin
+                        r_triangle_cnt <= r_triangle_cnt + 1;
+                        o_index_buff_addr <= r_triangle_cnt;
+                        o_index_buff_read_en <= '1;
+                        r_index_buff_read_last <= '1;
 
-                    if (r_index_buff_read_last) begin
-                        foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
-                        o_vertex_read_en <= '1;
-                        r_vertex_read_last <= '1;
-                    end else begin
-                        r_vertex_read_last <= '0;
-                        o_vertex_read_en <= '0;
-                    end
-
-                    if (r_vertex_read_last) begin
-                        r_output_fifo_data_in <= {
-                            i_v0[0],
-                            i_v0[1],
-                            i_v0_z,
-
-                            i_v1[0],
-                            i_v1[1],
-                            i_v1_z,
-
-                            i_v2[0],
-                            i_v2[1],
-                            i_v2_z,
-
-                            w_bb_tl[0],
-                            w_bb_tl[1],
-
-                            w_bb_br[0],
-                            w_bb_br[1]
-                        };
-
-                        if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
-                            r_output_fifo_write_en <= '1;
+                        if (r_index_buff_read_last) begin
+                            foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
+                            o_vertex_read_en <= '1;
+                            r_vertex_read_last <= '1;
                         end else begin
-                            r_output_fifo_write_en <= '0;
+                            r_vertex_read_last <= '0;
+                            o_vertex_read_en <= '0;
                         end
+
+                        if (r_vertex_read_last) begin
+                            if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
+                                r_valid_triangle_output <= '1;
+                            end else begin
+                                r_valid_triangle_output <= '0;
+                            end
+                        end else begin
+                            r_valid_triangle_output <= '0;
+                        end
+                    end else begin
+                        o_index_buff_read_en <= '0;
+                        r_index_buff_read_last <= '0;
+
+                        o_vertex_read_en <= '0;
+                        r_vertex_read_last <= '0;
                     end
                 end
 
                 PA_WAIT_LAST: begin
-                    if (r_index_buff_read_last) begin
-                        foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
-                        o_vertex_read_en <= '0;
-                        r_vertex_read_last <= '1;
-                    end
-
-                    if (r_vertex_read_last) begin
-                        r_output_fifo_data_in <= {
-                            i_v0[0],
-                            i_v0[1],
-                            i_v0_z,
-
-                            i_v1[0],
-                            i_v1[1],
-                            i_v1_z,
-
-                            i_v2[0],
-                            i_v2[1],
-                            i_v2_z,
-
-                            w_bb_tl[0],
-                            w_bb_tl[1],
-
-                            w_bb_br[0],
-                            w_bb_br[1]
-                        };
-
-                        if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
-                            r_output_fifo_write_en <= '1;
-                        end else begin
-                            r_output_fifo_write_en <= '0;
+                    if (i_ready) begin
+                        if (r_index_buff_read_last) begin
+                            foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
+                            o_vertex_read_en <= '1;
+                            r_vertex_read_last <= '1;
                         end
 
-                        r_finished[0] <= '1;
+                        if (r_vertex_read_last) begin
+                            r_valid_triangle_output <= '1;
+                            r_finished <= '1;
+                        end else begin
+                            r_valid_triangle_output <= '0;
+                            r_finished <= '0;
+                        end
                     end else begin
-                        r_finished[0] <= '0;
+                        o_vertex_read_en <= '0;
+                        r_vertex_read_last <= '0;
+
+                        r_valid_triangle_output <= '0;
+                        r_finished <= '0;
                     end
                 end
 
@@ -306,34 +248,25 @@ module primitive_assembler #(
             foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
             foreach (o_vertex_z[i]) o_vertex_z[i] <= '0;
         end else begin
-            r_finished[1] <= r_finished[0];
+            if (r_valid_triangle_output) begin
+                o_vertex_pixel[0][0] <= i_v0[0];
+                o_vertex_pixel[0][1] <= i_v0[1];
+                o_vertex_z[0] <= i_v0_z;
 
-            if (w_output_fifo_dv) begin
-                {
-                    o_vertex_pixel[0][0],
-                    o_vertex_pixel[0][1],
-                    o_vertex_z[0],
+                o_vertex_pixel[1][0] <= i_v1[0];
+                o_vertex_pixel[1][1] <= i_v1[1];
+                o_vertex_z[1] <= i_v1_z;
 
-                    o_vertex_pixel[1][0],
-                    o_vertex_pixel[1][1],
-                    o_vertex_z[1],
+                o_vertex_pixel[2][0] <= i_v2[0];
+                o_vertex_pixel[2][1] <= i_v2[1];
+                o_vertex_z[2] <= i_v2_z;
 
-                    o_vertex_pixel[2][0],
-                    o_vertex_pixel[2][1],
-                    o_vertex_z[2],
+                bb_tl[0] <= w_bb_tl[0];
+                bb_tl[1] <= w_bb_tl[1];
 
-                    bb_tl[0],
-                    bb_tl[1],
-
-                    bb_br[0],
-                    bb_br[1]
-                } <= w_output_fifo_data_out;
+                bb_br[0] <= w_bb_br[0];
+                bb_br[1] <= w_bb_br[1];
             end
         end
     end
-
-    // Assign output fifo signals
-    assign r_output_fifo_read_en = i_ready & ~w_output_fifo_empty;
-    assign o_dv = i_ready & w_output_fifo_dv;
-
 endmodule

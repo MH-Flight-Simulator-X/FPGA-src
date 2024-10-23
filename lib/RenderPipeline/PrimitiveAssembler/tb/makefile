@@ -1,6 +1,7 @@
 SRC_DIR = ../src
 MODULE=primitive_assembler
 BBOX_FILE = ../../Rasterizer/BoundingBox/src/bounding_box.sv
+FIFO_FILE = ../../../Memory/FIFO/src/sync_fifo.sv
 
 .PHONY:sim
 sim: waveform.vcd
@@ -27,11 +28,11 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
 
-.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(BBOX_FILE) tb_$(MODULE).cpp
+.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(BBOX_FILE) $(FIFO_FILE) tb_$(MODULE).cpp
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-		-cc $(SRC_DIR)/$(MODULE).sv $(BBOX_FILE) \
+		-cc $(SRC_DIR)/$(MODULE).sv $(BBOX_FILE) $(FIFO_FILE) \
 		--exe tb_$(MODULE).cpp
 	@touch .stamp.verilate
 

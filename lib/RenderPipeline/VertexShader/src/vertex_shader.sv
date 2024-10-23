@@ -17,6 +17,10 @@ module vertex_shader #(
         output logic o_ready,    // Ready to process vertexes (i.e. mvp matrix set)
         output logic o_finished,
 
+        // Whether or not to enable the pipeline
+        // Will halt if i_enable = 0
+        input logic i_enable,
+
         // Matrix Data
         input logic signed [DATAWIDTH-1:0] i_mvp_mat[4][4],
         input logic i_mvp_dv,
@@ -41,12 +45,15 @@ module vertex_shader #(
     logic r_mvp_valid = 1'b0;
 
     // Input and output signals for matrix vector multiplier
-    logic signed [DATAWIDTH-1:0] r_mat_vec_x[4];
-    logic r_mat_vec_i_dv = 1'b0;
+    logic signed [DATAWIDTH-1:0] r_vertex[4];
+    logic r_vertex_dv = 1'b0;
 
     // Shift register for the vertex_last -- will set state to VERTEX_SHADER_FINISHED when
     // this input vertex is finnished processing
     logic [4:0] vertex_last_finished = '0;
+
+    logic signed [DATAWIDTH-1:0] w_transformed_vertex[4];
+    logic w_transformed_vertex_dv;
 
     // Matrix Vector Multiplication Unit Instance
     mat_vec_mul #(
@@ -56,12 +63,14 @@ module vertex_shader #(
         .clk(clk),
         .rstn(rstn),
 
-        .A(r_mvp_mat),
-        .x(r_mat_vec_x),
-        .i_dv(r_mat_vec_i_dv),
+        .i_enable(i_enable),
 
-        .y(o_vertex),
-        .o_dv(o_vertex_dv)
+        .A(r_mvp_mat),
+        .x(r_vertex),
+        .i_dv(r_vertex_dv),
+
+        .y(w_transformed_vertex),
+        .o_dv(w_transformed_vertex_dv)
     );
 
     // Set input matrix registers
@@ -74,18 +83,11 @@ module vertex_shader #(
             foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
             r_mvp_valid <= 1'b0;
 
-            r_mat_vec_x[0] <= '0;
-            r_mat_vec_x[1] <= '0;
-            r_mat_vec_x[2] <= '0;
-            r_mat_vec_x[3] <= '0;
+            r_vertex[0] <= '0;
+            r_vertex[1] <= '0;
+            r_vertex[2] <= '0;
+            r_vertex[3] <= '0;
         end else begin
-            // Propagate finished signal
-            vertex_last_finished[0] <= i_vertex_last;
-            vertex_last_finished[1] <= vertex_last_finished[0];
-            vertex_last_finished[2] <= vertex_last_finished[1];
-            vertex_last_finished[3] <= vertex_last_finished[2];
-            vertex_last_finished[4] <= vertex_last_finished[3];
-
             // Set MVP Matrix
             if (current_state == VERTEX_SHADER_FINISHED) begin
                 foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
@@ -95,12 +97,22 @@ module vertex_shader #(
                 r_mvp_valid <= 1'b1;
             end
 
-            r_mat_vec_i_dv <= i_vertex_dv;
-            if (i_vertex_dv) begin
-                r_mat_vec_x[0] <= i_vertex[0];
-                r_mat_vec_x[1] <= i_vertex[1];
-                r_mat_vec_x[2] <= i_vertex[2];
-                r_mat_vec_x[3] <= FixedPointOne;
+            if (i_enable) begin
+                // Propagate finished signal
+                vertex_last_finished[0] <= i_vertex_last;
+                vertex_last_finished[1] <= vertex_last_finished[0];
+                vertex_last_finished[2] <= vertex_last_finished[1];
+                vertex_last_finished[3] <= vertex_last_finished[2];
+                vertex_last_finished[4] <= vertex_last_finished[3];
+
+
+                r_vertex_dv <= i_vertex_dv;
+                if (i_vertex_dv) begin
+                    r_vertex[0] <= i_vertex[0];
+                    r_vertex[1] <= i_vertex[1];
+                    r_vertex[2] <= i_vertex[2];
+                    r_vertex[3] <= FixedPointOne;
+                end
             end
         end
     end
@@ -138,7 +150,9 @@ module vertex_shader #(
                     next_state = VERTEX_SHADER_COMPUTING;
                 end
 
-                o_ready = 1'b1;
+                if (i_enable) begin
+                    o_ready = 1'b1;
+                end
             end
 
             VERTEX_SHADER_FINISHED: begin
@@ -152,5 +166,8 @@ module vertex_shader #(
             end
         endcase
     end
+
+    assign o_vertex = w_transformed_vertex;
+    assign o_vertex_dv = w_transformed_vertex_dv & i_enable;
 
 endmodule

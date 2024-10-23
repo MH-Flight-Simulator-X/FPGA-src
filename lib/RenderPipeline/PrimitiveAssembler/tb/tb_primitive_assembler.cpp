@@ -173,11 +173,12 @@ int main(int argc, char** argv) {
         if (dut->clk == 1) {
             posedge_cnt++;
             dut->start = 0;
+            dut->i_ready = 1;
 
             assign_input_index(dut);
             assign_input_vertex(dut);
 
-            if (dut->ready) {
+            if (dut->o_ready) {
                 dut->i_num_triangles = index_data_size;
                 dut->start = 1;
             }
