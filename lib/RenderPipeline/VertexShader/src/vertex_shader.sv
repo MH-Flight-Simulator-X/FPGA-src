@@ -104,6 +104,7 @@ module vertex_shader #(
                 vertex_last_finished[2] <= vertex_last_finished[1];
                 vertex_last_finished[3] <= vertex_last_finished[2];
                 vertex_last_finished[4] <= vertex_last_finished[3];
+                o_finished <= vertex_last_finished[4];
 
 
                 r_vertex_dv <= i_vertex_dv;
@@ -131,7 +132,6 @@ module vertex_shader #(
     end
 
     always_comb begin
-        o_finished = 1'b0;
         o_ready = 1'b0;
 
         case (current_state)
@@ -157,8 +157,6 @@ module vertex_shader #(
 
             VERTEX_SHADER_FINISHED: begin
                 next_state = VERTEX_SHADER_IDLE;
-
-                o_finished = 1'b1;
             end
 
             default: begin

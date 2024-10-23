@@ -127,7 +127,7 @@ module tb_transform_pipeline #(
                 r_vpp_last_vertex <= w_vs_finished;
             end else begin
                 r_vpp_i_vertex_dv <= '0;
-                r_vpp_last_vertex <= '0;
+                // r_vpp_last_vertex <= '0;
             end
 
             if (w_vpp_done) begin
