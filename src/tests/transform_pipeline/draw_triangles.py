@@ -3,8 +3,9 @@ import pygame
 import sys
 
 # Define screen dimensions
-SCREEN_WIDTH = 320 * 4
-SCREEN_HEIGHT = 320 * 4
+SCREEN_SCALE = 2
+SCREEN_WIDTH = 320 * SCREEN_SCALE
+SCREEN_HEIGHT = 320 * SCREEN_SCALE
 BACKGROUND_COLOR = (0, 0, 0)
 
 # Some nice pastel colors
@@ -58,11 +59,11 @@ def draw_faces(screen, vertices, faces):
             v1_x, v1_y, _ = vertices[face[i] - 1]
             v2_x, v2_y, _ = vertices[face[(i + 1) % 3] - 1]
             
-            v1_x *= 4
-            v1_y *= 4
-
-            v2_x *= 4
-            v2_y *= 4
+            v1_x = v1_x * SCREEN_SCALE
+            v1_y = v1_y * SCREEN_SCALE
+                        
+            v2_x = v2_x * SCREEN_SCALE
+            v2_y = v2_y * SCREEN_SCALE
 
             pygame.draw.line(screen, LINE_COLORS[i % len(LINE_COLORS)], (v1_x, v1_y), (v2_x, v2_y), 1)
 
