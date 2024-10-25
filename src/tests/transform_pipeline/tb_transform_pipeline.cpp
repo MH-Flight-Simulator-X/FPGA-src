@@ -238,7 +238,7 @@ int main(int argc, char** argv) {
                 output_vertexes.push_back(glm::vec3(float(vertex_pixel[0]), float(vertex_pixel[1]), vertex_depth));
             }
             if (dut->finished) {
-                printf("Finished!\n");
+                printf("Finished! (%ld)\n", posedge_cnt);
                 break;
             }
         }

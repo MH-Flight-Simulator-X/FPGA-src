@@ -21,6 +21,10 @@ obj_dir/
 *.stamp.verilate
 *.vcd
 
+# Vivado sim
+sim_files/
+my_project/
+
 # LaTeX
 *.out
 *.pygtex

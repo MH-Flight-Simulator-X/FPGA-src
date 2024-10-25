@@ -1,5 +1,5 @@
-set design_name "top_MH_FPGA"
-set board_name "Arty-A7"
+set design_name "tb_bram_qp"
+set board_name "Arty-A7-Memtest"
 set fpga_part "xc7a35ticsg324-1L"
 
 set lib_dir [file normalize "./../lib"]
@@ -10,19 +10,22 @@ set origin_dir [file normalize "./../"]
 file mkdir logs
 
 # Read lib files
-read_verilog -sv "${lib_dir}/Memory/BRAM_DP/src/bram_dp.sv"
-read_verilog -sv "${lib_dir}/Memory/CLUT/src/clut.sv"
-read_verilog -sv "${lib_dir}/Memory/Framebuffer/src/framebuffer.sv"
-read_verilog -sv "${lib_dir}/Clock/clock_480p.sv"
-read_verilog -sv "${lib_dir}/Display/projectf_display_480p.sv"
-read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv"
-read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/src/rasterizer.sv"
+# read_verilog -sv "${lib_dir}/Memory/BRAM_DP/src/bram_dp.sv"
+# read_verilog -sv "${lib_dir}/Memory/CLUT/src/clut.sv"
+# read_verilog -sv "${lib_dir}/Memory/Framebuffer/src/framebuffer.sv"
+# read_verilog -sv "${lib_dir}/Clock/clock_480p.sv"
+# read_verilog -sv "${lib_dir}/Display/projectf_display_480p.sv"
+# read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv"
+# read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/src/rasterizer.sv"
 
 # Read src files
-add_files "${src_dir}/image.mem"
-add_files "${src_dir}/palette.mem"
-add_files "${src_dir}/reciprocal.mem"
-read_verilog -sv "${src_dir}/${design_name}.sv"
+# add_files "${src_dir}/image.mem"
+# add_files "${src_dir}/palette.mem"
+# add_files "${src_dir}/reciprocal.mem"
+# read_verilog -sv "${src_dir}/${design_name}.sv"
+
+read_verilog -sv "${lib_dir}/Memory/BRAM_QP/src/bram_qp.sv"
+read_verilog -sv "${src_dir}/tests/bram_qp/tb_bram_qp.sv"
 
 # Read constraints
 read_xdc "${origin_dir}/Constraints/${board_name}.xdc"
