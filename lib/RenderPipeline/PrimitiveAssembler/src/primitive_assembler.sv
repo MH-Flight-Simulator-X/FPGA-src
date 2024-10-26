@@ -14,7 +14,8 @@ module primitive_assembler #(
         parameter logic signed [IV_DATAWIDTH-1:0] SCREEN_WIDTH = 320,
         parameter logic signed [IV_DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
 
-        parameter unsigned MAX_TRIANGLE_COUNT = 2048
+        parameter unsigned MAX_TRIANGLE_COUNT = 2048,
+        parameter unsigned MAX_VERTEX_COUNT = 2048
     ) (
         input logic clk,
         input logic rstn,
@@ -32,10 +33,10 @@ module primitive_assembler #(
         output logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] o_index_buff_addr,
         output logic o_index_buff_read_en,
 
-        input logic [$clog2(3 * MAX_TRIANGLE_COUNT)-1:0] i_vertex_idxs[3],
+        input logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_vertex_idxs[3],
 
         // Vertex Transform Buffer
-        output logic [$clog2(3 * MAX_TRIANGLE_COUNT)-1:0] o_vertex_addr[3], // Do 3 reads at a time
+        output logic [$clog2(MAX_VERTEX_COUNT)-1:0] o_vertex_addr[3], // Do 3 reads at a time
         output logic o_vertex_read_en,
 
         input logic signed [IV_DATAWIDTH - 1:0] i_v0[2],
@@ -49,7 +50,6 @@ module primitive_assembler #(
         input logic signed [IV_DATAWIDTH - 1:0] i_v2[2],
         input logic signed [IV_DEPTH_FRACBITS-1:0] i_v2_z,
         input logic i_v2_invalid,                                   // Vertex invalid flag
-                                                                    // if 1, don't render primitive
 
         // Output primitive
         output logic signed [IV_DATAWIDTH-1:0] o_vertex_pixel[3][2],

@@ -6,6 +6,9 @@ module tb_transform_pipeline #(
     parameter unsigned OUTPUT_VERTEX_DATAWIDTH = 12,
     parameter unsigned OUTPUT_DEPTH_FRACBITS = 12,
 
+    parameter unsigned MAX_TRIANGLE_COUNT = 2048,
+    parameter unsigned MAX_VERTEX_COUNT = 2048,
+
     parameter unsigned SCREEN_WIDTH = 320,
     parameter unsigned SCREEN_HEIGHT = 320,
 
@@ -15,6 +18,7 @@ module tb_transform_pipeline #(
     input logic clk,
     input logic rstn,
 
+    // Input data vertex shader
     input logic signed [INPUT_VERTEX_DATAWIDTH-1:0] i_mvp_matrix[4][4],
     input logic i_mvp_dv,
 
@@ -22,24 +26,32 @@ module tb_transform_pipeline #(
     input logic i_vertex_dv,
     input logic i_vertex_last,
 
-    output logic signed [INPUT_VERTEX_DATAWIDTH-1:0] o_vs_vertex[4],
-    output logic o_vs_vertex_dv,
+    // Output signal transform pipeline
+    // Ready to recieve next vertex
+    output logic vertex_ready,
 
-    output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] o_vertex_pixel[2],
-    output logic signed [OUTPUT_DEPTH_FRACBITS-1:0] o_vertex_z,
-    output logic o_vertex_dv,
+    // Input data primitive assembler
+    input logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] i_num_triangels,
 
-    output logic finished,
-    output logic vpp_error,
+    // Primitive assembler index buffer signals and data
+    output logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] o_index_buff_addr,
+    output logic o_index_buffer_read_en,
 
-    output logic ready
+    input logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_vertex_idxs[3],
+
+    // Output data primitive assembler
+    output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] o_vertex_pixel[3][2],
+    output logic unsigned [OUTPUT_DEPTH_FRACBITS-1:0] o_vertex_z[3],
+
+    output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] bb_tl[2],
+    output logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] bb_br[2],
+    output logic o_triangle_dv,
+    output logic finished
     );
 
     // Vertex Shader
-    /* verilator lint_off UNUSED */
     logic w_vs_ready;
     logic w_vs_finished;
-    /* verilator lint_on UNUSED */
     logic r_vs_enable;
 
     logic signed [INPUT_VERTEX_DATAWIDTH-1:0] w_vs_o_vertex[4];
@@ -71,14 +83,15 @@ module tb_transform_pipeline #(
     logic signed [INPUT_VERTEX_DATAWIDTH-1:0] r_vpp_i_vertex[4];
     logic r_vpp_i_vertex_dv;
 
-    logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] w_vertex_pixel[2];
-    logic signed [OUTPUT_DEPTH_FRACBITS-1:0] w_vertex_z;
+    logic signed [OUTPUT_VERTEX_DATAWIDTH-1:0] w_vpp_pixel[2];
+    logic signed [OUTPUT_DEPTH_FRACBITS-1:0] w_vpp_z;
     logic w_vpp_done;
 
     logic w_vpp_o_vertex_invalid;
     logic w_vpp_ready;
 
     logic r_vpp_last_vertex = '0;
+    logic r_vpp_finished = '0;
 
     vertex_post_processor #(
         .IV_DATAWIDTH(INPUT_VERTEX_DATAWIDTH),
@@ -99,26 +112,128 @@ module tb_transform_pipeline #(
         .i_vertex(r_vpp_i_vertex),
         .i_vertex_dv(r_vpp_i_vertex_dv),
 
-        .o_vertex_pixel(w_vertex_pixel),
-        .o_vertex_z(w_vertex_z),
+        .o_vertex_pixel(w_vpp_pixel),
+        .o_vertex_z(w_vpp_z),
 
         .invalid(w_vpp_o_vertex_invalid),
         .done(w_vpp_done)
     );
 
+    // G-Buffer for storing the VPP Data, and loading for primitive assembler
+    logic w_gbuff_ready;
+    logic r_gbuff_en;
+    logic r_gbuff_rw;
+    logic [$clog2(MAX_NUM_VERTEXES)-1:0] r_gbuff_addr_write;
+    logic [$clog2(MAX_NUM_VERTEXES)-1:0] r_gbuff_addr_read_port0;
+    logic [$clog2(MAX_NUM_VERTEXES)-1:0] r_gbuff_addr_read_port1;
+    logic [$clog2(MAX_NUM_VERTEXES)-1:0] r_gbuff_addr_read_port2;
+
+    logic [3 * OUTPUT_VERTEX_DATAWIDTH-1:0] r_gbuff_data_write;
+    logic [3 * OUTPUT_VERTEX_DATAWIDTH-1:0] w_gbuff_data_read_port0;
+    logic [3 * OUTPUT_VERTEX_DATAWIDTH-1:0] w_gbuff_data_read_port1;
+    logic [3 * OUTPUT_VERTEX_DATAWIDTH-1:0] w_gbuff_data_read_port2;
+    logic w_gbuff_dv;
+
+    g_buffer #(
+        .VERTEX_DATAWIDTH(OUTPUT_VERTEX_DATAWIDTH),
+        .MAX_NUM_VERTEXES(MAX_TRIANGLE_COUNT)
+    ) g_buffer_inst (
+        .clk(clk),
+        .rstn(rstn),
+
+        .ready(w_gbuff_ready),
+        .en(w_gbuff_en),
+        .rw(w_gbuff_rw),
+
+        .addr_write(r_gbuff_addr_write),
+        .addr_read_port0(r_gbuff_addr_read_port0),
+        .addr_read_port1(r_gbuff_addr_read_port1),
+        .addr_read_port2(r_gbuff_addr_read_port2),
+
+        .data_write(r_gbuff_data_write),
+        .data_read_port0(w_gbuff_data_read_port0),
+        .data_read_port1(w_gbuff_data_read_port1),
+        .data_read_port2(w_gbuff_data_read_port2),
+        .dv(w_gbuff_dv)
+    );
+
+    // Primitive assembler
+    logic r_pa_start;
+    logic r_pa_i_ready;     // Whether or not the next state, ie the rasterizer frontend, is ready
+    logic w_pa_o_ready;
+    logic w_pa_finished;
+
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] w_pa_vertex_addr[3];
+    logic w_pa_vertex_read_en;
+
+    logic w_pa_i_v0[2]; logic w_pa_i_v1[2]; logic w_pa_i_v2[2];
+    logic w_pa_i_v0_z;  logic w_pa_i_v1_z;  logic w_pa_i_v2_z;
+
+    // TODO: Add vertex invalid signal to gbuffer and propagate it to PA
+    primitive_assembler #(
+        .IV_DATAWIDTH(OUTPUT_VERTEX_DATAWIDTH),
+        .IV_DEPTH_FRACBITS(OUTPUT_DEPTH_FRACBITS),
+        .SCREEN_WIDTH(SCREEN_WIDTH),
+        .SCREEN_HEIHGT(SCREEN_HEIGHT),
+        .MAX_TRIANGLE_COUNT(MAX_TRIANGLE_COUNT),
+        .MAX_VERTEX_COUNT(MAX_VERTEX_COUNT)
+    ) primitive_assembler_inst (
+        .clk(clk),
+        .rstn(rstn),
+
+        .start(w_pa_start),
+        .i_ready(w_pa_i_ready),
+        .o_ready(w_pa_o_ready),
+        .finished(w_pa_finished),
+
+        .i_num_triangles(i_num_triangles),
+        .o_index_buff_addr(o_index_buff_addr),
+        .o_index_buff_read_end(o_index_buff_read_end),
+        .i_vertex_idxs(i_vertex_idxs),
+
+        .o_vertex_addr(w_pa_vertex_addr),
+        .o_vertex_read_en(w_pa_vertex_read_en),
+
+        .i_v0(w_pa_i_v0),
+        .i_v0_z(w_pa_i_v0_z),
+        .i_v0_invalid(0),
+        .i_v1(w_pa_i_v1),
+        .i_v1_z(w_pa_i_v1_z),
+        .i_v1_invalid(0),
+        .i_v2(w_pa_i_v2),
+        .i_v2_z(w_pa_i_v2_z),
+        .i_v2_invalid(0),
+
+        .o_vertex_pixel(o_vertex_pixel),
+        .o_vertex_z(o_vertex_z),
+        .bb_tl(bb_tl),
+        .bb_br(bb_br),
+        .o_dv(o_triangle_dv)
+    );
+
     // Assign Vertex Post-Proccessor output to output
     always_ff @(posedge clk) begin
         if (~rstn) begin
+            // VPP
             foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= '0;
             r_vpp_i_vertex_dv <= '0;
             r_vpp_last_vertex <= '0;
-
-            o_vertex_pixel[0] <= '0;
-            o_vertex_pixel[1] <= '0;
-            o_vertex_z <= '0;
-            o_vertex_dv <= '0;
-
             vpp_error <= 0;
+            r_vpp_last_vertex <= '0;
+            r_vpp_finished <= '0;
+
+            // GBuff
+            r_gbuff_rw <= '0;
+            r_gbuff_en <= '0;
+            r_gbuff_addr_write <= '0;
+
+            r_gbuff_addr_write <= '0;
+            r_gbuff_addr_read_port0 <= '0;
+            r_gbuff_addr_read_port1 <= '0;
+            r_gbuff_addr_read_port2 <= '0;
+
+            r_gbuff_data_write <= '0;
+
         end else begin
             if (w_vs_o_vertex_dv) begin
                 foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= w_vs_o_vertex[i];
@@ -127,42 +242,36 @@ module tb_transform_pipeline #(
                 r_vpp_last_vertex <= w_vs_finished;
             end else begin
                 r_vpp_i_vertex_dv <= '0;
-                // r_vpp_last_vertex <= '0;
             end
 
             if (w_vpp_done) begin
                 if (!w_vpp_o_vertex_invalid) begin
-                    o_vertex_pixel[0] <= w_vertex_pixel[0];
-                    o_vertex_pixel[1] <= w_vertex_pixel[1];
-                    o_vertex_z <= w_vertex_z;
+                    // Increment the gbuff addr
+                    r_gbuff_addr_write <= r_gbuff_addr_write + 1;
 
-                    vpp_error <= 0;
+                    // Write VPP data to gbuff
+                    r_gbuff_rw <= '1;
+                    r_gbuff_en <= '1;
+                    r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_z};
                 end else begin
-                    vpp_error <= 1;
+                    r_gbuff_rw <= '0;
                 end
-                o_vertex_dv <= 1;
 
+                // If this was the last vertex, latch vpp finished signal
                 if (r_vpp_last_vertex) begin
-                    finished <= '1;
-                end else begin
-                    finished <= '0;
+                    r_vpp_finished <= '1;
                 end
-            end else begin
-                o_vertex_dv <= 0;
-                vpp_error <= 0;
-                finished <= '0;
+            end else if (r_vpp_finished) begin
+                // Start running primitive assembler as vpp is finished
+                r_gbuff_rw <= '0;   // Will only be doing read operations on buffer
+
+                // Assign primitive assembler signals
+
             end
         end
     end
 
     assign r_vs_enable = w_vpp_ready;
-    assign ready = w_vs_ready;
-
-    // Debug
-    assign o_vs_vertex[0] = r_vpp_i_vertex[0];
-    assign o_vs_vertex[1] = r_vpp_i_vertex[1];
-    assign o_vs_vertex[2] = r_vpp_i_vertex[2];
-    assign o_vs_vertex[3] = r_vpp_i_vertex[3];
-    assign o_vs_vertex_dv = r_vpp_i_vertex_dv;
+    assign vertex_ready = w_vs_ready;
 
 endmodule

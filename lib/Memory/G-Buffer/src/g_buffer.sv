@@ -8,8 +8,8 @@ typedef enum logic [1:0] {
 } g_buffer_state_t;
 
 module g_buffer #(
-    parameter unsigned VERTEX_DATAWIDTH = 12,   // Per x, y, z
-    parameter unsigned MAX_NUM_VERTEXES = 1024
+    parameter unsigned VERTEX_DATAWIDTH = 12,   // For each x, y, z
+    parameter unsigned MAX_VERTEX_COUNT = 1024
     ) (
     input logic clk,
     input logic rstn,
@@ -19,10 +19,10 @@ module g_buffer #(
     input logic en,
     input logic rw,
 
-    input logic [$clog2(MAX_NUM_VERTEXES)-1:0] addr_write,
-    input logic [$clog2(MAX_NUM_VERTEXES)-1:0] addr_read_port0,
-    input logic [$clog2(MAX_NUM_VERTEXES)-1:0] addr_read_port1,
-    input logic [$clog2(MAX_NUM_VERTEXES)-1:0] addr_read_port2,
+    input logic [$clog2(MAX_VERTEX_COUNT)-1:0] addr_write,
+    input logic [$clog2(MAX_VERTEX_COUNT)-1:0] addr_read_port0,
+    input logic [$clog2(MAX_VERTEX_COUNT)-1:0] addr_read_port1,
+    input logic [$clog2(MAX_VERTEX_COUNT)-1:0] addr_read_port2,
 
     input logic  [3 * VERTEX_DATAWIDTH-1:0] data_write,
     output logic [3 * VERTEX_DATAWIDTH-1:0] data_read_port0,
@@ -32,13 +32,13 @@ module g_buffer #(
     );
 
     // Choose between addresses
-    logic [$clog2(MAX_NUM_VERTEXES)-1:0] w_current_addr;
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] w_current_addr;
     logic [3 * VERTEX_DATAWIDTH-1:0] r_read_data[3];
     logic [3 * VERTEX_DATAWIDTH-1:0] w_bram_data_out;
 
     bram_sp #(
         .WIDTH(3 * VERTEX_DATAWIDTH),
-        .DEPTH(MAX_NUM_VERTEXES)
+        .DEPTH(MAX_VERTEX_COUNT)
     ) bram_sp_inst (
         .clk(clk),
         .en(en),

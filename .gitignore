@@ -41,3 +41,7 @@ my_project/
 # Utils
 Utils/img/*.mem
 Utils/img/*.png
+
+# For testing
+*.vert
+*.face
