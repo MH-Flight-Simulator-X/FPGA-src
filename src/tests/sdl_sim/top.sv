@@ -21,12 +21,14 @@ module top (
     output logic signed [VERTEX_WIDTH-1:0] edge_delta[3][2], 
 
     output logic signed [VERTEX_WIDTH-1:0] area,
-    output logic unsigned [RECIPROCAL_WIDTH-1:0] area_reciprocal,
+    output logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal,
 
-    output logic unsigned [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight[3],
-    output logic unsigned [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight_delta[3][2],
+    output logic signed [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight[3],
+    output logic signed [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight_delta[3][2],
 
-    logic signed [VERTEX_WIDTH + RECIPROCAL_WIDTH-1:0] test,
+    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z,
+    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dx,
+    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dy,
 
     logic [3:0] state,
  
@@ -35,11 +37,6 @@ module top (
 
     parameter VERTEX_WIDTH = 16;
     parameter RECIPROCAL_WIDTH = 12;
-
-    logic signed [VERTEX_WIDTH-1:0] val1 = 600;
-    logic signed [RECIPROCAL_WIDTH-1:0] val2 = 6;
-
-    assign test = val1 * val2;
 
     // display sync signals and coordinates
     localparam CORDW = 16;  // signed coordinate width (bits)
@@ -79,13 +76,13 @@ module top (
 
     localparam signed X0 = 12;
     localparam signed Y0 = 4;
-    localparam signed Z0 = 4;
+    localparam signed Z0 = 16'sh0CCD; // 0.1
     localparam signed X1 = 20;
     localparam signed Y1 = 30;
-    localparam signed Z1 = 4;
+    localparam signed Z1 = 16'sh199A; // 0.2
     localparam signed X2 = 40;
     localparam signed Y2 = 20;
-    localparam signed Z2 = 1000;
+    localparam signed Z2 = 16'sh4000; // 0.5
 
     localparam signed TILE_MIN_X = 0;
     localparam signed TILE_MIN_Y = 0;
@@ -100,17 +97,17 @@ module top (
     logic signed [VERTEX_WIDTH-1:0] vertex[3][3];
 
     initial begin
-        vertex[0][0] = X0;  // X0
-        vertex[0][1] = Y0;  // Y0
-        vertex[0][2] = Z0;  // Z0
+        vertex[0][0] = X0;
+        vertex[0][1] = Y0;
+        vertex[0][2] = Z0;
         
-        vertex[1][0] = X1;  // X1
-        vertex[1][1] = Y1;  // Y1
-        vertex[1][2] = Z1;  // Z1
+        vertex[1][0] = X1;
+        vertex[1][1] = Y1;
+        vertex[1][2] = Z1;
 
-        vertex[2][0] = X2;  // X2
-        vertex[2][1] = Y2;  // Y2
-        vertex[2][2] = Z2;  // Z2    
+        vertex[2][0] = X2;
+        vertex[2][1] = Y2;
+        vertex[2][2] = Z2;    
     end
 
     rasterizer #(
@@ -148,6 +145,10 @@ module top (
     
     assign bar_weight = rasterizer_inst.bar_weight;
     assign bar_weight_delta = rasterizer_inst.bar_weight_delta;
+
+    assign z = rasterizer_inst.z;
+    assign z_dx = rasterizer_inst.z_dx;
+    assign z_dy = rasterizer_inst.z_dy;
 
     assign state = rasterizer_inst.state;
 

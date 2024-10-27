@@ -151,16 +151,20 @@ int main(int argc, char* argv[]) {
         int area = interpretAsNbitSigned(top->area, VERTEX_WIDTH);
         float area_reciprocal = unsignedFixedPointToFloat(top->area_reciprocal, RECIPROCAL_WIDTH);
 
-        float w0 = signedFixedPointToFloat(top->bar_weight[0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w1 = signedFixedPointToFloat(top->bar_weight[1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w2 = signedFixedPointToFloat(top->bar_weight[2], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w0 = signedFixedPointToFloat(top->bar_weight[0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w1 = signedFixedPointToFloat(top->bar_weight[1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w2 = signedFixedPointToFloat(top->bar_weight[2], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
 
-        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
-        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH);
+        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+
+        float z = signedFixedPointToFloat(top->z, 27, 44);
+        float z_dx = signedFixedPointToFloat(top->z_dx, 27, 44);
+        float z_dy = signedFixedPointToFloat(top->z_dy, 27, 44);
 
         printf("\n\n########\n\n");
         printf("clk_100m_cnt: %d\n", clk_100m_cnt);
@@ -168,12 +172,9 @@ int main(int argc, char* argv[]) {
         printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy); 
         printf("area = %d\narea_reciprocal = %f\n", area, area_reciprocal);
         printf("area_reciprocal_int = %d\n", top->area_reciprocal);
-        printf("w0_int = %d\n", top->bar_weight[0]);
-        printf("w1_int = %d\n", top->bar_weight[1]);
-        printf("w2_int = %d\n", top->bar_weight[2]);
         printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
         printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
-        printf("test = %f\n", signedFixedPointToFloat(top->test, RECIPROCAL_WIDTH, RECIPROCAL_WIDTH));
+        printf("z = %f\nz_dx = %f\nz_dy = %f\n", z, z_dx, z_dy);
         printf("state = %d\n", top->state);
 
         if (clk_100m_cnt > 9) {
