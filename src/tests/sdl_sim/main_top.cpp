@@ -21,7 +21,7 @@ typedef struct Pixel {
 int clk_100m_cnt = 0;
 
 
-int interpretAsNbitSigned(int value, int n) {
+int nbitSigned(int value, int n) {
     // Mask the value to the n-bit width
     int mask = (1 << n) - 1;
     value &= mask;
@@ -37,22 +37,22 @@ int interpretAsNbitSigned(int value, int n) {
 }
 
 
-float unsignedFixedPointToFloat(unsigned int fixed_point_int, int fractional_bits) {
-    // Convert the unsigned fixed-point number to float
-    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << fractional_bits);
+float unsignedFixedPointToFloat(unsigned int fixed_point_int, int b) {
+    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << b);
 }
 
 
-float signedFixedPointToFloat(int fixed_point_int, int fractional_bits, int total_bits) {
+float signedFixedPointToFloat(int fixed_point_int, int a, int b) {
+    int totalBits = a + b;
     // Perform sign extension if necessary
     // total_bits includes both the integer and fractional parts
-    if (fixed_point_int & (1 << (total_bits - 1))) {
+    if (fixed_point_int & (1 << (totalBits - 1))) {
         // If the sign bit is set, perform sign extension
-        fixed_point_int |= ~((1 << total_bits) - 1);  // Sign-extend to the full int width
+        fixed_point_int |= ~((1 << totalBits) - 1);  // Sign-extend to the full int width
     }
 
     // Convert the signed fixed-point number to float
-    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << fractional_bits);
+    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << b);
 }
 
 
@@ -137,34 +137,34 @@ int main(int argc, char* argv[]) {
             p->r = top->sdl_r;
         }
 
-        int e0 = interpretAsNbitSigned(top->edge_val[0], VERTEX_WIDTH);
-        int e1 = interpretAsNbitSigned(top->edge_val[1], VERTEX_WIDTH);
-        int e2 = interpretAsNbitSigned(top->edge_val[2], VERTEX_WIDTH);
+        int e0 = nbitSigned(top->edge_val[0], VERTEX_WIDTH);
+        int e1 = nbitSigned(top->edge_val[1], VERTEX_WIDTH);
+        int e2 = nbitSigned(top->edge_val[2], VERTEX_WIDTH);
 
-        int e0_dx = interpretAsNbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
-        int e0_dy = interpretAsNbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
-        int e1_dx = interpretAsNbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
-        int e1_dy = interpretAsNbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
-        int e2_dx = interpretAsNbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
-        int e2_dy = interpretAsNbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
+        int e0_dx = nbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
+        int e0_dy = nbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
+        int e1_dx = nbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
+        int e1_dy = nbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
+        int e2_dx = nbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
+        int e2_dy = nbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
 
-        int area = interpretAsNbitSigned(top->area, VERTEX_WIDTH);
+        int area = nbitSigned(top->area, VERTEX_WIDTH);
         float area_reciprocal = unsignedFixedPointToFloat(top->area_reciprocal, RECIPROCAL_WIDTH);
 
-        float w0 = signedFixedPointToFloat(top->bar_weight[0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w1 = signedFixedPointToFloat(top->bar_weight[1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w2 = signedFixedPointToFloat(top->bar_weight[2], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w0 = signedFixedPointToFloat(top->bar_weight[0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w1 = signedFixedPointToFloat(top->bar_weight[1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w2 = signedFixedPointToFloat(top->bar_weight[2], VERTEX_WIDTH, RECIPROCAL_WIDTH);
 
-        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
-        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], RECIPROCAL_WIDTH, RECIPROCAL_WIDTH + VERTEX_WIDTH);
+        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
+        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
 
-        float z = signedFixedPointToFloat(top->z, 27, 44);
-        float z_dx = signedFixedPointToFloat(top->z_dx, 27, 44);
-        float z_dy = signedFixedPointToFloat(top->z_dy, 27, 44);
+        float z = signedFixedPointToFloat(top->z, 17, 27);
+        float z_dx = signedFixedPointToFloat(top->z_dx, 17, 27);
+        float z_dy = signedFixedPointToFloat(top->z_dy, 17, 27);
 
         printf("\n\n########\n\n");
         printf("clk_100m_cnt: %d\n", clk_100m_cnt);
