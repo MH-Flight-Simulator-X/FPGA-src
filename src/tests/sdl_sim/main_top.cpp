@@ -21,7 +21,7 @@ typedef struct Pixel {
 int clk_100m_cnt = 0;
 
 
-int nbitSigned(int value, int n) {
+int nbitSigned(uint64_t value, int n) {
     // Mask the value to the n-bit width
     int mask = (1 << n) - 1;
     value &= mask;
@@ -37,22 +37,22 @@ int nbitSigned(int value, int n) {
 }
 
 
-float unsignedFixedPointToFloat(unsigned int fixed_point_int, int b) {
+float unsignedFixedPointToFloat(uint64_t fixed_point_int, int b) {
     return static_cast<float>(fixed_point_int) / static_cast<float>(1 << b);
 }
 
 
-float signedFixedPointToFloat(int fixed_point_int, int a, int b) {
+float signedFixedPointToFloat(uint64_t fixed_point_int, int a, int b) {
     int totalBits = a + b;
-    // Perform sign extension if necessary
-    // total_bits includes both the integer and fractional parts
-    if (fixed_point_int & (1 << (totalBits - 1))) {
+
+    // Check if the sign bit is set for the fixed-point number
+    if (fixed_point_int & (1ULL << (totalBits - 1))) {
         // If the sign bit is set, perform sign extension
-        fixed_point_int |= ~((1 << totalBits) - 1);  // Sign-extend to the full int width
+        fixed_point_int |= ~((1ULL << totalBits) - 1);  // Sign-extend to 64 bits
     }
 
-    // Convert the signed fixed-point number to float
-    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << b);
+    // Convert to float, interpreting fixed_point_int as signed after sign extension
+    return static_cast<float>(static_cast<int64_t>(fixed_point_int)) / static_cast<float>(1 << b);
 }
 
 
