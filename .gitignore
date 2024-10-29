@@ -45,3 +45,5 @@ Utils/img/*.png
 # For testing
 *.vert
 *.face
+
+.hdl_checker/
