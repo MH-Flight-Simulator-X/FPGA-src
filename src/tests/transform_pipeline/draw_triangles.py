@@ -3,13 +3,13 @@ import pygame
 import sys
 
 # Define screen dimensions
-SCREEN_SCALE = 2
+SCREEN_SCALE = 3.5
 SCREEN_WIDTH = 320 * SCREEN_SCALE
 SCREEN_HEIGHT = 320 * SCREEN_SCALE
 BACKGROUND_COLOR = (0, 0, 0)
 
 # Some nice pastel colors
-LINE_COLORS = [
+COLOR_PALETTE = [
     (255, 182, 193),  # Light Pink
     (255, 222, 173),  # Navajo White
     (176, 224, 230),  # Powder Blue
@@ -22,65 +22,85 @@ LINE_COLORS = [
     (216, 191, 216)   # Thistle
 ]
 
-def load_face_data(file_path):
-    faces = []
-    with open(file_path, 'r') as file:
-        data = file.read()
-        faces_section = data.split('\n')
+def triangle_sort_depth(x):
+    v0, v1, v2 = x
+    _, _, z0 = v0
+    _, _, z1 = v1
+    _, _, z2 = v2
+    return (z0 + z1 + z2)/3
 
-        # Parse faces as arrays (list of integers)
-        faces = [list(map(int, f.split(','))) for f in faces_section]
+def read_triangles_from_file(filename):
+    """Reads triangles from a file and returns a list of vertices for each triangle."""
+    triangles = []
+    with open(filename, 'r') as file:
+        for line in file:
+            try:
+                # Parse the line for 6 integers representing the coordinates
+                v0x, v0y, v0z, v1x, v1y, v1z, v2x, v2y, v2z = map(float, line.strip().split(','))
+                triangles.append((
+                    (v0x * SCREEN_SCALE, v0y * SCREEN_SCALE, v0z), 
+                    (v1x * SCREEN_SCALE, v1y * SCREEN_SCALE, v1z), 
+                    (v2x * SCREEN_SCALE, v2y * SCREEN_SCALE, v2z)))
+            except ValueError:
+                print(f"Skipping invalid line: {line}")
 
-    return faces
+    # Sort triangles
+    triangles = sorted(triangles, key = triangle_sort_depth, reverse=True)
 
-def load_vert_data(file_path):
-    vertices = []
-    with open(file_path, 'r') as file:
-        data = file.read()
-        verts = data.split('\n')[:-1]
+    return triangles
 
-        vertices = [list(map(float, f.split(','))) for f in verts]
+def map_value(value, old_min, old_max, new_min, new_max):
+    # if (old_max - old_min <= 0.00001):
+    #     return new_max
+    return new_min + (value - old_min) * (new_max - new_min) / (old_max - old_min)
 
-    return vertices
+def main(filename):
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Render Triangles")
 
-faces = load_face_data('model.face')
-vertices = load_vert_data('model_transformed.vert')
+    # Load triangles from the file
+    triangles = read_triangles_from_file(filename)
 
-# Initialize pygame
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Cube Wireframe')
+    clock = pygame.time.Clock()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-# Function to draw lines between vertices
-def draw_faces(screen, vertices, faces):
-    for face in faces:
-        for i in range(3):
-            # Get the vertices of the triangle face
-            v1_x, v1_y, _ = vertices[face[i] - 1]
-            v2_x, v2_y, _ = vertices[face[(i + 1) % 3] - 1]
+        # Clear the screen
+        screen.fill((0, 0, 0))
+
+        # Draw each triangle with a color from the palette
+        min = 100.0
+        max = 0.0
+
+        for i, triangle in enumerate(triangles):
+            color = COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            (v0, v1, v2) = triangle
+            coords = [(x, y) for (x, y, z) in triangle]
+            depths = [z for (x, y, z) in triangle]
+            depth_val = (depths[0] + depths[1] + depths[2]) / 3
+            depth_val = depth_val * 100
             
-            v1_x = v1_x * SCREEN_SCALE
-            v1_y = v1_y * SCREEN_SCALE
-                        
-            v2_x = v2_x * SCREEN_SCALE
-            v2_y = v2_y * SCREEN_SCALE
+            if (depth_val > max):
+                max = depth_val
+            if (depth_val < min):
+                min = depth_val
+            
+            color_val = map_value(depth_val, max * 1.000001, min * 0.9999, 20, 255)
+            color = (color_val, color_val, color_val)
 
-            pygame.draw.line(screen, LINE_COLORS[i % len(LINE_COLORS)], (v1_x, v1_y), (v2_x, v2_y), 1)
+            pygame.draw.polygon(screen, color, coords)
 
-# Main loop
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-            pygame.quit()
-            sys.exit()
+        print(min, max)
 
-    # Fill the screen with the background color
-    screen.fill(BACKGROUND_COLOR)
+        # Update the display
+        pygame.display.flip()
+        clock.tick(60)
 
-    # Draw the faces of the cube
-    draw_faces(screen, vertices, faces)
+    pygame.quit()
+    sys.exit()
 
-    # Update the display
-    pygame.display.flip()
+main("model.tri")

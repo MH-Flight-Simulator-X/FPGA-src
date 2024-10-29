@@ -3,12 +3,12 @@
 
 module rasterizer #(
     parameter unsigned VERTEX_WIDTH = 16,
-    parameter unsigned FB_ADDR_WIDTH = 15,
-    parameter unsigned [VERTEX_WIDTH-1:0] FB_WIDTH = 160,
+    parameter unsigned FB_ADDR_WIDTH = 4,
+    parameter unsigned [VERTEX_WIDTH-1:0] FB_WIDTH = 32,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X = 0,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 160,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 32,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y = 0,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 120,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 16,
     parameter unsigned RECIPROCAL_SIZE = 65000,
     parameter string RECIPROCAL_FILE = "reciprocal.mem"
 ) (
@@ -18,9 +18,8 @@ module rasterizer #(
     input logic signed [VERTEX_WIDTH-1:0] vertex[3][3], 
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
-    output logic [VERTEX_WIDTH-1:0] depth_data,
-
     output logic fb_write_enable,
+    output logic [VERTEX_WIDTH-1:0] depth_data,
     output logic done
 );
 
@@ -76,8 +75,8 @@ module rasterizer #(
         .valid(bounding_box_is_valid)
     );
 
-    logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal;
-    logic signed [VERTEX_WIDTH-1:0] area;
+    logic [RECIPROCAL_WIDTH-1:0] area_reciprocal;
+    logic [VERTEX_WIDTH-1:0] area;
 
     clut #(
         .SIZE(RECIPROCAL_SIZE),

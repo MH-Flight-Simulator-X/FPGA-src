@@ -1,0 +1,44 @@
+{
+ "builder": {
+  "_version": "<undefined>",
+  "_logger": "hdl_checker.builders.fallback",
+  "_work_folder": "/media/disk/MH-Flight-Simulator/FPGA-src/.hdl_checker",
+  "_builtin_libraries": [],
+  "_added_libraries": [
+   {
+    "name": "not_in_project",
+    "case_sensitive": true,
+    "__class__": "Identifier"
+   }
+  ],
+  "__class__": "Fallback"
+ },
+ "config_file": null,
+ "database": {
+  "sources": [],
+  "inferred_libraries": [],
+  "design_units": [
+   {
+    "owner": {
+     "name": "/media/disk/MH-Flight-Simulator/FPGA-src/src/tests/transform_pipeline/tb_transform_pipeline.sv",
+     "__class__": "Path"
+    },
+    "type_": "entity",
+    "name": {
+     "name": "tb_transform_pipeline",
+     "case_sensitive": true,
+     "__class__": "VerilogIdentifier"
+    },
+    "locations": [
+     [
+      2,
+      7
+     ]
+    ],
+    "__class__": "VerilogDesignUnit"
+   }
+  ],
+  "__class__": "Database"
+ },
+ "__version__": "0.7.4"
+}

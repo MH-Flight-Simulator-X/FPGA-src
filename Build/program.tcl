@@ -1,4 +1,4 @@
-set design_name "spi_test"
+set design_name "mh_fpga_test"
 
 open_hw_manager
 connect_hw_server

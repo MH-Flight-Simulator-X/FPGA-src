@@ -12,7 +12,8 @@ module bram_sp #(
 
     input logic [$clog2(DEPTH)-1:0] addr,
     input logic [WIDTH-1:0] data_in,
-    output logic [WIDTH-1:0] data_out
+    output logic [WIDTH-1:0] data_out,
+    output logic o_dv
     );
 
     logic [WIDTH-1:0] memory [DEPTH];
@@ -21,9 +22,13 @@ module bram_sp #(
         if (en) begin
             if (rw) begin
                 memory[addr] <= data_in;
+                o_dv <= '0;
             end else begin
                 data_out <= memory[addr];
+                o_dv <= '1;
             end
+        end else begin
+            o_dv <= '0;
         end
     end
 endmodule

@@ -1,17 +1,18 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Wed Oct 23 23:00:42 2024
+[*] Mon Oct 28 01:54:16 2024
 [*]
 [dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/src/tests/transform_pipeline/waveform.vcd"
-[dumpfile_mtime] "Wed Oct 23 22:55:28 2024"
-[dumpfile_size] 8965398
+[dumpfile_mtime] "Mon Oct 28 01:50:35 2024"
+[dumpfile_size] 27186095
 [savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/src/tests/transform_pipeline/setup.gtkw"
-[timestart] 45570
+[timestart] 134078
 [size] 2560 1600
-[pos] -3841 -1
-*-5.591327 45751 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 14 14
+*-3.591328 134139 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.tb_transform_pipeline.
+[treeopen] TOP.tb_transform_pipeline.g_buffer_inst.
 [treeopen] TOP.tb_transform_pipeline.vertex_post_processor_inst.
 [treeopen] TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_x_inst.
 [treeopen] TOP.tb_transform_pipeline.vertex_shader_inst.
@@ -33,7 +34,7 @@ TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex(2)[23:0]
 @28
 TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex_dv
 TOP.tb_transform_pipeline.vertex_shader_inst.i_vertex_last
-@421
+@420
 TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(0)[23:0]
 TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(1)[23:0]
 TOP.tb_transform_pipeline.vertex_shader_inst.o_vertex(2)[23:0]
@@ -93,9 +94,50 @@ TOP.tb_transform_pipeline.vertex_post_processor_inst.done
 TOP.tb_transform_pipeline.vertex_post_processor_inst.invalid
 [color] 2
 TOP.tb_transform_pipeline.vertex_post_processor_inst.ndc_divide_x_inst.busy
+[color] 2
 TOP.tb_transform_pipeline.finished
+[color] 2
 TOP.tb_transform_pipeline.r_vpp_last_vertex
+[color] 2
 TOP.tb_transform_pipeline.w_vs_finished
+[color] 2
 TOP.tb_transform_pipeline.i_vertex_last
+@22
+TOP.tb_transform_pipeline.g_buffer_inst.addr_write[10:0]
+TOP.tb_transform_pipeline.g_buffer_inst.data_write[35:0]
+@28
+TOP.tb_transform_pipeline.g_buffer_inst.rw
+TOP.tb_transform_pipeline.g_buffer_inst.en
+@29
+TOP.tb_transform_pipeline.g_buffer_inst.ready
+@22
+TOP.tb_transform_pipeline.g_buffer_inst.addr_read_port0[10:0]
+TOP.tb_transform_pipeline.g_buffer_inst.addr_read_port1[10:0]
+TOP.tb_transform_pipeline.g_buffer_inst.addr_read_port2[10:0]
+TOP.tb_transform_pipeline.g_buffer_inst.r_read_data(0)[35:0]
+TOP.tb_transform_pipeline.g_buffer_inst.r_read_data(1)[35:0]
+TOP.tb_transform_pipeline.g_buffer_inst.r_read_data(2)[35:0]
+TOP.tb_transform_pipeline.g_buffer_inst.bram_sp_inst.addr[10:0]
+TOP.tb_transform_pipeline.g_buffer_inst.bram_sp_inst.data_in[35:0]
+TOP.tb_transform_pipeline.g_buffer_inst.bram_sp_inst.data_out[35:0]
+@28
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_ready
+[color] 7
+TOP.tb_transform_pipeline.primitive_assembler_inst.current_state[2:0]
+@22
+[color] 7
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_num_triangles[10:0]
+@420
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v0(0)[11:0]
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v0(1)[11:0]
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v1(0)[11:0]
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v1(1)[11:0]
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v2(0)[11:0]
+TOP.tb_transform_pipeline.primitive_assembler_inst.i_v2(1)[11:0]
+@22
+TOP.o_index_buff_addr[10:0]
+TOP.i_vertex_idxs(0)[10:0]
+TOP.i_vertex_idxs(1)[10:0]
+TOP.i_vertex_idxs(2)[10:0]
 [pattern_trace] 1
 [pattern_trace] 0

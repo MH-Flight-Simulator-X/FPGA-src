@@ -12,22 +12,29 @@ public:
     int totalBits;
     T data;
 
+    bool sign = true;
+
 public:
-    FixedPoint(T value, int fracBits, int totalBits) : fracBits(fracBits), totalBits(totalBits) {
+    FixedPoint(T value, int fracBits, int totalBits, bool sign = true) : fracBits(fracBits), totalBits(totalBits), sign(sign) {
         data = value; 
     }
 
     float toFloat() const {
-        // Sign extend
-        int sign = (data >> (totalBits - 1)) & 1;
-        T sign_extended = data;
         if (sign) {
-            for (int i = sizeof(T) * 8 - 1; i >= totalBits; i--) {
-                sign_extended |= (1 << i);
+            // Sign extend
+            int sign = (data >> (totalBits - 1)) & 1;
+            T sign_extended = data;
+            if (sign) {
+                for (int i = sizeof(T) * 8 - 1; i >= totalBits; i--) {
+                    sign_extended |= (1 << i);
+                }
             }
+
+            float f = static_cast<float>(sign_extended) / (1 << fracBits);
+            return f;
         }
 
-        float f = static_cast<float>(sign_extended) / (1 << fracBits);
+        float f = static_cast<float>(data) / (1 << fracBits);
         return f;
     }
 

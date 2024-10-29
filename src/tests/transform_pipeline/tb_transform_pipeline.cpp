@@ -17,12 +17,21 @@
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
 #define OUTPUT_VERTEX_DATAWIDTH 12
-#define OUTPUT_DEPTH_FRACBITS 11
+#define OUTPUT_DEPTH_FRACBITS 12
 
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 320
 #define ZFAR 100.0f
 #define ZNEAR 0.1f
+
+typedef struct {
+    glm::ivec2 v0;
+    float v0_z;
+    glm::ivec2 v1;
+    float v1_z;
+    glm::ivec2 v2;
+    float v2_z;
+} Triangle_t;
 
 std::vector<glm::vec3> read_vertex_data(const std::string& filename) {
     std::ifstream infile(filename);
@@ -53,20 +62,70 @@ std::vector<glm::vec3> read_vertex_data(const std::string& filename) {
     return vertices;
 }
 
-void write_vertex_data(const std::string& filename, const std::vector<glm::vec3>& vertices) {
-    std::ofstream outfile(filename);
+std::vector<glm::ivec3> read_index_data(const std::string& filename) {
+    std::ifstream infile(filename);
+    std::vector<glm::ivec3> indices;
+    std::string line;
 
+    if (!infile.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return indices;
+    }
+
+    while (std::getline(infile, line)) {
+        std::stringstream ss(line);
+        int x, y, z;
+        char comma1, comma2;
+
+        // Parsing the "x, y, z" format
+        ss >> x >> comma1 >> y >> comma2 >> z;
+        if (ss.fail() || comma1 != ',' || comma2 != ',') {
+            std::cerr << "Error parsing line: " << line << std::endl;
+            continue;
+        }
+
+        x--; y--; z--;  // Convert to 0-based indexing
+        indices.emplace_back(x, y, z);  // Store as glm::ivec3
+    }
+
+    infile.close();
+    return indices;
+}
+
+void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& triangles) {
+    std::ofstream outfile(filename);
     if (!outfile.is_open()) {
-        std::cerr << "Error opening output file: " << filename << std::endl;
+        std::cerr << "Error opening file: " << filename << std::endl;
         return;
     }
 
-    for (const auto& vertex : vertices) {
-        // Write the transformed vertex as "x, y, z\n"
-        outfile << vertex.x << ", " << vertex.y << ", " << vertex.z << "\n";
+    for (const auto& tri : triangles) {
+        outfile << tri.v0.x << ", " << tri.v0.y << ", " << tri.v0_z << ", " << tri.v1.x << ", " << tri.v1.y  << ", " <<  tri.v1_z << ", " << tri.v2.x << ", " << tri.v2.y  << ", " <<  tri.v2_z << std::endl;
     }
 
     outfile.close();
+}
+
+glm::mat4 generate_mvp() {
+    // Generate matrix and vector data using GLM
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -95.0f));
+    model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
+        glm::vec3(0.0f, 0.0f, 0.0f), // Look at point
+        glm::vec3(0.0f, 1.0f, 0.0f)  // Up vector
+    );
+
+    float fov = glm::radians(45.0f);
+    float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
+    float farPlane = 100.0f;
+    glm::mat4 projection = glm::perspective(fov, aspectRatio, ZNEAR, ZFAR);
+    glm::mat4 mvp = projection * view * model;
+
+    return mvp;
 }
 
 #define RESET_CLKS 8
@@ -105,6 +164,26 @@ void assign_vertex_data(Vtb_transform_pipeline* dut, glm::vec3 vertex) {
     }
 };
 
+void assign_input_index(Vtb_transform_pipeline* dut, std::vector<glm::ivec3>& index_data) {
+    if (dut->o_index_buff_read_en) {
+        if (dut->o_index_buff_addr >= index_data.size()) {
+            return;
+        }
+
+        printf("Index: %d\n", dut->o_index_buff_addr);
+        printf("Index data: %d, %d, %d\n", index_data[dut->o_index_buff_addr].x, index_data[dut->o_index_buff_addr].y, index_data[dut->o_index_buff_addr].z);
+
+        dut->i_vertex_idxs[0] = index_data[dut->o_index_buff_addr].x;
+        dut->i_vertex_idxs[1] = index_data[dut->o_index_buff_addr].y;
+        dut->i_vertex_idxs[2] = index_data[dut->o_index_buff_addr].z;
+    } else {
+        dut->i_vertex_idxs[0] = 0;
+        dut->i_vertex_idxs[1] = 0;
+        dut->i_vertex_idxs[2] = 0;
+    }
+}
+
+
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
     Vtb_transform_pipeline* dut = new Vtb_transform_pipeline;
@@ -114,46 +193,9 @@ int main(int argc, char** argv) {
     dut->trace(m_trace, 5);
     m_trace->open("waveform.vcd");
 
-    std::vector<glm::vec3> model_vertexes = read_vertex_data("model.vert");
-
-    // Generate matrix and vector data using GLM
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -7.5f));
-    model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
-
-    glm::mat4 view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
-        glm::vec3(0.0f, 0.0f, 0.0f), // Look at point
-        glm::vec3(0.0f, 1.0f, 0.0f)  // Up vector
-    );
-
-    float fov = glm::radians(45.0f);
-    float aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
-    float farPlane = 100.0f;
-    glm::mat4 projection = glm::perspective(fov, aspectRatio, ZNEAR, ZFAR);
-
-    // Finished mvp matrix
-    glm::mat4 mvp = projection * view * model;
-
-    printf("Expecting:\n");
-    for (int i = 0; i < model_vertexes.size(); i++) {
-        glm::vec4 vertex_projected = mvp * glm::vec4(model_vertexes[i], 1.0f);
-        // printf("Vertex projected: %f, %f, %f, %f\n", vertex_projected.x, vertex_projected.y, vertex_projected.z, vertex_projected.w);
-
-        glm::vec4 vertex_ndc = vertex_projected / vertex_projected.w;
-        printf("Vertex NDC: %f, %f, %f\n", vertex_ndc.x, vertex_ndc.y, vertex_ndc.z);
-
-        int vertex_pixel[2];
-        vertex_pixel[0] = (vertex_ndc.x + 1.0f) * SCREEN_WIDTH / 2.0f;
-        vertex_pixel[1] = (1 - vertex_ndc.y) * SCREEN_HEIGHT / 2.0f;
-
-        float vertex_depth = vertex_ndc.z;
-        printf("(%d, %d),\n", vertex_pixel[0], vertex_pixel[1]);
-    }
-
-    printf("Staring simulation...\n");
-    printf("Got: \n");
+    std::vector<glm::vec3> vertex_buffer = read_vertex_data("model.vert");
+    std::vector<glm::ivec3> index_buffer = read_index_data("model.face");
+    glm::mat4 mvp = generate_mvp();
 
     // Reset
     for (int i = 0; i < RESET_CLKS; i++) {
@@ -173,16 +215,20 @@ int main(int argc, char** argv) {
             dut->i_vertex[i] = 0;
         }
 
-        dut->i_vertex_last = 0;
+        dut->i_num_triangles = 0;
+        dut->i_vertex_idxs[0] = 0;
+        dut->i_vertex_idxs[1] = 0;
+        dut->i_vertex_idxs[2] = 0;
+        dut->i_triangle_ready = 1;
 
-        m_trace->dump(sim_time);
-        sim_time++;
+        dut->i_vertex_last = 0;
     }
     dut->rstn = 1;
+    dut->i_triangle_ready = 0;
 
     // Run simulation while (sim_time < MAX_SIM_TIME) {
     long long vertex_index = 0;
-    std::vector<glm::vec3> output_vertexes = {};
+    std::vector<Triangle_t> output_triangles = {};
 
     while (sim_time < MAX_SIM_TIME) {
         dut->clk ^= 1;
@@ -194,6 +240,9 @@ int main(int argc, char** argv) {
             dut->i_mvp_dv = 0;
             dut->i_vertex_last = 0;
 
+            // Set input data size
+            dut->i_num_triangles = index_buffer.size();
+
             // Assign mvp matrix
             if (posedge_cnt == 2) {
                 assign_mvp_data(dut, mvp);
@@ -201,53 +250,81 @@ int main(int argc, char** argv) {
             }
 
             if (posedge_cnt >= 4) {
-                if (dut->ready && vertex_index < model_vertexes.size()) {
-                    if (vertex_index == model_vertexes.size() - 1) {
+                if (dut->vertex_ready && vertex_index < vertex_buffer.size()) {
+                    if (vertex_index == vertex_buffer.size() - 1) {
                         dut->i_vertex_last = 1;
                     }
-                    assign_vertex_data(dut, model_vertexes[vertex_index++]);                    
+                    assign_vertex_data(dut, vertex_buffer[vertex_index++]);                    
                     dut->i_vertex_dv = 1;
                 }
             }
 
-            static int num_vs_rec = 0;
-            static long long num_vpp_rec = 0;
+            if (dut->debug_o_vertex_dv) {
+                int32_t vertex[2];
+                vertex[0] = sign_extend(dut->debug_o_vertex[0], OUTPUT_VERTEX_DATAWIDTH);
+                vertex[1] = sign_extend(dut->debug_o_vertex[1], OUTPUT_VERTEX_DATAWIDTH);
 
-            if (dut->o_vs_vertex_dv) {
-
-                float vs_o[4];
-                vs_o[0] = FixedPoint<int32_t>(dut->o_vs_vertex[0], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).toFloat();
-                vs_o[1] = FixedPoint<int32_t>(dut->o_vs_vertex[1], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).toFloat();
-                vs_o[2] = FixedPoint<int32_t>(dut->o_vs_vertex[2], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).toFloat();
-                vs_o[3] = FixedPoint<int32_t>(dut->o_vs_vertex[3], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).toFloat();
+                printf("Vertex: (%d, %d)\n", vertex[0], vertex[1]);
             }
 
-            if (dut->o_vertex_dv) {
-                int32_t vertex_pixel[2];
-                float vertex_depth;
+            static int num_triangles_rec = 0;
+            if (dut->o_triangle_dv) {
+                int32_t v0[2]; int32_t v1[2]; int32_t v2[2];
+                float v0_z; float v1_z; float v2_z;
 
-                vertex_pixel[0] = sign_extend(dut->o_vertex_pixel[0], OUTPUT_VERTEX_DATAWIDTH);
-                vertex_pixel[1] = sign_extend(dut->o_vertex_pixel[1], OUTPUT_VERTEX_DATAWIDTH);
-                vertex_depth = FixedPoint<int32_t>(dut->o_vertex_z, OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS+1).toFloat();
+                v0[0] = sign_extend(dut->o_vertex_pixel[0][0], OUTPUT_VERTEX_DATAWIDTH);
+                v0[1] = sign_extend(dut->o_vertex_pixel[0][1], OUTPUT_VERTEX_DATAWIDTH);
+                v0_z = FixedPoint<uint32_t>(dut->o_vertex_z[0], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
 
-                if (dut->vpp_error) {
-                    printf("ERROR\n");
+                v1[0] = sign_extend(dut->o_vertex_pixel[1][0], OUTPUT_VERTEX_DATAWIDTH);
+                v1[1] = sign_extend(dut->o_vertex_pixel[1][1], OUTPUT_VERTEX_DATAWIDTH);
+                v1_z = FixedPoint<uint32_t>(dut->o_vertex_z[1], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
+
+                v2[0] = sign_extend(dut->o_vertex_pixel[2][0], OUTPUT_VERTEX_DATAWIDTH);
+                v2[1] = sign_extend(dut->o_vertex_pixel[2][1], OUTPUT_VERTEX_DATAWIDTH);
+                v2_z = FixedPoint<uint32_t>(dut->o_vertex_z[2], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
+
+                // Print output data
+                printf("Triangle (%d / %ld): (%d, %d, %f), (%d, %d, %f), (%d, %d, %f)\n", ++num_triangles_rec, index_buffer.size(), v0[0], v0[1], v0_z, v1[0], v1[1], v1_z, v2[0], v2[1], v2_z);
+
+                // Store triangle data
+                Triangle_t tri = {glm::ivec2(v0[0], v0[1]), v0_z,
+                                  glm::ivec2(v1[0], v1[1]), v1_z, 
+                                  glm::ivec2(v2[0], v2[1]), v2_z};
+                output_triangles.push_back(tri);
+            }
+
+            static int vpp_has_finished = 0;
+            if (dut->o_vpp_finished) {
+                vpp_has_finished = 1;
+            }
+
+            if (vpp_has_finished) {
+                if (dut->i_triangle_ready == 0) {
+                    if (posedge_cnt % 64 == 0) {
+                        dut->i_triangle_ready = 1;
+                    }
                 }
 
-                printf("(%d, %d),\n", vertex_pixel[0], vertex_pixel[1]);
-                output_vertexes.push_back(glm::vec3(float(vertex_pixel[0]), float(vertex_pixel[1]), vertex_depth));
+                if (dut->o_triangle_dv) {
+                    dut->i_triangle_ready = 0;
+                }
             }
+
             if (dut->finished) {
                 printf("Finished! (%ld)\n", posedge_cnt);
                 break;
             }
+            
+            // Assign index data
+            assign_input_index(dut, index_buffer);
         }
 
         m_trace->dump(sim_time);
         sim_time++;
     }
 
-    write_vertex_data("model_transformed.vert", output_vertexes);
+    write_triangle_data("model.tri", output_triangles);
     
     m_trace->close();
     delete dut;

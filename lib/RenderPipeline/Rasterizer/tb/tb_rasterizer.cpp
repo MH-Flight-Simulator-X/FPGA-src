@@ -18,29 +18,29 @@ int main(int argc, char** argv) {
     dut->trace(m_trace, 5);
     m_trace->open("waveform.vcd");
 
-    int x0 = 12;
+    int x0 = 3;
     int y0 = 4;
-    int z0 = 3277;
-    int x1 = 20;
-    int y1 = 30;
-    int z1 = 6554;
-    int x2 = 40;
-    int y2 = 20;
-    int z2 = 16384;
+    int z0 = 4;
+    int x1 = 21;
+    int z1 = 4;
+    int y1 = 8;
+    int x2 = 17;
+    int y2 = 14;
+    int z2 = 4;
 
     while (sim_time < MAX_SIM_TIME) {
         dut->clk ^= 1; 
         dut->eval();
 
-        dut->vertex[0][0] = x0;
-        dut->vertex[0][1] = y0;
-        dut->vertex[0][2] = z0;
-        dut->vertex[1][0] = x1;
-        dut->vertex[1][1] = y1;
-        dut->vertex[1][2] = z1;
-        dut->vertex[2][0] = x2;
-        dut->vertex[2][1] = y2;
-        dut->vertex[2][2] = z2;
+        dut->x0 = x0;
+        dut->y0 = y0;
+        dut->z0 = z0;
+        dut->x1 = x1;
+        dut->y1 = y1;
+        dut->z1 = z1;
+        dut->x2 = x2;
+        dut->y2 = y2;
+        dut->z2 = z2;
 
         if (dut->clk == 1) {
             posedge_cnt++;

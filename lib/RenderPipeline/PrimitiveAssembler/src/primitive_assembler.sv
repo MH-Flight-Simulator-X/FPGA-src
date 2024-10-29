@@ -1,9 +1,13 @@
+/* verilator lint_off UNUSED */
+
 `timescale 1ns / 1ps
 
 typedef enum logic [2:0] {
     PA_IDLE,
-    PA_ASSEMBLE,
-    PA_WAIT_LAST,
+    PA_ASSEMBLE_READ_INDEX,
+    PA_ASSEMBLE_READ_VERTEX,
+    PA_ASSEMBLE_READ_VERTEX_WAIT_DATA,
+    PA_ASSEMBLE_DONE,
     PA_DONE
 } pa_state_t;
 
@@ -14,8 +18,8 @@ module primitive_assembler #(
         parameter logic signed [IV_DATAWIDTH-1:0] SCREEN_WIDTH = 320,
         parameter logic signed [IV_DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
 
-        parameter unsigned MAX_TRIANGLE_COUNT = 2048,
-        parameter unsigned MAX_VERTEX_COUNT = 2048
+        parameter unsigned MAX_TRIANGLE_COUNT = 16384,
+        parameter unsigned MAX_VERTEX_COUNT   = 16384
     ) (
         input logic clk,
         input logic rstn,
@@ -50,6 +54,7 @@ module primitive_assembler #(
         input logic signed [IV_DATAWIDTH - 1:0] i_v2[2],
         input logic signed [IV_DEPTH_FRACBITS-1:0] i_v2_z,
         input logic i_v2_invalid,                                   // Vertex invalid flag
+        input logic i_vertex_dv,
 
         // Output primitive
         output logic signed [IV_DATAWIDTH-1:0] o_vertex_pixel[3][2],
@@ -63,13 +68,7 @@ module primitive_assembler #(
     );
 
     logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] r_num_triangles = '0;
-    logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] r_triangle_cnt = '0;
-    logic r_valid_triangle_output = '0;
-
-    // Check if triangle index buffer was read last clk
-    logic r_index_buff_read_last = '0;
-    logic r_vertex_read_last = '0;
-    logic r_finished = '0;
+    logic [$clog2(MAX_TRIANGLE_COUNT)-1:0] r_index_buff_addr = '0;
 
     // Calculate primitive bounding box
     logic [IV_DATAWIDTH-1:0] w_bb_tl[2];
@@ -116,22 +115,34 @@ module primitive_assembler #(
 
         case (current_state)
             PA_IDLE: begin
-                if (start & ~w_output_fifo_full) begin
-                    next_state = PA_ASSEMBLE;
+                if (start & i_ready) begin
+                    next_state = PA_ASSEMBLE_READ_INDEX;
                 end else begin
                     o_ready = 1;
                 end
             end
 
-            PA_ASSEMBLE: begin
-                if (r_triangle_cnt == r_num_triangles) begin
-                    next_state = PA_WAIT_LAST;
+            PA_ASSEMBLE_READ_INDEX: begin
+                next_state = PA_ASSEMBLE_READ_VERTEX;
+            end
+
+            PA_ASSEMBLE_READ_VERTEX: begin
+                next_state = PA_ASSEMBLE_READ_VERTEX_WAIT_DATA;
+            end
+
+            PA_ASSEMBLE_READ_VERTEX_WAIT_DATA: begin
+                if (i_vertex_dv) begin
+                    next_state = PA_ASSEMBLE_DONE;
                 end
             end
 
-            PA_WAIT_LAST: begin
-                if (r_finished) begin
-                    next_state = PA_DONE;
+            PA_ASSEMBLE_DONE: begin
+                if (i_ready) begin
+                    if (o_index_buff_addr == r_num_triangles) begin
+                        next_state = PA_DONE;
+                    end else begin
+                        next_state = PA_ASSEMBLE_READ_INDEX;
+                    end
                 end
             end
 
@@ -149,124 +160,87 @@ module primitive_assembler #(
     always_ff @(posedge clk) begin
         if (~rstn) begin
             r_num_triangles <= '0;
-            r_triangle_cnt <= '0;
-
-            o_index_buff_read_en <= '0;
-            r_index_buff_read_last <= '0;
 
             foreach (o_vertex_addr[i]) o_vertex_addr[i] <= '0;
             o_vertex_read_en <= '0;
 
-            r_vertex_read_last <= '0;
+            o_index_buff_addr <= '0;
+            r_index_buff_addr <= '0;
+            o_index_buff_read_en <= '0;
 
-            // Output FIFO register output
-            r_output_fifo_data_in <= '0;
-            r_output_fifo_write_en <= '0;
-
-            r_finished <= '0;
-        end else begin
-            case (current_state)
-                PA_IDLE: begin
-                    if (start) begin
-                        r_num_triangles <= i_num_triangles;
-                    end
-                    r_triangle_cnt <= '0;
-                    r_vertex_read_last <= '0;
-                end
-
-                PA_ASSEMBLE: begin
-                    if (i_ready) begin
-                        r_triangle_cnt <= r_triangle_cnt + 1;
-                        o_index_buff_addr <= r_triangle_cnt;
-                        o_index_buff_read_en <= '1;
-                        r_index_buff_read_last <= '1;
-
-                        if (r_index_buff_read_last) begin
-                            foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
-                            o_vertex_read_en <= '1;
-                            r_vertex_read_last <= '1;
-                        end else begin
-                            r_vertex_read_last <= '0;
-                            o_vertex_read_en <= '0;
-                        end
-
-                        if (r_vertex_read_last) begin
-                            if (w_bb_valid & !i_v0_invalid & !i_v1_invalid & !i_v2_invalid) begin
-                                r_valid_triangle_output <= '1;
-                            end else begin
-                                r_valid_triangle_output <= '0;
-                            end
-                        end else begin
-                            r_valid_triangle_output <= '0;
-                        end
-                    end else begin
-                        o_index_buff_read_en <= '0;
-                        r_index_buff_read_last <= '0;
-
-                        o_vertex_read_en <= '0;
-                        r_vertex_read_last <= '0;
-                    end
-                end
-
-                PA_WAIT_LAST: begin
-                    if (i_ready) begin
-                        if (r_index_buff_read_last) begin
-                            foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
-                            o_vertex_read_en <= '1;
-                            r_vertex_read_last <= '1;
-                        end
-
-                        if (r_vertex_read_last) begin
-                            r_valid_triangle_output <= '1;
-                            r_finished <= '1;
-                        end else begin
-                            r_valid_triangle_output <= '0;
-                            r_finished <= '0;
-                        end
-                    end else begin
-                        o_vertex_read_en <= '0;
-                        r_vertex_read_last <= '0;
-
-                        r_valid_triangle_output <= '0;
-                        r_finished <= '0;
-                    end
-                end
-
-                default: begin
-                    o_index_buff_read_en <= '0;
-                    r_index_buff_read_last <= '0;
-                    r_vertex_read_last <= '0;
-                end
-            endcase
-        end
-    end
-
-    // Register output data
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
             foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
             foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
             foreach (o_vertex_z[i]) o_vertex_z[i] <= '0;
+
+            bb_tl[0] <= '0;
+            bb_tl[1] <= '0;
+
+            bb_br[0] <= '0;
+            bb_br[1] <= '0;
+
+            o_dv <= '0;
+
         end else begin
-            if (r_valid_triangle_output) begin
-                o_vertex_pixel[0][0] <= i_v0[0];
-                o_vertex_pixel[0][1] <= i_v0[1];
-                o_vertex_z[0] <= i_v0_z;
+            case (current_state)
+                PA_IDLE: begin
+                    if (start & i_ready) begin
+                        r_num_triangles <= i_num_triangles;
+                    end
 
-                o_vertex_pixel[1][0] <= i_v1[0];
-                o_vertex_pixel[1][1] <= i_v1[1];
-                o_vertex_z[1] <= i_v1_z;
+                    o_index_buff_addr <= '0;
+                    o_index_buff_read_en <= 0;
+                end
 
-                o_vertex_pixel[2][0] <= i_v2[0];
-                o_vertex_pixel[2][1] <= i_v2[1];
-                o_vertex_z[2] <= i_v2_z;
+                PA_ASSEMBLE_READ_INDEX: begin
+                    o_index_buff_addr <= r_index_buff_addr;
+                    o_index_buff_read_en <= 1;
 
-                bb_tl[0] <= w_bb_tl[0];
-                bb_tl[1] <= w_bb_tl[1];
+                    r_index_buff_addr <= r_index_buff_addr + 1;
+                end
 
-                bb_br[0] <= w_bb_br[0];
-                bb_br[1] <= w_bb_br[1];
-            end
+                PA_ASSEMBLE_READ_VERTEX: begin
+                    o_index_buff_read_en <= 0;
+
+                    foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_vertex_idxs[i];
+                    o_vertex_read_en <= 1;
+                end
+
+                PA_ASSEMBLE_READ_VERTEX_WAIT_DATA: begin
+                    o_vertex_read_en <= 0;
+                    if (i_vertex_dv) begin
+                        o_vertex_pixel[0][0] <= i_v0[0];
+                        o_vertex_pixel[0][1] <= i_v0[1];
+                        o_vertex_z[0] <= i_v0_z;
+
+                        o_vertex_pixel[1][0] <= i_v1[0];
+                        o_vertex_pixel[1][1] <= i_v1[1];
+                        o_vertex_z[1] <= i_v1_z;
+
+                        o_vertex_pixel[2][0] <= i_v2[0];
+                        o_vertex_pixel[2][1] <= i_v2[1];
+                        o_vertex_z[2] <= i_v2_z;
+
+                        bb_tl[0] <= w_bb_tl[0];
+                        bb_tl[1] <= w_bb_tl[1];
+
+                        bb_br[0] <= w_bb_br[0];
+                        bb_br[1] <= w_bb_br[1];
+
+                        o_dv <= '1;
+                    end else begin
+                        o_dv <= '0;
+                    end
+                end
+
+                PA_ASSEMBLE_DONE: begin
+                    o_dv <= '0;
+                end
+
+                default: begin
+                    o_index_buff_addr <= '0;
+                    o_index_buff_read_en <= 0;
+                end
+            endcase
         end
     end
 endmodule
