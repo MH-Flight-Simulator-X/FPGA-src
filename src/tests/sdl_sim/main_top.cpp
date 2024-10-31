@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <iostream>
+#include <bitset>
 #include <SDL.h>
 #include <verilated.h>
 #include "Vtop.h"
@@ -53,6 +55,17 @@ float signedFixedPointToFloat(uint64_t fixed_point_int, int a, int b) {
 
     // Convert to float, interpreting fixed_point_int as signed after sign extension
     return static_cast<float>(static_cast<int64_t>(fixed_point_int)) / static_cast<float>(1 << b);
+}
+
+
+void printBits(uint64_t number) {
+    std::bitset<64> bits(number);
+    std::cout << bits << std::endl;
+}
+
+
+void printHex(uint64_t number) {
+    printf("0x%016llX\n", number);
 }
 
 
@@ -166,20 +179,29 @@ int main(int argc, char* argv[]) {
         float z_dx = signedFixedPointToFloat(top->z_dx, 17, 27);
         float z_dy = signedFixedPointToFloat(top->z_dy, 17, 27);
 
-        printf("\n\n########\n\n");
-        printf("clk_100m_cnt: %d\n", clk_100m_cnt);
-        printf("e0: %d\ne1: %d\ne2: %d\n", e0, e1, e2);
-        printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy); 
-        printf("area = %d\narea_reciprocal = %f\n", area, area_reciprocal);
-        printf("area_reciprocal_int = %d\n", top->area_reciprocal);
-        printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
-        printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
-        printf("z = %f\nz_dx = %f\nz_dy = %f\n", z, z_dx, z_dy);
-        printf("state = %d\n", top->state);
+        float depth_data = signedFixedPointToFloat(top->depth_data, 1, 15);
 
-        if (clk_100m_cnt > 9) {
-            return 0;
-        }
+        // printf("\n\n########\n\n");
+        // printf("clk_100m_cnt: %d\n", clk_100m_cnt);
+        // printf("e0: %d\ne1: %d\ne2: %d\n", e0, e1, e2);
+        // printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy); 
+        // printf("area = %d\narea_reciprocal = %f\n", area, area_reciprocal);
+        // printf("area_reciprocal_int = %d\n", top->area_reciprocal);
+        // printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
+        // printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
+        // printf("z = %f\nz_dx = %f\nz_dy = %f\n", z, z_dx, z_dy);
+        // printf("depth_data = %d\n", top->depth_data);
+        // printf("Depth_data = %02X\n", top->depth_data);
+        //
+        // printBits(top->depth_data);
+        // printBits(top->z);
+        // printHex(top->z);
+        //
+        // printf("state = %d\n", top->state);
+        //
+        // if (clk_100m_cnt > 11) {
+        //     return 0;
+        // }
 
         // update texture once per frame (in blanking)
         if (top->frame) { 

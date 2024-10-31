@@ -30,6 +30,8 @@ module top (
     output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dx,
     output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dy,
 
+    output logic signed [VERTEX_WIDTH-1:0] depth_data,
+
     logic [3:0] state,
  
     output logic done
@@ -76,13 +78,16 @@ module top (
 
     localparam signed X0 = 12;
     localparam signed Y0 = 4;
-    localparam signed Z0 = 16'sh0CCD; // 0.1
+    // localparam signed Z0 = 16'sh0CCD; // 0.1
+    localparam signed Z0 = 16'sh7333; // 0.1
     localparam signed X1 = 20;
     localparam signed Y1 = 30;
-    localparam signed Z1 = 16'sh199A; // 0.2
+    // localparam signed Z1 = 16'sh199A; // 0.2
+    localparam signed Z1 = 16'sh7333; // 0.5
     localparam signed X2 = 40;
     localparam signed Y2 = 20;
-    localparam signed Z2 = 16'sh4000; // 0.5
+    localparam signed Z2 = 16'sh0CCD; // 0.1
+    // localparam signed Z2 = 16'sh7333; // 0.5
 
     localparam signed TILE_MIN_X = 0;
     localparam signed TILE_MIN_Y = 0;
@@ -128,7 +133,7 @@ module top (
 
         .fb_addr(fb_addr_write),
         .fb_write_enable(fb_write_enable),
-        .depth_data(),
+        .depth_data(depth_data),
         .done
     );
 
@@ -151,6 +156,8 @@ module top (
     assign z_dy = rasterizer_inst.z_dy;
 
     assign state = rasterizer_inst.state;
+
+    assign depth_data_in = depth_data[15:4];
 
     // framebuffer memory
     framebuffer #(
@@ -247,8 +254,8 @@ module top (
             {paint_r, paint_g, paint_b} = fb_pix_colr;
         end
         else if (paint_db) begin
-            //{paint_r, paint_g, paint_b} = {depth_data[3:0], 8'b00000000};
-            {paint_r, paint_g, paint_b} = db_data_out;
+            {paint_r, paint_g, paint_b} = {db_data_out[11:8], 8'b00000000};
+            // {paint_r, paint_g, paint_b} = db_data_out;
         end
         else begin
             {paint_r, paint_g, paint_b} =  BG_COLR;

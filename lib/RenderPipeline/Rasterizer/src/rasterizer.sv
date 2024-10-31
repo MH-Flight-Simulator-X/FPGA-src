@@ -18,7 +18,7 @@ module rasterizer #(
     input logic signed [VERTEX_WIDTH-1:0] vertex[3][3], 
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
-    output logic [VERTEX_WIDTH-1:0] depth_data,
+    output logic signed [VERTEX_WIDTH-1:0] depth_data,
 
     output logic fb_write_enable,
     output logic done
@@ -26,14 +26,13 @@ module rasterizer #(
 
     localparam unsigned RECIPROCAL_WIDTH = 12;
     localparam unsigned Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
-    localparam unsigned SHIFT_AMOUNT = VERTEX_WIDTH + RECIPROCAL_WIDTH;
 
     // Logic to store x and y coordinates while drawing
     logic signed [VERTEX_WIDTH-1:0] x, y;
     logic signed [Z_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
 
     // Adjust the assignment to depth_data
-    assign depth_data = z[Z_WIDTH - 1 : SHIFT_AMOUNT];
+    assign depth_data = z[27:12];
 
     // logic to store bounding box coordinates
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
