@@ -61,5 +61,5 @@ To build the project run the following inside the **Build/** directory
 
 ```
 mkdir logs
-viado -mode batch -source build.tcl -log logs/build.log -journal logs/build.jou
+vivado -mode batch -source build.tcl -log logs/build.log -journal logs/build.jou
 ```
