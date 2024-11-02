@@ -1,4 +1,4 @@
-def parse_obj(file_path, output_path_face, output_path_vert):
+def parse_obj(file_path, output_path_face, output_path_vert, normalize = False):
     vertices = []
     faces = []
 
@@ -12,6 +12,13 @@ def parse_obj(file_path, output_path_face, output_path_vert):
                 parts = line.split()
                 face = [int(p.split('/')[0]) for p in parts[1:4]]  # 1-index to 0-index
                 faces.append(face)
+
+    if (normalize):
+        # Normalize vertices
+        min_x, min_y, min_z = min(v[0] for v in vertices), min(v[1] for v in vertices), min(v[2] for v in vertices)
+        max_x, max_y, max_z = max(v[0] for v in vertices), max(v[1] for v in vertices), max(v[2] for v in vertices)
+        scale = max(max_x - min_x, max_y - min_y, max_z - min_z)
+        vertices = [(x/scale, y/scale, z/scale) for x, y, z in vertices]
 
     # Write to file
     with open(output_path_face, 'w') as out_file:
@@ -27,7 +34,11 @@ def parse_obj(file_path, output_path_face, output_path_vert):
 # Add parameters when run as script
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) != 4:
+    if len(sys.argv) < 4:
         print("Usage: python convert_obj.py input.obj output_face.txt output_vert.txt")
-    else:
+    elif len(sys.argv) == 4:
         parse_obj(sys.argv[1], sys.argv[2], sys.argv[3])
+    elif len(sys.argv) == 5:
+        parse_obj(sys.argv[1], sys.argv[2], sys.argv[3], True)
+    else:
+        print("Too many arguments")

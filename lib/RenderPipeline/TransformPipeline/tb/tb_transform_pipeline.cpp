@@ -109,9 +109,13 @@ void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& t
 glm::mat4 generate_mvp() {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -5.0f));
-    model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
+    model = glm::rotate(model, glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+    float scale = 4.0f;
+    model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     glm::mat4 view = glm::lookAt(
         glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
@@ -289,7 +293,7 @@ int main(int argc, char** argv) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                printf("Assigning matrix\n");
+                // printf("Assigning matrix\n");
                 assign_mvp_data(dut, mvp);
                 dut->i_mvp_dv = 1;
             }
@@ -325,15 +329,21 @@ int main(int argc, char** argv) {
                 output_triangles.push_back(tri);
             }
 
-            if (dut->transform_pipeline_next == 0) {
-                if (posedge_cnt % 64 == 0) {
-                    dut->transform_pipeline_next = 1;
+            static bool enable_rasterizer_emulation = false;
+            if (enable_rasterizer_emulation) {
+                if (dut->transform_pipeline_next == 0) {
+                    if (posedge_cnt % 64 == 0) {
+                        dut->transform_pipeline_next = 1;
+                    }
                 }
+
+                if (dut->o_triangle_dv) {
+                    dut->transform_pipeline_next = 0;
+                }
+            } else {
+                dut->transform_pipeline_next = 1;
             }
 
-            if (dut->o_triangle_dv) {
-                dut->transform_pipeline_next = 0;
-            }
 
             if (dut->transform_pipeline_done) {
                 printf("Finished! (%ld)\n", posedge_cnt);

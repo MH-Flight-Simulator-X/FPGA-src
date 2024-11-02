@@ -13,8 +13,8 @@ module transform_pipeline #(
                                                 // z value should be
                                                 // interpreted as unsigned!
 
-    parameter unsigned MAX_TRIANGLE_COUNT = 4096,
-    parameter unsigned MAX_VERTEX_COUNT = 4096,
+    parameter unsigned MAX_TRIANGLE_COUNT = 16384,  // For testing
+    parameter unsigned MAX_VERTEX_COUNT = 16384,    // When building set to something like 4096
 
     parameter unsigned SCREEN_WIDTH = 320,
     parameter unsigned SCREEN_HEIGHT = 320,
