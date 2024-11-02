@@ -18,7 +18,6 @@ module vertex_post_processor #(
         parameter unsigned IV_FRACBITS = 13,
 
         parameter unsigned OV_DATAWIDTH = 12,
-        parameter unsigned O_DEPTH_FRACBITS = 12,  // Q0.12
 
         logic signed [IV_DATAWIDTH-1:0] WIDTH = 320,
         logic signed [IV_DATAWIDTH-1:0] HEIGHT = 320,
@@ -33,8 +32,7 @@ module vertex_post_processor #(
         input logic signed [IV_DATAWIDTH-1:0] i_vertex[4],
         input logic i_vertex_dv,
 
-        output logic signed [OV_DATAWIDTH-1:0] o_vertex_pixel[2],
-        output logic unsigned [O_DEPTH_FRACBITS-1:0] o_vertex_z,
+        output logic signed [OV_DATAWIDTH-1:0] o_vertex_pixel[3],
         output logic done,
         output logic invalid
     );
@@ -193,7 +191,7 @@ module vertex_post_processor #(
                 VPP_SCREEN_SPACE_TRANSFORM: begin
                     o_vertex_pixel[0] <= {w_ss_x_inter[2 * IV_DATAWIDTH - 1], w_ss_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
                     o_vertex_pixel[1] <= {w_ss_y_inter[2 * IV_DATAWIDTH - 1], w_ss_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
-                    o_vertex_z <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-O_DEPTH_FRACBITS];
+                    o_vertex_pixel[2] <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-O_DEPTH_FRACBITS];
                     done <= '1;
                 end
 

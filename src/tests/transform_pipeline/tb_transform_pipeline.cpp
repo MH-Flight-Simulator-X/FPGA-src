@@ -109,7 +109,7 @@ void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& t
 glm::mat4 generate_mvp() {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -95.0f));
+    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -5.0f));
     model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
 

@@ -243,7 +243,6 @@ module tb_transform_pipeline #(
             r_vpp_i_vertex_dv    <= '0;
             r_vpp_last_vertex    <= '0;
             vpp_error            <= '0;
-            r_vpp_last_vertex    <= '0;
             r_vpp_finished       <= '0;
             r_vertexes_processed <= '0;
 

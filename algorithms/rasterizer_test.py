@@ -222,7 +222,7 @@ def draw_model(model, pos, rotation, depth_buffer, screen):
 
         
 tetrahedron = read_obj_file("tetrahedron.obj")
-monkey = read_obj_file("suzanne.obj")
+monkey = read_obj_file("simplify_amongus.obj")
 
 angle = 0
 

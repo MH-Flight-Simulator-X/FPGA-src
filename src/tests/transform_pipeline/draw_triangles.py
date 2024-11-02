@@ -1,6 +1,7 @@
 import ast
 import pygame
 import sys
+import random
 
 # Define screen dimensions
 SCREEN_SCALE = 3.5
@@ -77,24 +78,23 @@ def main(filename):
         max = 0.0
 
         for i, triangle in enumerate(triangles):
-            color = COLOR_PALETTE[i % len(COLOR_PALETTE)]
+            col_index = random.randint(0, len(COLOR_PALETTE)-1)
+            color = COLOR_PALETTE[col_index] #i % len(COLOR_PALETTE)
             (v0, v1, v2) = triangle
             coords = [(x, y) for (x, y, z) in triangle]
-            depths = [z for (x, y, z) in triangle]
-            depth_val = (depths[0] + depths[1] + depths[2]) / 3
-            depth_val = depth_val * 100
-            
-            if (depth_val > max):
-                max = depth_val
-            if (depth_val < min):
-                min = depth_val
-            
-            color_val = map_value(depth_val, max * 1.000001, min * 0.9999, 20, 255)
-            color = (color_val, color_val, color_val)
+            # depths = [z for (x, y, z) in triangle]
+            # depth_val = (depths[0] + depths[1] + depths[2]) / 3
+            # depth_val = depth_val * 100
+            #
+            # if (depth_val > max):
+            #     max = depth_val
+            # if (depth_val < min):
+            #     min = depth_val
+            #
+            # color_val = map_value(depth_val, max * 1.000001, min * 0.9999, 20, 255)
+            # color = (color_val, color_val, color_val)
 
             pygame.draw.polygon(screen, color, coords)
-
-        print(min, max)
 
         # Update the display
         pygame.display.flip()
