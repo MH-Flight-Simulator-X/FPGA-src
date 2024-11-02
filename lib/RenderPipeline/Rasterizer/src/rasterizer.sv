@@ -3,12 +3,12 @@
 
 module rasterizer #(
     parameter unsigned VERTEX_WIDTH = 16,
-    parameter unsigned FB_ADDR_WIDTH = 4,
-    parameter unsigned [VERTEX_WIDTH-1:0] FB_WIDTH = 32,
+    parameter unsigned FB_ADDR_WIDTH = 15,
+    parameter unsigned [VERTEX_WIDTH-1:0] FB_WIDTH = 160,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_X = 0,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 32,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_X = 160,
     parameter signed [VERTEX_WIDTH-1:0] TILE_MIN_Y = 0,
-    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 16,
+    parameter signed [VERTEX_WIDTH-1:0] TILE_MAX_Y = 120,
     parameter unsigned RECIPROCAL_SIZE = 65000,
     parameter string RECIPROCAL_FILE = "reciprocal.mem"
 ) (
@@ -18,21 +18,21 @@ module rasterizer #(
     input logic signed [VERTEX_WIDTH-1:0] vertex[3][3], 
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
+    output logic signed [VERTEX_WIDTH-1:0] depth_data,
+
     output logic fb_write_enable,
-    output logic [VERTEX_WIDTH-1:0] depth_data,
     output logic done
 );
 
     localparam unsigned RECIPROCAL_WIDTH = 12;
     localparam unsigned Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
-    localparam unsigned SHIFT_AMOUNT = VERTEX_WIDTH + RECIPROCAL_WIDTH;
 
     // Logic to store x and y coordinates while drawing
     logic signed [VERTEX_WIDTH-1:0] x, y;
     logic signed [Z_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
 
     // Adjust the assignment to depth_data
-    assign depth_data = z[Z_WIDTH - 1 : SHIFT_AMOUNT];
+    assign depth_data = z[27:12];
 
     // logic to store bounding box coordinates
     logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
@@ -75,8 +75,8 @@ module rasterizer #(
         .valid(bounding_box_is_valid)
     );
 
-    logic [RECIPROCAL_WIDTH-1:0] area_reciprocal;
-    logic [VERTEX_WIDTH-1:0] area;
+    logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal;
+    logic signed [VERTEX_WIDTH-1:0] area;
 
     clut #(
         .SIZE(RECIPROCAL_SIZE),

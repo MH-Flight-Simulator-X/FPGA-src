@@ -144,19 +144,21 @@ def rasterize_triangle(v1, v2, v3, color, depth_buffer, screen):
             return
 
     # Compute barycentric weights at top-left corner of bounding box
-    w1 = e1 / area
-    w2 = e2 / area
-    w3 = e3 / area
+    area_reciprocal = 1 / area
+
+    w1 = e1 * area_reciprocal
+    w2 = e2 * area_reciprocal
+    w3 = e3 * area_reciprocal
 
     # Compute increments for barycentric weights
-    w1_dx = e1_dx / area
-    w1_dy = e1_dy / area
+    w1_dx = e1_dx * area_reciprocal
+    w1_dy = e1_dy * area_reciprocal
 
-    w2_dx = e2_dx / area
-    w2_dy = e2_dy / area
+    w2_dx = e2_dx * area_reciprocal
+    w2_dy = e2_dy * area_reciprocal
 
-    w3_dx = e3_dx / area
-    w3_dy = e3_dy / area
+    w3_dx = e3_dx * area_reciprocal
+    w3_dy = e3_dy * area_reciprocal
 
     # Initialize z at the top-left corner
     z = (w1 * v1[2]) + (w2 * v2[2]) + (w3 * v3[2])
