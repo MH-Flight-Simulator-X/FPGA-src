@@ -29,7 +29,7 @@ module transform_pipeline #(
     input logic transform_pipeline_start,
     input logic transform_pipeline_next,    // Ready to recieve next triangle
     output logic transform_pipeline_ready,
-    output logic transfrom_pipeline_done,
+    output logic transform_pipeline_done,
 
     // Transform matrix from MVP Matrix FIFO
     output logic o_mvp_matrix_read_en,
@@ -80,9 +80,7 @@ module transform_pipeline #(
 
         case (current_state)
             IDLE: begin
-                if (start) begin
-                    // Read matrix so that it is ready for next state
-                    o_mvp_matrix_read_en = 1'b1;
+                if (transform_pipeline_start) begin
                     next_state = VERTEX_SHADER;
                 end else begin
                     transform_pipeline_ready = 1'b1;
@@ -92,6 +90,10 @@ module transform_pipeline #(
             VERTEX_SHADER: begin
                 if (r_vpp_finished) begin
                     next_state = PRIMITIVE_ASSEMBLER;
+                end else begin
+                    if (~w_vs_ready) begin
+                        o_mvp_matrix_read_en = 1'b1;
+                    end
                 end
             end
 
@@ -162,7 +164,6 @@ module transform_pipeline #(
         .IV_DATAWIDTH(INPUT_DATAWIDTH),
         .IV_FRACBITS(INPUT_FRACBITS),
         .OV_DATAWIDTH(OUTPUT_DATAWIDTH),
-        .O_DEPTH_FRACBITS(OUTPUT_DATAWIDTH),
 
         .WIDTH(SCREEN_WIDTH),
         .HEIGHT(SCREEN_HEIGHT),
@@ -198,7 +199,7 @@ module transform_pipeline #(
     logic w_gbuff_dv;
 
     g_buffer #(
-        .VERTEX_DATAWIDTH(OUTPUT_VERTEX_DATAWIDTH),
+        .VERTEX_DATAWIDTH(OUTPUT_DATAWIDTH),
         .MAX_VERTEX_COUNT(MAX_TRIANGLE_COUNT)
     ) g_buffer_inst (
         .clk(clk),
@@ -245,14 +246,14 @@ module transform_pipeline #(
         .rstn(rstn),
 
         .start(r_pa_start),
-        .i_ready(i_triangle_ready),
+        .i_ready(transform_pipeline_next),
         .o_ready(w_pa_o_ready),
         .finished(w_pa_finished),
 
-        .o_index_buff_read_en(o_index_buff_read_en),
+        .o_index_buff_read_en(o_model_buff_index_read_en),
         .i_index_data(i_index_data),
         .i_index_dv(i_index_dv),
-        .i_inDex_last(i_index_last),
+        .i_index_last(i_index_last),
 
         .o_vertex_addr(w_pa_vertex_addr),
         .o_vertex_read_en(w_pa_vertex_read_en),
@@ -267,7 +268,9 @@ module transform_pipeline #(
         .i_v2_invalid(0),
         .i_vertex_dv(r_pa_i_vertex_dv),
 
-        .o_vertex_pixel(o_vertex_pixel),
+        .o_v0(o_v0),
+        .o_v1(o_v1),
+        .o_v2(o_v2),
         .o_dv(o_triangle_dv)
     );
 
@@ -347,7 +350,7 @@ module transform_pipeline #(
 
                             // Write VPP data to gbuff
                             r_gbuff_write_en <= '1;
-                            r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_z};
+                            r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_pixel[2]};
                         end else begin
                             r_gbuff_write_en <= '0;
                             $display("invalid");
@@ -384,9 +387,9 @@ module transform_pipeline #(
                     r_gbuff_addr_read_port2 <= w_pa_vertex_addr[2];
 
                     if (w_gbuff_dv & transform_pipeline_next) begin
-                        {r_pa_i_v0[0], r_pa_i_v0[1], r_pa_i_v0_z} <= w_gbuff_data_read_port0;
-                        {r_pa_i_v1[0], r_pa_i_v1[1], r_pa_i_v1_z} <= w_gbuff_data_read_port1;
-                        {r_pa_i_v2[0], r_pa_i_v2[1], r_pa_i_v2_z} <= w_gbuff_data_read_port2;
+                        {r_pa_i_v0[0], r_pa_i_v0[1], r_pa_i_v0[2]} <= w_gbuff_data_read_port0;
+                        {r_pa_i_v1[0], r_pa_i_v1[1], r_pa_i_v1[2]} <= w_gbuff_data_read_port1;
+                        {r_pa_i_v2[0], r_pa_i_v2[1], r_pa_i_v2[2]} <= w_gbuff_data_read_port2;
                         r_pa_i_vertex_dv <= '1;
                     end else begin
                         r_pa_i_vertex_dv <= '0;

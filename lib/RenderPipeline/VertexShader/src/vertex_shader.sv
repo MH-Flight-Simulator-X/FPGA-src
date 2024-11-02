@@ -132,22 +132,19 @@ module vertex_shader #(
     end
 
     always_comb begin
+        next_state = VERTEX_SHADER_IDLE;
         o_ready = 1'b0;
 
         case (current_state)
             VERTEX_SHADER_IDLE: begin
                 if (r_mvp_valid) begin
                     next_state = VERTEX_SHADER_COMPUTING;
-                end else begin
-                    next_state = VERTEX_SHADER_IDLE;
                 end
             end
 
             VERTEX_SHADER_COMPUTING: begin
                 if (vertex_last_finished[4]) begin
                     next_state = VERTEX_SHADER_FINISHED;
-                end else begin
-                    next_state = VERTEX_SHADER_COMPUTING;
                 end
 
                 if (i_enable) begin

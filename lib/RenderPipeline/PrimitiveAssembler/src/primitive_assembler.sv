@@ -48,12 +48,9 @@ module primitive_assembler #(
         input logic i_vertex_dv,
 
         // Output primitive
-        output logic signed [DATAWIDTH-1:0] o_vertex_pixel[3][3],   // Important! Z is unsigned
-                                                                    // but here represented with a signed number
-
-        // Primitive bounding box
-        output logic signed [DATAWIDTH-1:0] bb_tl[2],
-        output logic signed [DATAWIDTH-1:0] bb_br[2],
+        output logic signed [DATAWIDTH-1:0] o_v0[3],
+        output logic signed [DATAWIDTH-1:0] o_v1[3],
+        output logic signed [DATAWIDTH-1:0] o_v2[3],
 
         output logic o_dv
     );
@@ -130,9 +127,10 @@ module primitive_assembler #(
             foreach (o_vertex_addr[i]) o_vertex_addr[i] <= '0;
             o_vertex_read_en <= '0;
 
-            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
-            foreach (o_vertex_pixel[i,j]) o_vertex_pixel[i][j] <= '0;
-            foreach (o_vertex_z[i]) o_vertex_z[i] <= '0;
+            foreach (o_v0[i]) o_v0[i] <= '0;
+            foreach (o_v1[i]) o_v1[i] <= '0;
+            foreach (o_v2[i]) o_v2[i] <= '0;
+
             o_dv <= '0;
 
         end else begin
@@ -157,9 +155,9 @@ module primitive_assembler #(
                 PA_ASSEMBLE_READ_VERTEX_WAIT_DATA: begin
                     o_vertex_read_en <= 0;
                     if (i_vertex_dv) begin
-                        foreach (o_vertex_pixel[0, i]) o_vertex_pixel[0][i] <= i_v0[i];
-                        foreach (o_vertex_pixel[1, i]) o_vertex_pixel[1][i] <= i_v1[i];
-                        foreach (o_vertex_pixel[2, i]) o_vertex_pixel[2][i] <= i_v2[i];
+                        foreach (o_v0[i]) o_v0[i] <= i_v0[i];
+                        foreach (o_v1[i]) o_v1[i] <= i_v1[i];
+                        foreach (o_v2[i]) o_v2[i] <= i_v2[i];
                         o_dv <= '1;
                     end else begin
                         o_dv <= '0;
