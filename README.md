@@ -7,6 +7,11 @@ The project is splitt into multiple modules and accompanying documentation in **
 A figure showing the top-level design overview:
 ![System Overview](https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/system-System%20Arcitecture%20Overview.png)
 
+And here is a bad drawing of the architecture:
+<div align="center">
+  <img src="https://github.com/MH-Flight-Simulator-X/System-Figures-And-Microarchitecture/blob/main/System/architecture.jpg" alt="Drawing Architecture" height="800"/>
+</div>
+
 The following is an overview of the project structure  
 <pre>
 <strong>FPGA-src</strong>
