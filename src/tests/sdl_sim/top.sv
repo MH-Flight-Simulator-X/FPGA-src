@@ -226,20 +226,20 @@ module top (
         end
     end
     
-    localparam CLUT_SIZE = 16;
-    localparam CLUT_COLOR_WIDTH = 12;
-    localparam PALETE_FILE = "../../palette.mem";
+    localparam CLUT_WIDTH = 16;
+    localparam CLUT_DEPTH = 12;
+    localparam PALETTE_FILE = "../../palette.mem";
     
     // colour lookup table
     logic [COLRW-1:0] fb_pix_colr;
-    clut #(
-        .SIZE(CLUT_SIZE),
-        .COLOR_WIDTH(CLUT_COLOR_WIDTH),
-        .FILE(PALETE_FILE)
-    ) clut_inst (
+    rom #(
+        .WIDTH(CLUT_WIDTH),
+        .DEPTH(CLUT_DEPTH),
+        .FILE(PALETTE_FILE)
+    ) clut (
         .clk(clk_pix),
         .addr(fb_colr_read),
-        .color(fb_pix_colr)
+        .data(fb_pix_colr)
     );
     
 

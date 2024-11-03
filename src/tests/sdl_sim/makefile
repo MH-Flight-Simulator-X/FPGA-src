@@ -7,7 +7,7 @@ LIB_PATH = ../../../lib
 VERILOG_SOURCES = \
     $(LIB_PATH)/Display/projectf_display_480p.sv \
     $(LIB_PATH)/Memory/BRAM_DP/src/bram_dp.sv \
-    $(LIB_PATH)/Memory/CLUT/src/clut.sv \
+    $(LIB_PATH)/Memory/ROM/src/rom.sv \
     $(LIB_PATH)/Memory/Framebuffer/src/framebuffer.sv \
     $(LIB_PATH)/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv \
     $(LIB_PATH)/RenderPipeline/Rasterizer/src/rasterizer.sv

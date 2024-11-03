@@ -1,6 +1,6 @@
 SRC_DIR = ../src
 BOUNDING_BOX_FILE = ../BoundingBox/src/bounding_box.sv
-CLUT_FILE = ../../../Memory/CLUT/src/clut.sv
+ROM_FILE = ../../../Memory/ROM/src/rom.sv
 MODULE = rasterizer
 
 .PHONY:sim
@@ -32,7 +32,7 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-	-cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX_FILE) $(CLUT_FILE) --exe tb_$(MODULE).cpp
+	-cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX_FILE) $(ROM_FILE) --exe tb_$(MODULE).cpp
 	@touch .stamp.verilate
 
 .PHONY:lint

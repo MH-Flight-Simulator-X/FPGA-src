@@ -1,6 +1,6 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "obj_dir/Vclut.h"
+#include "obj_dir/Vrom.h"
 
 
 #define MAX_SIM_TIME 32
@@ -11,7 +11,7 @@ vluint64_t posedge_cnt = 0;
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
-    Vclut* dut = new Vclut;
+    Vrom* dut = new Vrom;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC* m_trace = new VerilatedVcdC;
@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
         dut->clk ^= 1; 
         dut->eval();
 
-        if (dut->clk == 1) {
+        if (dut->clk == 1 && sim_time > 1) {
             dut->addr += 1; 
         }
 

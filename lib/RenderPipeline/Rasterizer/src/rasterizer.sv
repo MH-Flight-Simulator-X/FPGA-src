@@ -78,14 +78,14 @@ module rasterizer #(
     logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal;
     logic signed [VERTEX_WIDTH-1:0] area;
 
-    clut #(
-        .SIZE(RECIPROCAL_SIZE),
-        .COLOR_WIDTH(RECIPROCAL_WIDTH),
+    rom #(
+        .WIDTH(RECIPROCAL_SIZE),
+        .DEPTH(RECIPROCAL_WIDTH),
         .FILE(RECIPROCAL_FILE)
     ) reciprocal_inst (
         .clk(clk),
         .addr(area),
-        .color(area_reciprocal)
+        .data(area_reciprocal)
     );
 
     function automatic signed [VERTEX_WIDTH-1:0] edge_function (
