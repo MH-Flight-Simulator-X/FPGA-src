@@ -8,7 +8,7 @@
 #define DATAWIDTH 12
 
 #define RESET_CLKS 8
-#define MAX_SIM_TIME 1152921504606846976
+#define MAX_SIM_TIME 120
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 
@@ -91,60 +91,60 @@ int main(int argc, char** argv) {
     
         if (dut->clk == 1) {
             posedge_cnt++;
+            dut->next = 1;
             dut->i_triangle_dv = 0;
 
-            if (posedge_cnt >= 2 && dut->ready) {
+            if (posedge_cnt == 4 && dut->ready) {
                 printf("Assigning data\n");
                 assign_data(dut, test_data[0], test_data[1], test_data[2]);
                 dut->i_triangle_dv = 1;
             }
+
+            if (dut->o_dv) {
+                printf("Got:\n");
+
+                int32_t bb_br[2];
+                int32_t bb_tl[2];
+
+                int32_t edge_coeffs[3];
+                int32_t edge_delta0[2];
+                int32_t edge_delta1[2];
+                int32_t edge_delta2[2];
+
+                bb_tl[0] = sign_extend(dut->bb_tl[0], DATAWIDTH);
+                bb_tl[1] = sign_extend(dut->bb_tl[1], DATAWIDTH);
+                bb_br[0] = sign_extend(dut->bb_br[0], DATAWIDTH);
+                bb_br[1] = sign_extend(dut->bb_br[1], DATAWIDTH);
+
+                edge_coeffs[0] = sign_extend(dut->edge_val0, DATAWIDTH);
+                edge_coeffs[1] = sign_extend(dut->edge_val1, DATAWIDTH);
+                edge_coeffs[2] = sign_extend(dut->edge_val2, DATAWIDTH);
+
+                edge_delta0[0] = sign_extend(dut->edge_delta0[0], DATAWIDTH);
+                edge_delta0[1] = sign_extend(dut->edge_delta0[1], DATAWIDTH);
+
+                edge_delta1[0] = sign_extend(dut->edge_delta1[0], DATAWIDTH);
+                edge_delta1[1] = sign_extend(dut->edge_delta1[1], DATAWIDTH);
+
+                edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
+                edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
+
+                printf("Bounding Box:\n");
+                printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
+                printf("Bottom Right: (%d, %d)\n", bb_br[0], bb_br[1]);
+
+                printf("Edge Coefficients:\n");
+                printf("Edge 0: %d\n", edge_coeffs[0]);
+                printf("Edge 1: %d\n", edge_coeffs[1]);
+                printf("Edge 2: %d\n", edge_coeffs[2]);
+
+                printf("Edge Deltas:\n");
+                printf("Edge 0: (%d, %d)\n", edge_delta0[0], edge_delta0[1]);
+                printf("Edge 1: (%d, %d)\n", edge_delta1[0], edge_delta1[1]);
+                printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
+            }
         }
 
-        if (dut->o_dv) {
-            printf("Got:\n");
-
-            int32_t bb_br[2];
-            int32_t bb_tl[2];
-
-            int32_t edge_coeffs[3];
-            int32_t edge_delta0[2];
-            int32_t edge_delta1[2];
-            int32_t edge_delta2[2];
-
-            bb_tl[0] = sign_extend(dut->bb_tl[0], DATAWIDTH);
-            bb_tl[1] = sign_extend(dut->bb_tl[1], DATAWIDTH);
-            bb_br[0] = sign_extend(dut->bb_br[0], DATAWIDTH);
-            bb_br[1] = sign_extend(dut->bb_br[1], DATAWIDTH);
-
-            edge_coeffs[0] = sign_extend(dut->edge_val0, DATAWIDTH);
-            edge_coeffs[1] = sign_extend(dut->edge_val1, DATAWIDTH);
-            edge_coeffs[2] = sign_extend(dut->edge_val2, DATAWIDTH);
-
-            edge_delta0[0] = sign_extend(dut->edge_delta0[0], DATAWIDTH);
-            edge_delta0[1] = sign_extend(dut->edge_delta0[1], DATAWIDTH);
-
-            edge_delta1[0] = sign_extend(dut->edge_delta1[0], DATAWIDTH);
-            edge_delta1[1] = sign_extend(dut->edge_delta1[1], DATAWIDTH);
-
-            edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
-            edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
-
-            printf("Bounding Box:\n");
-            printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
-            printf("Bottom Right: (%d, %d)\n", bb_br[0], bb_br[1]);
-
-            printf("Edge Coefficients:\n");
-            printf("Edge 0: %d\n", edge_coeffs[0]);
-            printf("Edge 1: %d\n", edge_coeffs[1]);
-            printf("Edge 2: %d\n", edge_coeffs[2]);
-
-            printf("Edge Deltas:\n");
-            printf("Edge 0: (%d, %d)\n", edge_delta0[0], edge_delta0[1]);
-            printf("Edge 1: (%d, %d)\n", edge_delta1[0], edge_delta1[1]);
-            printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
-
-            break;
-        }
     
         m_trace->dump(sim_time);
         sim_time++;

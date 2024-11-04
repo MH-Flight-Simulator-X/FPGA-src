@@ -227,7 +227,7 @@ module rasterizer_frontend #(
 
                 DONE: begin
                     if (next) begin
-                        o_dv <= '1;
+                        o_dv <= '0;
                     end
                 end
 
