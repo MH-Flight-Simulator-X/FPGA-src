@@ -20,9 +20,9 @@ def edge_function(v0, v1, point):
 def print_constants(v0, v1, v2):
     min_x, max_x, min_y, max_y = compute_bounding_box(v0, v1, v2, screen_width, screen_height) 
 
-    e0 = edge_function(v0, v1, (min_x, min_y))
-    e1 = edge_function(v1, v2, (min_x, min_y))
-    e2 = edge_function(v2, v0, (min_x, min_y))
+    e0 = edge_function(v0, v1, (0, 0))
+    e1 = edge_function(v1, v2, (0, 0))
+    e2 = edge_function(v2, v0, (0, 0))
 
     print(f"e0 = {e0}")
     print(f"e1 = {e1}")

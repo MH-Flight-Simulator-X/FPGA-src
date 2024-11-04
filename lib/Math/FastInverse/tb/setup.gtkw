@@ -1,0 +1,57 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Mon Nov  4 22:58:47 2024
+[*]
+[dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Math/FastInverse/tb/waveform.vcd"
+[dumpfile_mtime] "Mon Nov  4 22:54:48 2024"
+[dumpfile_size] 2865
+[savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Math/FastInverse/tb/setup.gtkw"
+[timestart] 23
+[size] 2490 1536
+[pos] -2541 -24
+*0.459573 27 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.fast_inverse.
+[sst_width] 233
+[signals_width] 407
+[sst_expanded] 1
+[sst_vpaned_height] 470
+@28
+TOP.fast_inverse.clk
+TOP.fast_inverse.ready
+TOP.fast_inverse.current_state[1:0]
+TOP.fast_inverse.iter[2:0]
+@22
+TOP.fast_inverse.A[11:0]
+@28
+TOP.fast_inverse.A_dv
+@22
+TOP.fast_inverse.r_A[23:0]
+TOP.fast_inverse.r_A_scaled[23:0]
+@c00420
+TOP.fast_inverse.r_shift_amt[4:0]
+@28
+(0)TOP.fast_inverse.r_shift_amt[4:0]
+(1)TOP.fast_inverse.r_shift_amt[4:0]
+(2)TOP.fast_inverse.r_shift_amt[4:0]
+(3)TOP.fast_inverse.r_shift_amt[4:0]
+(4)TOP.fast_inverse.r_shift_amt[4:0]
+@1401200
+-group_end
+@420
+TOP.fast_inverse.w_shift_amt[4:0]
+@22
+TOP.fast_inverse.X[23:0]
+TOP.fast_inverse.w_X_next[23:0]
+TOP.fast_inverse.two_fp[23:0]
+TOP.fast_inverse.unnamedblk1.AX[23:0]
+@23
+TOP.fast_inverse.unnamedblk1.two_fp_minus_AX[23:0]
+@22
+TOP.fast_inverse.A_inv[11:0]
+@28
+TOP.fast_inverse.A_inv_dv
+@22
+TOP.fast_inverse.w_A_inv[23:0]
+[pattern_trace] 1
+[pattern_trace] 0
