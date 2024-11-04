@@ -32,7 +32,7 @@ module rasterizer_frontend #(
     );
 
     // For now, just set sample point at (0,0)
-    localparam logic signed [DATAWIDTH-1:0] P0 = {'0, '0};
+    localparam logic signed [DATAWIDTH-1:0] P0[2] = '{0, 0};
 
     // Register input data
     logic signed [DATAWIDTH-1:0] r_v0[3];
@@ -90,11 +90,13 @@ module rasterizer_frontend #(
     );
 
     // DIVIDER UNIT
-    logic r_area_division_start;
+    /* verilator lint_off UNUSED */
+    logic r_area_division_start = '0;
 
-    logic signed [DATAWIDTH-1:0] w_area_reciprocal;
-    logic w_area_division_done;
-    logic w_area_division_ready;
+    logic signed [DATAWIDTH-1:0] w_area_reciprocal = '0;
+    logic w_area_division_done = 1'b1;
+    logic w_area_division_ready = '0;
+    /* verilator lint_on UNUSED */
 
     // ========== STATE ==========
     typedef enum logic [1:0] {
@@ -136,7 +138,7 @@ module rasterizer_frontend #(
                 if (r_area <= '0 || ~r_bb_valid) begin
                     next_state = IDLE;
                 end else begin
-                    if (w_divider_done) begin
+                    if (w_area_division_done) begin
                         next_state = DONE;
                     end
                 end
@@ -182,10 +184,6 @@ module rasterizer_frontend #(
                         foreach (r_v2[i]) r_v2[i] <= i_v2[i];
                     end
 
-                    foreach (r_v0[i]) r_v0[i] <= '0;
-                    foreach (r_v1[i]) r_v1[i] <= '0;
-                    foreach (r_v2[i]) r_v2[i] <= '0;
-
                     r_edge_val0 <= '0;
                     r_edge_val1 <= '0;
                     r_edge_val2 <= '0;
@@ -200,9 +198,9 @@ module rasterizer_frontend #(
                     r_edge_val0 <= edge_function(r_v0[0], r_v0[1], r_v1[0], r_v1[1], P0[0], P0[1]);
                     r_edge_val1 <= edge_function(r_v1[0], r_v1[1], r_v2[0], r_v2[1], P0[0], P0[1]);
                     r_edge_val2 <= edge_function(r_v2[0], r_v2[1], r_v0[0], r_v0[1], P0[0], P0[1]);
-                    r_edge_delta0[2] <= {r_v1[1] - r_v0[1], -(r_v1[0] - r_v0[0])};
-                    r_edge_delta1[2] <= {r_v2[1] - r_v1[1], -(r_v2[0] - r_v1[0])};
-                    r_edge_delta2[2] <= {r_v0[1] - r_v2[1], -(r_v0[0] - r_v2[0])};
+                    r_edge_delta0 <= '{r_v1[1] - r_v0[1], -(r_v1[0] - r_v0[0])};
+                    r_edge_delta1 <= '{r_v2[1] - r_v1[1], -(r_v2[0] - r_v1[0])};
+                    r_edge_delta2 <= '{r_v0[1] - r_v2[1], -(r_v0[0] - r_v2[0])};
                     r_area <= edge_function(r_v0[0], r_v0[1], r_v1[0], r_v1[1], r_v2[0], r_v2[1]);
 
                     foreach (r_bb_tl[i]) r_bb_tl[i] <= w_bb_tl[i];
@@ -229,7 +227,7 @@ module rasterizer_frontend #(
 
                 DONE: begin
                     if (next) begin
-                        o_dv <= '0;
+                        o_dv <= '1;
                     end
                 end
 
