@@ -11,6 +11,7 @@ module rasterizer_frontend #(
     input logic rstn,
 
     output logic ready,
+    input logic next,       // Can safely output next triangle
 
     input logic signed [DATAWIDTH-1:0] i_v0[3],
     input logic signed [DATAWIDTH-1:0] i_v1[3],
@@ -64,6 +65,7 @@ module rasterizer_frontend #(
 
     logic signed [DATAWIDTH-1:0] r_bb_tl[2];
     logic signed [DATAWIDTH-1:0] r_bb_br[2];
+    logic r_bb_valid;
 
     bounding_box #(
         .TILE_MIN_X(SCREEN_MIN_X),
@@ -131,7 +133,7 @@ module rasterizer_frontend #(
 
             STAGE2: begin
                 // Back-face culling by checking sign of area
-                if (r_area <= '0) begin
+                if (r_area <= '0 || ~r_bb_valid) begin
                     next_state = IDLE;
                 end else begin
                     if (w_divider_done) begin
@@ -141,7 +143,9 @@ module rasterizer_frontend #(
             end
 
             DONE: begin
-                next_state = IDLE;
+                if (next) begin
+                    next_state = IDLE;
+                end
             end
 
             default: begin
@@ -203,6 +207,7 @@ module rasterizer_frontend #(
 
                     foreach (r_bb_tl[i]) r_bb_tl[i] <= w_bb_tl[i];
                     foreach (r_bb_br[i]) r_bb_br[i] <= w_bb_br[i];
+                    r_bb_valid <= w_bb_valid;
                 end
 
                 STAGE2: begin
@@ -219,13 +224,13 @@ module rasterizer_frontend #(
                         area_inv <= w_area_reciprocal;
 
                         o_dv <= '1;
-                    end else begin
-                        o_dv <= '0;
                     end
                 end
 
                 DONE: begin
-                    o_dv <= '0;
+                    if (next) begin
+                        o_dv <= '0;
+                    end
                 end
 
                 default: begin

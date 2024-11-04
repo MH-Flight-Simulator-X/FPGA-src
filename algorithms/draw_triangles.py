@@ -5,8 +5,8 @@ import random
 
 # Define screen dimensions
 SCREEN_SCALE = 3.5
-SCREEN_WIDTH = 320 * SCREEN_SCALE
-SCREEN_HEIGHT = 320 * SCREEN_SCALE
+SCREEN_WIDTH = int(320 * SCREEN_SCALE)
+SCREEN_HEIGHT = int(320 * SCREEN_SCALE)
 BACKGROUND_COLOR = (0, 0, 0)
 
 # Some nice pastel colors
@@ -50,6 +50,13 @@ for _ in range(10):
     x = random.randint(10, int(SCREEN_WIDTH)-10)
     y = random.randint(int(SCREEN_HEIGHT // 2), int(SCREEN_HEIGHT))
     mountains.append([x, y])
+
+def draw_gradient(screen, color1, color2, start_y=0, end_y=SCREEN_HEIGHT):
+    for y in range(int(start_y), int(end_y)):
+        color = [0, 0, 0]
+        for i in range(3):
+            color[i] = int(color1[i] + (color2[i] - color1[i]) * (y / SCREEN_HEIGHT))
+        pygame.draw.line(screen, color, (0, y), (SCREEN_WIDTH, y))
 
 def triangle_sort_depth(x):
     v0, v1, v2 = x
@@ -113,13 +120,12 @@ def main(filename):
         # Clear the screen
         screen.fill((0, 0, 0))
 
-        # Fill lower half of screen with grass color
-        grass_color = (34, 139, 34)
-        pygame.draw.rect(screen, grass_color, (0, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
+        # Draw grass in lower half from a grass green at the bottom to a washed out green at the horizon 
+        draw_gradient(screen, (152, 251, 152), (0, 128, 0), SCREEN_HEIGHT // 2, SCREEN_HEIGHT)
 
-        # Fill upper half of screen with light blue sky color
-        sky_color = (91, 188, 228)
-        pygame.draw.rect(screen, sky_color, (0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
+        # Fill upper half of screen with light blue sky color, from horizon to top
+        # Use gradient from light blue to white
+        draw_gradient(screen, (135, 206, 250), (255, 255, 255), 0, SCREEN_HEIGHT // 2)
 
         # Draw trees at random locations bellow the horizon
         for i in range(len(trees)):
