@@ -1,7 +1,6 @@
-module framebuffer #(
-    parameter unsigned FB_WIDTH,
-    parameter unsigned FB_HEIGHT,
-    parameter unsigned DATA_WIDTH,
+module buffer #(
+    parameter unsigned WIDTH = 16,
+    parameter unsigned DEPTH = 32,
     parameter string FILE = ""
 ) (
     input logic clk_write,
@@ -14,13 +13,12 @@ module framebuffer #(
     input logic [ADDR_WIDTH-1:0] addr_write,
     input logic [ADDR_WIDTH-1:0] addr_read,
 
-    input logic [DATA_WIDTH-1:0] clear_value,
-    input logic [DATA_WIDTH-1:0] data_in,
-    output logic [DATA_WIDTH-1:0] data_out
+    input logic [WIDTH-1:0] clear_value,
+    input logic [WIDTH-1:0] data_in,
+    output logic [WIDTH-1:0] data_out
 );
 
-    localparam FB_SIZE = FB_WIDTH * FB_HEIGHT;
-    localparam ADDR_WIDTH = $clog2(FB_SIZE);
+    localparam ADDR_WIDTH = $clog2(DEPTH);
 
     // State Machine States
     typedef enum logic {
@@ -30,10 +28,10 @@ module framebuffer #(
     state_t state = IDLE;
 
     bram_dp #(
-        .WIDTH(DATA_WIDTH),
-        .DEPTH(FB_SIZE),
+        .WIDTH(WIDTH),
+        .DEPTH(DEPTH),
         .FILE(FILE)
-    ) bram_inst (
+    ) bram_dp_inst (
         .clk_write(clk_write),
         .clk_read(clk_read),
         .write_enable(write_enable || (state == CLEARING)),
@@ -43,7 +41,7 @@ module framebuffer #(
         .data_out(data_out)
     );
 
-    reg [ADDR_WIDTH-1:0] clear_counter;
+    logic [ADDR_WIDTH-1:0] clear_counter;
 
     // State Machine for controlling the clear logic
     always_ff @(posedge clk_write) begin
@@ -57,7 +55,7 @@ module framebuffer #(
                 end
             end
             CLEARING: begin
-                if (clear_counter < ADDR_WIDTH'(FB_SIZE - 1)) begin
+                if (clear_counter < ADDR_WIDTH'(WIDTH - 1)) begin
                     clear_counter <= clear_counter + 1;
                 end else begin
                     state <= IDLE;

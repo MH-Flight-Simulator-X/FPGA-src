@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "obj_dir/Vframebuffer.h"
+#include "obj_dir/Vbuffer.h"
 
 #define MAX_SIM_TIME 300
 #define FB_WIDTH 8
@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     Verilated::commandArgs(argc, argv);
 
-    Vframebuffer* dut = new Vframebuffer;
+    Vbuffer* dut = new Vbuffer;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC* m_trace = new VerilatedVcdC;
