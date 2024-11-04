@@ -15,7 +15,7 @@ module rasterizer #(
     input logic clk,
     input logic rst,
 
-    input logic signed [VERTEX_WIDTH-1:0] vertex[3][3], 
+    input logic signed [VERTEX_WIDTH-1:0] vertex[3][3],
 
     output logic [FB_ADDR_WIDTH-1:0] fb_addr,
     output logic signed [VERTEX_WIDTH-1:0] depth_data,
