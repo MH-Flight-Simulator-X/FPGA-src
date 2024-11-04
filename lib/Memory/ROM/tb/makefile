@@ -1,9 +1,5 @@
 SRC_DIR = ../src
-MODULE = clut
-
-SIZE = 16
-COLOR_WIDTH = 12
-FILE = colors.mem
+MODULE = rom
 
 .PHONY:sim
 sim: waveform.vcd
@@ -34,8 +30,7 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-	-cc $(SRC_DIR)/$(MODULE).sv --exe tb_$(MODULE).cpp \
-	-GSIZE=$(SIZE) -GCOLOR_WIDTH=$(COLOR_WIDTH) -GFILE="\"$(FILE)\""
+	-cc $(SRC_DIR)/$(MODULE).sv --exe tb_$(MODULE).cpp
 	@touch .stamp.verilate
 
 .PHONY:lint
