@@ -58,28 +58,28 @@ module top (
     );
 
     // color parameters
-    localparam CHANW = 4;        // color channel width (bits)
-    localparam COLRW = 3*CHANW;  // color width: three channels (bits)
-    localparam BG_COLR = 'h137;  // background color
+    localparam CHANNEL_WIDTH = 4;
+    localparam COLOR_WIDTH = 3*CHANNEL_WIDTH;
+    localparam BG_COLOR = 'h137;
 
     // framebuffer (FB)
-    localparam FB_WIDTH  = 160;  // framebuffer width in pixels
-    localparam FB_HEIGHT = 120;  // framebuffer width in pixels
-    localparam FB_PIXELS = FB_WIDTH * FB_HEIGHT;  // total pixels in buffer
-    localparam FB_ADDRW  = $clog2(FB_PIXELS);  // address width
-    localparam FB_DATAW  = 4;  // color bits per pixel
-    localparam FB_IMAGE  = "../../image.mem";  // bitmap file
+    localparam unsigned FB_WIDTH  = 160;
+    localparam unsigned FB_HEIGHT = 120;
+    localparam unsigned FB_DATA_WIDTH  = 4;
+    localparam unsigned FB_DEPTH = FB_WIDTH * FB_HEIGHT;
+    localparam unsigned FB_ADDR_WIDTH  = $clog2(FB_DEPTH);
+    localparam string FB_IMAGE  = "../../image.mem";
 
     // pixel read address and color
-    logic [FB_ADDRW-1:0] fb_addr_read;
-    logic [FB_ADDRW-1:0] fb_addr_write;
-    logic [FB_DATAW-1:0] fb_colr_read;
+    logic [FB_ADDR_WIDTH-1:0] fb_addr_read;
+    logic [FB_ADDR_WIDTH-1:0] fb_addr_write;
+    logic [FB_DATA_WIDTH-1:0] fb_colr_read;
     logic fb_write_enable;
 
     localparam signed X0 = 12;
     localparam signed Y0 = 4;
     // localparam signed Z0 = 16'sh0CCD; // 0.1
-    localparam signed Z0 = 16'sh7333; // 0.1
+    localparam signed Z0 = 16'sh7333; // 0.5
     localparam signed X1 = 20;
     localparam signed Y1 = 30;
     // localparam signed Z1 = 16'sh199A; // 0.2
@@ -112,12 +112,12 @@ module top (
 
         vertex[2][0] = X2;
         vertex[2][1] = Y2;
-        vertex[2][2] = Z2;    
+        vertex[2][2] = Z2;
     end
 
     rasterizer #(
         .VERTEX_WIDTH(CORDW),
-        .FB_ADDR_WIDTH(FB_ADDRW),
+        .FB_ADDR_WIDTH(FB_ADDR_WIDTH),
         .FB_WIDTH(FB_WIDTH),
         .TILE_MIN_X(TILE_MIN_X),
         .TILE_MIN_Y(TILE_MIN_Y),
@@ -160,12 +160,11 @@ module top (
     assign depth_data_in = depth_data[15:4];
 
     // framebuffer memory
-    framebuffer #(
-        .FB_WIDTH(FB_WIDTH),
-        .FB_HEIGHT(FB_HEIGHT),
-        .DATA_WIDTH(FB_DATAW),
+    buffer #(
+        .WIDTH(FB_DATA_WIDTH),
+        .DEPTH(FB_DEPTH),
         .FILE(FB_IMAGE)
-    ) fb_inst (
+    ) framebuffer (
         .clk_write(clk_100m),
         .clk_read(clk_pix),
         .write_enable(fb_write_enable),
@@ -181,16 +180,15 @@ module top (
     localparam DB_CLEAR_VALUE = 4095;
     localparam DB_DATA_WIDTH = 12;
 
-    logic [FB_ADDRW-1:0] db_addr_read;
-    //logic [FB_ADDRW-1:0] db_addr_write;
+    logic [FB_ADDR_WIDTH-1:0] db_addr_read;
+    //logic [FB_ADDR_WIDTH-1:0] db_addr_write;
     logic [11:0] db_data_out;
     //logic db_write_enable = 1'b0;
 
     // depth buffer memory
-    framebuffer #(
-        .FB_WIDTH(FB_WIDTH),
-        .FB_HEIGHT(FB_HEIGHT),
-        .DATA_WIDTH(DB_DATA_WIDTH)
+    buffer #(
+        .WIDTH(DB_DATA_WIDTH),
+        .DEPTH(FB_DEPTH)
     ) db_inst (
         .clk_write(clk_100m),
         .clk_read(clk_pix),
@@ -231,7 +229,7 @@ module top (
     localparam PALETTE_FILE = "../../palette.mem";
     
     // colour lookup table
-    logic [COLRW-1:0] fb_pix_colr;
+    logic [COLOR_WIDTH-1:0] fb_pix_colr;
     rom #(
         .WIDTH(CLUT_WIDTH),
         .DEPTH(CLUT_DEPTH),
@@ -246,7 +244,7 @@ module top (
     // paint screen
     logic paint_db;
     logic paint_fb;
-    logic [CHANW-1:0] paint_r, paint_g, paint_b;  // color channels
+    logic [CHANNEL_WIDTH-1:0] paint_r, paint_g, paint_b;  // color channels
     always_comb begin
         paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
         paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
@@ -258,7 +256,7 @@ module top (
             // {paint_r, paint_g, paint_b} = db_data_out;
         end
         else begin
-            {paint_r, paint_g, paint_b} =  BG_COLR;
+            {paint_r, paint_g, paint_b} =  BG_COLOR;
         end
     end
 
