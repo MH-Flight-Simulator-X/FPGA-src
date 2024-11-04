@@ -56,8 +56,9 @@ module transform_pipeline #(
     );
 
     // ====== STATE ======
-    typedef enum logic [1:0] {
+    typedef enum logic [2:0] {
         IDLE,
+        VERTEX_SHADER_GET_MATRIX,
         VERTEX_SHADER,
         PRIMITIVE_ASSEMBLER,
         DONE
@@ -81,19 +82,23 @@ module transform_pipeline #(
         case (current_state)
             IDLE: begin
                 if (transform_pipeline_start) begin
-                    next_state = VERTEX_SHADER;
+                    next_state = VERTEX_SHADER_GET_MATRIX;
                 end else begin
                     transform_pipeline_ready = 1'b1;
+                end
+            end
+
+            VERTEX_SHADER_GET_MATRIX: begin
+                if (i_mvp_dv) begin
+                    next_state = VERTEX_SHADER;
+                end else begin
+                    o_mvp_matrix_read_en = 1'b1;
                 end
             end
 
             VERTEX_SHADER: begin
                 if (r_vpp_finished) begin
                     next_state = PRIMITIVE_ASSEMBLER;
-                end else begin
-                    if (~w_vs_ready) begin
-                        o_mvp_matrix_read_en = 1'b1;
-                    end
                 end
             end
 

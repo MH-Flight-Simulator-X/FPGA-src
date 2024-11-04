@@ -159,9 +159,9 @@ def main(filename):
             pygame.draw.polygon(screen, final_color, coords)
 
         # Write screen to image
-        pygame.image.save(screen, "output.png")
-        pygame.quit()
-        sys.exit()
+        # pygame.image.save(screen, "output.png")
+        # pygame.quit()
+        # sys.exit()
 
         # Update the display
         pygame.display.flip()

@@ -106,15 +106,15 @@ void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& t
     outfile.close();
 }
 
-glm::mat4 generate_mvp() {
+glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot) {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
-    model = glm::rotate(model, glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, glm::radians(-10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::translate(model, pos);
+    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    float scale = 4.0f;
+    float scale = 2.0f;
     model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     glm::mat4 view = glm::lookAt(
@@ -162,8 +162,12 @@ void assign_mvp_data(Vtransform_pipeline* dut, glm::mat4 mvp) {
     }
 };
 
-void assign_vertex_data(Vtransform_pipeline* dut, std::vector<glm::vec3>& vertex_data) {
+void assign_vertex_data(Vtransform_pipeline* dut, std::vector<glm::vec3>& vertex_data, bool reset = false) {
     static vluint64_t vertex_read_addr = 0;
+    if (reset) {
+        vertex_read_addr = 0;
+        printf("Resetting vertex read address\n");
+    }
 
     if (vertex_read_addr >= vertex_data.size()) {
         dut->i_vertex_last = 0;
@@ -197,8 +201,10 @@ void assign_vertex_data(Vtransform_pipeline* dut, std::vector<glm::vec3>& vertex
     }
 };
 
-void assign_index_data(Vtransform_pipeline* dut, std::vector<glm::ivec3>& index_data) {
+void assign_index_data(Vtransform_pipeline* dut, std::vector<glm::ivec3>& index_data, bool reset = false) {
     static vluint64_t index_read_addr = 0;
+    if (reset)
+        index_read_addr = 0;
 
     if (dut->o_model_buff_index_read_en) {
         if (index_read_addr == index_data.size() - 1) {
@@ -206,11 +212,6 @@ void assign_index_data(Vtransform_pipeline* dut, std::vector<glm::ivec3>& index_
         } else {
             dut->i_index_last = 0;
         }
-
-        printf("Index: %ld\n", index_read_addr);
-        printf("Index data: %d, %d, %d\n", index_data.at(index_read_addr).x, 
-                                           index_data.at(index_read_addr).y, 
-                                           index_data.at(index_read_addr).z);
 
         dut->i_index_data[0] = index_data.at(index_read_addr).x;
         dut->i_index_data[1] = index_data.at(index_read_addr).y;
@@ -239,7 +240,8 @@ int main(int argc, char** argv) {
 
     std::vector<glm::vec3> vertex_buffer = read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = read_index_data("model.face");
-    glm::mat4 mvp = generate_mvp();
+    glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -1.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
+    glm::mat4 mvp2 = generate_mvp(glm::vec3(0.0f, 1.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
 
     // Reset
     for (int i = 0; i < RESET_CLKS; i++) {
@@ -277,6 +279,9 @@ int main(int argc, char** argv) {
     long long vertex_index = 0;
     std::vector<Triangle_t> output_triangles = {};
 
+    bool shouldReset = false;
+    int num_rendered = 0;
+
     while (sim_time < MAX_SIM_TIME) {
         dut->clk ^= 1;
         dut->eval();
@@ -287,24 +292,34 @@ int main(int argc, char** argv) {
             dut->i_mvp_dv = 0;
 
             // Assign mvp matrix
-            if (posedge_cnt == 2 && dut->transform_pipeline_ready) {
+            if (posedge_cnt >= 2 && dut->transform_pipeline_ready) {
                 printf("Starting transform pipeline\n");
                 dut->transform_pipeline_start = 1; 
             }
 
             if (dut->o_mvp_matrix_read_en) {
                 // printf("Assigning matrix\n");
-                assign_mvp_data(dut, mvp);
+
+                if (num_rendered == 0) {
+                    assign_mvp_data(dut, mvp);
+                } else {
+                    assign_mvp_data(dut, mvp2);
+                }
+
                 dut->i_mvp_dv = 1;
             }
 
-            // Assign vertex data
-            assign_vertex_data(dut, vertex_buffer);                    
+            if (shouldReset)
+                printf("Resetting\n");
 
-            // Assign index data
-            assign_index_data(dut, index_buffer);
+            // Assign vertex and index data
+            assign_vertex_data(dut, vertex_buffer, shouldReset);                    
+            assign_index_data(dut, index_buffer, shouldReset);
 
             static int num_triangles_rec = 0;
+            if (shouldReset)
+                num_triangles_rec = 0;
+
             if (dut->o_triangle_dv) {
                 int32_t v0[2]; int32_t v1[2]; int32_t v2[2];
                 float v0_z; float v1_z; float v2_z;
@@ -321,9 +336,6 @@ int main(int argc, char** argv) {
                 v2[1] = sign_extend(dut->o_v2[1], OUTPUT_VERTEX_DATAWIDTH);
                 v2_z = FixedPoint<uint32_t>(dut->o_v2[2], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
 
-                // Print output data
-                printf("Triangle (%d / %ld): (%d, %d, %f), (%d, %d, %f), (%d, %d, %f)\n", ++num_triangles_rec, index_buffer.size(), v0[0], v0[1], v0_z, v1[0], v1[1], v1_z, v2[0], v2[1], v2_z);
-
                 // Store triangle data
                 Triangle_t tri = {glm::ivec2(v0[0], v0[1]), v0_z, glm::ivec2(v1[0], v1[1]), v1_z, glm::ivec2(v2[0], v2[1]), v2_z};
                 output_triangles.push_back(tri);
@@ -332,7 +344,7 @@ int main(int argc, char** argv) {
             static bool enable_rasterizer_emulation = false;
             if (enable_rasterizer_emulation) {
                 if (dut->transform_pipeline_next == 0) {
-                    if (posedge_cnt % 64 == 0) {
+                    if (posedge_cnt % 1024 == 0) {
                         dut->transform_pipeline_next = 1;
                     }
                 }
@@ -344,10 +356,25 @@ int main(int argc, char** argv) {
                 dut->transform_pipeline_next = 1;
             }
 
+            static int vs_finished_last = 0;
+            if (dut->transform_pipeline__DOT__w_vs_finished && !vs_finished_last) {
+                printf("VS Finished\n");
+            }
+            vs_finished_last = dut->transform_pipeline__DOT__w_vs_finished;
+            
+            static int vpp_finished_last = 0;
+            if (dut->transform_pipeline__DOT__r_vpp_finished && !vpp_finished_last) {
+                printf("VPP Finished\n");
+            }
+            vpp_finished_last = dut->transform_pipeline__DOT__r_vpp_finished;
 
+            shouldReset = false;
             if (dut->transform_pipeline_done) {
                 printf("Finished! (%ld)\n", posedge_cnt);
-                break;
+                shouldReset = true;
+                num_rendered++;
+                if (num_rendered >= 2)
+                    break;
             }
         }
 
