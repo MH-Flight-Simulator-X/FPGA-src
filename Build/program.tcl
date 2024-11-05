@@ -1,4 +1,4 @@
-set design_name "mh_fpga_test"
+set design_name "top_MH_FPGA"
 
 open_hw_manager
 connect_hw_server

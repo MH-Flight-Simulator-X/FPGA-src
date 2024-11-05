@@ -2,35 +2,34 @@
 `timescale 1ns / 1ps
 
 // Generate 100 MHz with 20 MHz input clock
-// MMCME2_BASE and BUFG are documented in Xilinx UG472
-
 module clock_100Mhz (
     input  wire logic clk_20m,        // input clock (20 MHz)
     input  wire logic rst,            // reset
-    output      logic clk_100m,        // 100m clock
-    output      logic clk_100m_5x,     // 5x clock
-    output      logic clk_100m_locked  // pixel clock locked?
+    output      logic clk_100m,       // 100 MHz clock
+    output      logic clk_100m_5x,    // 5x clock (600 MHz from VCO)
+    output      logic clk_100m_locked // clock locked
     );
 
-    localparam MULT_MASTER=5;  // master clock multiplier (2.000-64.000)
-    localparam DIV_MASTER=1;      // master clock divider (1-106)
-    localparam DIV_5X=1;        // 5x pixel clock divider
-    localparam DIV_1X=5;         // pixel clock divider
-    localparam IN_PERIOD=50.0;    // period of master clock in ns (10 ns == 100 MHz)
+    // Parameters for generating 100 MHz from 20 MHz
+    localparam MULT_MASTER = 30;      // Multiply by 30
+    localparam DIV_MASTER = 1;        // No division for VCO
+    localparam DIV_5X = 1;            // Pass-through VCO frequency (600 MHz) to clk_100m_5x
+    localparam DIV_1X = 6;            // Divide by 6 to get 100 MHz for clk_100m
+    localparam IN_PERIOD = 50.0;      // Period of 20 MHz input clock in ns
 
-    logic feedback;          // internal clock feedback
-    logic clk_100m_unbuf;     // unbuffered pixel clock
-    logic clk_100m_5x_unbuf;  // unbuffered 5x pixel clock
-    logic locked;            // unsynced lock signal
+    logic feedback;            // Internal clock feedback
+    logic clk_100m_unbuf;      // Unbuffered 100 MHz clock
+    logic clk_100m_5x_unbuf;   // Unbuffered 5x clock (600 MHz VCO frequency)
+    logic locked;              // Unsynced lock signal
 
     MMCME2_BASE #(
         .CLKFBOUT_MULT_F(MULT_MASTER),
         .CLKIN1_PERIOD(IN_PERIOD),
-        .CLKOUT0_DIVIDE_F(DIV_5X),
-        .CLKOUT1_DIVIDE(DIV_1X),
+        .CLKOUT0_DIVIDE_F(DIV_5X),   // Output 600 MHz directly for clk_100m_5x
+        .CLKOUT1_DIVIDE(DIV_1X),     // Divide by 6 for 100 MHz
         .DIVCLK_DIVIDE(DIV_MASTER)
     ) MMCME2_BASE_inst (
-        .CLKIN1(clk_100m),
+        .CLKIN1(clk_20m),
         .RST(rst),
         .CLKOUT0(clk_100m_5x_unbuf),
         .CLKOUT1(clk_100m_unbuf),
@@ -52,14 +51,15 @@ module clock_100Mhz (
         /* verilator lint_on PINCONNECTEMPTY */
     );
 
-    // explicitly buffer output clocks
+    // Buffer output clocks
     BUFG bufg_clk(.I(clk_100m_unbuf), .O(clk_100m));
     BUFG bufg_clk_5x(.I(clk_100m_5x_unbuf), .O(clk_100m_5x));
 
-    // ensure clock lock is synced with pixel clock
+    // Synchronize the lock signal with clk_100m
     logic locked_sync_0;
     always_ff @(posedge clk_100m) begin
         locked_sync_0 <= locked;
         clk_100m_locked <= locked_sync_0;
     end
 endmodule
+
