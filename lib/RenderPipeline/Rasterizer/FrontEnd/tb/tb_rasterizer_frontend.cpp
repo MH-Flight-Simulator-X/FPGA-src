@@ -20,8 +20,8 @@ typedef struct {
 
 Vertex test_data[3] = {
     {12, 4, 0},
-    {20, 30, 0.5},
-    {40, 20, 0.8}
+    {20, 200, 0.5},
+    {40, 200, 0.8}
 };
 
 
@@ -111,14 +111,17 @@ int main(int argc, char** argv) {
                 int32_t edge_delta1[2];
                 int32_t edge_delta2[2];
 
+                int32_t area;
+                float area_inv;
+
                 bb_tl[0] = sign_extend(dut->bb_tl[0], DATAWIDTH);
                 bb_tl[1] = sign_extend(dut->bb_tl[1], DATAWIDTH);
                 bb_br[0] = sign_extend(dut->bb_br[0], DATAWIDTH);
                 bb_br[1] = sign_extend(dut->bb_br[1], DATAWIDTH);
 
-                edge_coeffs[0] = sign_extend(dut->edge_val0, DATAWIDTH);
-                edge_coeffs[1] = sign_extend(dut->edge_val1, DATAWIDTH);
-                edge_coeffs[2] = sign_extend(dut->edge_val2, DATAWIDTH);
+                edge_coeffs[0] = sign_extend(dut->edge_val0, 2*DATAWIDTH);
+                edge_coeffs[1] = sign_extend(dut->edge_val1, 2*DATAWIDTH);
+                edge_coeffs[2] = sign_extend(dut->edge_val2, 2*DATAWIDTH);
 
                 edge_delta0[0] = sign_extend(dut->edge_delta0[0], DATAWIDTH);
                 edge_delta0[1] = sign_extend(dut->edge_delta0[1], DATAWIDTH);
@@ -129,19 +132,31 @@ int main(int argc, char** argv) {
                 edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
                 edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
 
+                area = sign_extend(dut->o_area, 2*DATAWIDTH);
+                area_inv = FixedPoint<uint32_t>(dut->area_inv, 2*DATAWIDTH, 2*DATAWIDTH, false).toFloat();
+
                 printf("Bounding Box:\n");
                 printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
                 printf("Bottom Right: (%d, %d)\n", bb_br[0], bb_br[1]);
+                printf("\n");
 
                 printf("Edge Coefficients:\n");
                 printf("Edge 0: %d\n", edge_coeffs[0]);
                 printf("Edge 1: %d\n", edge_coeffs[1]);
                 printf("Edge 2: %d\n", edge_coeffs[2]);
+                printf("\n");
 
                 printf("Edge Deltas:\n");
                 printf("Edge 0: (%d, %d)\n", edge_delta0[0], edge_delta0[1]);
                 printf("Edge 1: (%d, %d)\n", edge_delta1[0], edge_delta1[1]);
                 printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
+                printf("\n");
+
+                printf("Area Stuff:\n");
+                printf("Area: %d\n", area);
+                printf("Area inverse: %f\n", area_inv);
+
+                printf("\n");
             }
         }
 

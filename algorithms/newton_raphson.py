@@ -58,10 +58,10 @@ def newton_raphson_rec_fixed_point(A, x0, N, max_iterations=4):
     print("Result: ", hex(x))
     return x
 
-N = 24
-A = 3
+N = 12
+A = 1920
 print(1/A)
-x0 = to_fixed_point(1, N)
+x0 = to_fixed_point(1.25, N)
 
 test = newton_raphson_rec_fixed_point(A, x0, N)
 print(from_fixed_point(test, N))

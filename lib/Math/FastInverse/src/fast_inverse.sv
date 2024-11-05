@@ -1,7 +1,8 @@
 `timescale 1ns / 1ps
 
 module fast_inverse #(
-    parameter unsigned DATAWIDTH = 24
+    parameter unsigned DATAWIDTH = 24,
+    parameter unsigned NUM_ITERATIONS = 4
     ) (
     input logic clk,
     input logic rstn,
@@ -16,8 +17,6 @@ module fast_inverse #(
     );
 
     localparam unsigned MAX_SHIFT = $clog2(DATAWIDTH)+1;
-
-    localparam unsigned NUM_ITERATIONS = 1;
     logic [$clog2(NUM_ITERATIONS):0] iter = '0;
 
     logic [2 * DATAWIDTH - 1:0] r_A;
@@ -109,7 +108,7 @@ module fast_inverse #(
             iter <= 0;
             r_A <= '0;
 
-            X <= (1 << DATAWIDTH) + (1 << (DATAWIDTH-2));
+            X <= (1 << DATAWIDTH);
 
             A_inv <= 0;
             A_inv_dv <= 0;
@@ -121,7 +120,7 @@ module fast_inverse #(
                     end
 
                     // 1.25 is the initial guess
-                    X <= (1 << DATAWIDTH) + (1 << (DATAWIDTH-2));
+                    X <= (1 << DATAWIDTH);
                     iter <= 0;
                     A_inv <= 0;
                     A_inv_dv <= 0;

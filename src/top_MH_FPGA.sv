@@ -2,28 +2,37 @@
 `timescale 1ns / 1ps
 
 module top_MH_FPGA (
-    input  wire logic clk_100m,     // 100 MHz clock
-    input  wire logic btn_rst_n,    // reset button
-    input  wire logic [3:0] sw,
-    input  wire logic [3:0] btn,
+    input  wire logic clk,     // 100 MHz clock
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
     output      logic [3:0] vga_r,  // 4-bit VGA red
     output      logic [3:0] vga_g,  // 4-bit VGA green
-    output      logic [3:0] vga_b,  // 4-bit VGA blue
-    output      logic [3:0] led
+    output      logic [3:0] vga_b  // 4-bit VGA blue
     );
+
+    logic rstn;
+    logic clk_100m;
+    logic clk_100m_locked;
+
+    clock_100Mhz clock_100m_inst (
+        .clk(clk),
+        .rst(1),
+        .clk_100m(clk_100m),
+        .clk_100m_5x(),
+        .clk_100m_locked(clk_100m_locked)
+    );
+    always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
 
     // generate pixel clock
     logic clk_pix;
     logic clk_pix_locked;
     logic rst_pix;
     clock_480p clock_pix_inst (
-       .clk_100m,
-       .rst(!btn_rst_n),  // reset button is active low
-       .clk_pix,
+       .clk(clk_100m),
+       .rst(1),  // reset button is active low
+       .clk_pix(clk_pix),
        .clk_pix_5x(),  // not used for VGA output
-       .clk_pix_locked
+       .clk_pix_locked(clk_pix_locked)
     );
     always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
 
@@ -90,7 +99,7 @@ module top_MH_FPGA (
         .TILE_MAX_Y(TILE_MAX_Y)
     ) rasterizer_inst (
         .clk(clk_100m),
-        .rst(btn[2]),
+        .rst(!rstn),
 
         .x0(X0),
         .y0(Y0),
@@ -118,11 +127,11 @@ module top_MH_FPGA (
         .clk_write(clk_100m),
         .clk_read(clk_pix),
         .write_enable(fb_write_enable),
-        .clear(btn[1]),
-        .clear_value(sw),
+        .clear(),
+        .clear_value(),
         .addr_write(fb_addr_write),
         .addr_read(fb_addr_read),
-        .data_in(sw),
+        .data_in(),
         .data_out(fb_colr_read)
     );
 
@@ -135,7 +144,7 @@ module top_MH_FPGA (
     //logic db_write_enable = 1'b0;
 
     // depth buffer memory
-    framebuffer #(
+    buffer #(
         .FB_WIDTH(FB_WIDTH),
         .FB_HEIGHT(FB_HEIGHT),
         .DATA_WIDTH(DB_DATA_WIDTH)
@@ -143,14 +152,14 @@ module top_MH_FPGA (
         .clk_write(clk_100m),
         .clk_read(clk_pix),
         .write_enable(fb_write_enable),
-        .clear(btn[1]),
+        .clear(),
         .clear_value(DB_CLEAR_VALUE),
         .addr_write(fb_addr_write),
         .addr_read(db_addr_read),
         .data_in(depth_data_in),
         .data_out(db_data_out)
     );
-    
+
 
     // calculate framebuffer read address for display output
     logic read_fb;
@@ -172,11 +181,11 @@ module top_MH_FPGA (
             db_addr_read <= db_addr_read + 1;
         end
     end
-    
+
     localparam CLUT_SIZE = 16;
     localparam CLUT_COLOR_WIDTH = 12;
     localparam PALETE_FILE = "palette.mem";
-    
+
     // colour lookup table
     logic [COLRW-1:0] fb_pix_colr;
     clut #(
@@ -188,7 +197,7 @@ module top_MH_FPGA (
         .addr(fb_colr_read),
         .color(fb_pix_colr)
     );
-    
+
 
     // paint screen
     logic paint_fb;

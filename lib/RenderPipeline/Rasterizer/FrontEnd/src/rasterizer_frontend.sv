@@ -20,14 +20,15 @@ module rasterizer_frontend #(
 
     output logic signed [DATAWIDTH-1:0] bb_tl[2],
     output logic signed [DATAWIDTH-1:0] bb_br[2],
-    output logic signed [DATAWIDTH-1:0] edge_val0,
-    output logic signed [DATAWIDTH-1:0] edge_val1,
-    output logic signed [DATAWIDTH-1:0] edge_val2,
+    output logic signed [2*DATAWIDTH-1:0] edge_val0,
+    output logic signed [2*DATAWIDTH-1:0] edge_val1,
+    output logic signed [2*DATAWIDTH-1:0] edge_val2,
 
     output logic signed [DATAWIDTH-1:0] edge_delta0[2],
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
-    output logic signed [DATAWIDTH-1:0] area_inv,
+    output logic signed [2*DATAWIDTH-1:0] area_inv,
+    output logic signed [2*DATAWIDTH-1:0] o_area,
     output logic o_dv
     );
 
@@ -40,20 +41,24 @@ module rasterizer_frontend #(
     logic signed [DATAWIDTH-1:0] r_v2[3];
 
     // Edge function data registers
-    logic signed [DATAWIDTH-1:0] r_edge_val0;
-    logic signed [DATAWIDTH-1:0] r_edge_val1;
-    logic signed [DATAWIDTH-1:0] r_edge_val2;
+    /* verilator lint_off UNUSED */
+    logic signed [2 * DATAWIDTH-1:0] r_edge_val0;
+    logic signed [2 * DATAWIDTH-1:0] r_edge_val1;
+    logic signed [2 * DATAWIDTH-1:0] r_edge_val2;
+    /* verilator lint_on UNUSED */
     logic signed [DATAWIDTH-1:0] r_edge_delta0[2];
     logic signed [DATAWIDTH-1:0] r_edge_delta1[2];
     logic signed [DATAWIDTH-1:0] r_edge_delta2[2];
-    logic signed [DATAWIDTH-1:0] r_area;
+    logic signed [2 * DATAWIDTH-1:0] r_area;
 
-    function automatic signed [2*DATAWIDTH-1:0] edge_function(
+    /* verilator lint_off WIDTH */
+    function automatic signed [2 * DATAWIDTH-1:0] edge_function(
         input logic signed [DATAWIDTH-1:0] v1_x, input logic signed [DATAWIDTH-1:0] v1_y,
         input logic signed [DATAWIDTH-1:0] v2_x, input logic signed [DATAWIDTH-1:0] v2_y,
         input logic signed [DATAWIDTH-1:0] p_x, input logic signed [DATAWIDTH-1:0] p_y);
-        edge_function = (p_x - v1_x) * (v2_y - v1_y) - (p_y - v1_y) * (v2_x - v1_x);
+        edge_function = ((p_x - v1_x) * (v2_y - v1_y)) - ((p_y - v1_y) * (v2_x - v1_x));
     endfunction
+    /* verilator lint_on WIDTH */
 
     logic signed [DATAWIDTH-1:0] w_bb_tl[2];
     logic signed [DATAWIDTH-1:0] w_bb_br[2];
@@ -94,9 +99,10 @@ module rasterizer_frontend #(
     logic w_area_reciprocal_dv;
 
     fast_inverse #(
-        .DATAWIDTH(DATAWIDTH)
+        .DATAWIDTH(2 * DATAWIDTH),
+        .NUM_ITERATIONS(2)
     ) fast_inverse_inst (
-        .clk(clk),
+        .clk (clk),
         .rstn(rstn),
 
         .ready(w_area_division_ready),
@@ -147,7 +153,7 @@ module rasterizer_frontend #(
                 if (r_area <= '0 || ~r_bb_valid) begin
                     next_state = IDLE;
                 end else begin
-                    if (w_area_division_done) begin
+                    if (w_area_reciprocal_dv) begin
                         next_state = DONE;
                     end
                 end
@@ -173,6 +179,9 @@ module rasterizer_frontend #(
 
             foreach (r_bb_tl[i]) r_bb_tl[i] <= '0;
             foreach (r_bb_br[i]) r_bb_br[i] <= '0;
+
+            r_area_division_in_A_dv <= 1'b0;
+            r_area_division_in_A <= '0;
 
             r_edge_val0 <= '0;
             r_edge_val1 <= '0;
@@ -216,7 +225,7 @@ module rasterizer_frontend #(
                 end
 
                 STAGE2: begin
-                    if (w_area_division_done) begin
+                    if (w_area_reciprocal_dv) begin
                         foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
                         foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
                         edge_val0 <= r_edge_val0;
@@ -229,6 +238,12 @@ module rasterizer_frontend #(
                         area_inv <= w_area_reciprocal;
 
                         o_dv <= '1;
+                    end else if (w_area_division_ready) begin
+
+                        r_area_division_in_A <= r_area;
+                        r_area_division_in_A_dv <= 1'b1;
+                    end else begin
+                        r_area_division_in_A_dv <= 1'b0;
                     end
                 end
 
@@ -243,4 +258,8 @@ module rasterizer_frontend #(
             endcase
         end
     end
+
+    // DEBUG
+    assign o_area = r_area;
+
 endmodule
