@@ -28,7 +28,7 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
     output logic signed [2*DATAWIDTH-1:0] area_inv,
-    output logic signed [2*DATAWIDTH-1:0] o_area,
+    // output logic signed [2*DATAWIDTH-1:0] o_area,
     output logic o_dv
     );
 
@@ -260,6 +260,6 @@ module rasterizer_frontend #(
     end
 
     // DEBUG
-    assign o_area = r_area;
+    // assign o_area = r_area;
 
 endmodule
