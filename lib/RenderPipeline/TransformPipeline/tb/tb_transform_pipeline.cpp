@@ -14,6 +14,9 @@
 
 #include "obj_dir/Vtransform_pipeline.h"
 
+#define CLK_PERIOD 10   // ns
+#define AVG_CLKS_PER_TRI_RASTER 2048
+
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
 #define OUTPUT_VERTEX_DATAWIDTH 12
@@ -341,10 +344,10 @@ int main(int argc, char** argv) {
                 output_triangles.push_back(tri);
             }
 
-            static bool enable_rasterizer_emulation = false;
+            static bool enable_rasterizer_emulation = true;
             if (enable_rasterizer_emulation) {
                 if (dut->transform_pipeline_next == 0) {
-                    if (posedge_cnt % 1024 == 0) {
+                    if (posedge_cnt % AVG_CLKS_PER_TRI_RASTER == 0) {
                         dut->transform_pipeline_next = 1;
                     }
                 }
@@ -370,7 +373,8 @@ int main(int argc, char** argv) {
 
             shouldReset = false;
             if (dut->transform_pipeline_done) {
-                printf("Finished! (%ld)\n", posedge_cnt);
+                // printf("Finished! %f ms (%ld)\n", (float)(CLK_PERIOD * posedge_cnt)/1000000, posedge_cnt);
+                printf("Transform pipeline done\n");
                 shouldReset = true;
                 num_rendered++;
                 if (num_rendered >= 2)
@@ -382,7 +386,15 @@ int main(int argc, char** argv) {
         sim_time++;
     }
 
-    write_triangle_data("model.tri", output_triangles);
+    if (output_triangles.size() != 0) {
+        printf("\n=========================== SIMULATION STATS ===========================\n");
+        printf("Rendered Triangles: %ld\n", output_triangles.size());
+        printf("Total time: %06f ms\n", (float)(CLK_PERIOD * posedge_cnt)/1000000);
+        printf("Estimated FPS: %f\n", 1/((float)(CLK_PERIOD * posedge_cnt)/1000000000));
+        printf("========================================================================\n");
+
+        write_triangle_data("model.tri", output_triangles);
+    }
    
     m_trace->close();
     delete dut;

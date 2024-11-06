@@ -4,7 +4,7 @@ import sys
 import random
 
 # Define screen dimensions
-SCREEN_SCALE = 3.5
+SCREEN_SCALE = 1.0
 SCREEN_WIDTH = int(320 * SCREEN_SCALE)
 SCREEN_HEIGHT = int(320 * SCREEN_SCALE)
 BACKGROUND_COLOR = (0, 0, 0)
@@ -102,6 +102,9 @@ def draw_cloud(screen, x, y):
     pygame.draw.ellipse(screen, (255, 255, 255), (x + 20, y - 10, 50, 30))
     pygame.draw.ellipse(screen, (255, 255, 255), (x + 10, y - 20, 50, 30))
 
+def edge_function(p0, p1, p2):
+    return (p2[0] - p0[0]) * (p1[1] - p0[1]) - (p2[1] - p0[1]) * (p1[0] - p0[0])
+
 def main(filename):
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -149,25 +152,30 @@ def main(filename):
             if (depth_val < min):
                 min = depth_val
 
+        total_area = 0
         for i, triangle in enumerate(triangles):
             color = PLANE_COLORS[i % len(PLANE_COLORS)]
             (v0, v1, v2) = triangle
             coords = [(x, y) for (x, y, z) in triangle]
 
+            # Calculate area of triangle
+            area = edge_function(coords[0], coords[1], coords[2])
+            if (area <= 0):
+                continue
+            total_area += area
+
             depths = [z for (x, y, z) in triangle]
             depth_val = (depths[0] + depths[1] + depths[2]) / 3
             depth_val = depth_val * 100
             
-            color_val = map_value(depth_val, max * 1.000001, min * 0.9999, 0.3, 1.0)
-            # final_color = (color_val, color[0], color[1])
+            # color_val = map_value(depth_val, max * 1.000001, min * 0.9999, 0.3, 1.0)
+            color_val = 1
             final_color = (color[0] * color_val, color[1] * color_val, color[2] * color_val)
 
             pygame.draw.polygon(screen, final_color, coords)
 
-        # Write screen to image
-        # pygame.image.save(screen, "output.png")
-        # pygame.quit()
-        # sys.exit()
+        print("Total area: ", total_area)
+        print("Average area: ", total_area / len(triangles))
 
         # Update the display
         pygame.display.flip()
