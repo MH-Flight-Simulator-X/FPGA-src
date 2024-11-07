@@ -12,15 +12,16 @@ GBUFFER = ../../Memory/G-Buffer/src/g_buffer.sv
 
 PRIMITIVE_ASSEMBLER = ../PrimitiveAssembler/src/primitive_assembler.sv
 
+TRANSFORM_PIPELINE = ../TransformPipeline/src/transform_pipeline.sv
+
 BBOX_FILE = ../Rasterizer/BoundingBox/src/bounding_box.sv
+FAST_INVERSE = ../../Math/FastInverse/src/fast_inverse.sv
 RASTERIZER_FRONTEND = ../Rasterizer/FrontEnd/src/rasterizer_frontend.sv
-RASTERIZER_BACKEND = 
-RASTERIZER = 
 
 INCLUDES = $(MAT_VEC_MUL) $(VERTEX_SHADER) $(FIXED_POINT_DIVIDE) \
 		   $(VERTEX_POST_PROCESSOR) $(BRAM_SP) $(GBUFFER) \
-		   $(PRIMITIVE_ASSEMBLER) $(BBOX_FILE) $(RASTERIZER_FRONTEND) \
-		   $(RASTERIZER_BACKEND) $(RASTERIZER)
+		   $(PRIMITIVE_ASSEMBLER) $(TRANSFORM_PIPELINE) \
+		   $(BBOX_FILE) $(FAST_INVERSE) $(RASTERIZER_FRONTEND)
 
 .PHONY:sim
 sim: waveform.vcd
