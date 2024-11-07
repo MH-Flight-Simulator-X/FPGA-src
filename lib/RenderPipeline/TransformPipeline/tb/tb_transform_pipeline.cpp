@@ -15,7 +15,7 @@
 #include "obj_dir/Vtransform_pipeline.h"
 
 #define CLK_PERIOD 10   // ns
-#define AVG_CLKS_PER_TRI_RASTER 2048
+#define AVG_CLKS_PER_TRI_RASTER 100
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
