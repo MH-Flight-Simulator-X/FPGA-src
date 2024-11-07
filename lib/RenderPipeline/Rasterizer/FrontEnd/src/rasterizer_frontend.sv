@@ -23,10 +23,8 @@ endmodule
 
 module rasterizer_frontend #(
     parameter unsigned DATAWIDTH = 12,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MIN_X = 0,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MAX_X = 320,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MIN_Y = 0,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MAX_Y = 320
+    parameter signed [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
+    parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320
     ) (
     input logic clk,
     input logic rstn,
@@ -99,10 +97,10 @@ module rasterizer_frontend #(
     logic r_bb_valid;
 
     bounding_box #(
-        .TILE_MIN_X (SCREEN_MIN_X),
-        .TILE_MAX_X (SCREEN_MAX_X),
-        .TILE_MIN_Y (SCREEN_MIN_Y),
-        .TILE_MAX_Y (SCREEN_MAX_Y),
+        .TILE_MIN_X (0),
+        .TILE_MAX_X (SCREEN_WIDTH),
+        .TILE_MIN_Y (0),
+        .TILE_MAX_Y (SCREEN_HEIGHT),
         .COORD_WIDTH(DATAWIDTH)
     ) bounding_box_inst (
         .x0(r_v0[0]),
