@@ -38,7 +38,7 @@ module rasterizer_backend #(
 
     logic [BUFFER_ADDR_WIDTH-1:0] r_buffer_line_jump_val;
 
-    assign depth_data = z[DEPTH_WIDTH-1:0];
+    assign depth_data = r_z[DEPTH_WIDTH-1:0];
 
     // ========== STATE ==========
     typedef enum logic [1:0] {

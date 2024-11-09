@@ -187,13 +187,13 @@ int main(int argc, char* argv[]) {
         float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
         float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
 
-        float z = signedFixedPointToFloat(top->z, 17, 27);
-        float z_dx = signedFixedPointToFloat(top->z_dx, 17, 27);
-        float z_dy = signedFixedPointToFloat(top->z_dy, 17, 27);
+        float z = signedFixedPointToFloat(top->z, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
+        float z_dx = signedFixedPointToFloat(top->z_dx, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
+        float z_dy = signedFixedPointToFloat(top->z_dy, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
 
-        float depth_data = signedFixedPointToFloat(top->depth_data, 1, 15);
-        float z_delta0 = signedFixedPointToFloat(top->z_delta[0], 1, 15);
-        float z_delta1 = signedFixedPointToFloat(top->z_delta[1], 1, 15);
+        float depth_data = signedFixedPointToFloat(top->depth_data, 0, VERTEX_WIDTH);
+        float z_delta0 = signedFixedPointToFloat(top->z_delta[0], 0, VERTEX_WIDTH);
+        float z_delta1 = signedFixedPointToFloat(top->z_delta[1], 0, VERTEX_WIDTH);
 
         int addr_start = top->fb_addr_start;
 
