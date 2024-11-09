@@ -3,7 +3,7 @@
 module rasterizer_backend #(
     parameter unsigned DATA_WIDTH = 16,
     parameter unsigned DEPTH_WIDTH = 16,
-    parameter unsigned BUFFER_ADDR_WIDTH = 15,
+    parameter unsigned ADDR_WIDTH = 15,
     parameter unsigned [DATA_WIDTH-1:0] FB_WIDTH = 160
     ) (
     input logic clk,
@@ -21,9 +21,9 @@ module rasterizer_backend #(
     input logic signed [DATA_WIDTH-1:0] z,
     input logic signed [DATA_WIDTH-1:0] z_delta[2],
 
-    input logic [BUFFER_ADDR_WIDTH-1:0] buffer_addr_start,
+    input logic [ADDR_WIDTH-1:0] addr_start,
 
-    output logic [BUFFER_ADDR_WIDTH-1:0] buffer_addr,
+    output logic [ADDR_WIDTH-1:0] o_addr,
     output logic signed [DEPTH_WIDTH-1:0] depth_data,
 
     output logic inside_triangle,
@@ -36,7 +36,9 @@ module rasterizer_backend #(
     logic signed [DATA_WIDTH-1:0] r_edge0, r_edge1, r_edge2;
     logic signed [DATA_WIDTH-1:0] r_edge_row_start0, r_edge_row_start1, r_edge_row_start2;
 
-    logic [BUFFER_ADDR_WIDTH-1:0] r_buffer_line_jump_val;
+    logic [ADDR_WIDTH-1:0] r_addr_line_jump_val;
+
+    logic [ADDR_WIDTH-1:0] r_addr;
 
     assign depth_data = r_z[DEPTH_WIDTH-1:0];
 
@@ -49,6 +51,8 @@ module rasterizer_backend #(
     state_t current_state = DONE, next_state;
 
     always_ff @(posedge clk) begin
+        o_addr <= r_addr; // Delay output addr by 1
+
         if (~rstn) begin
             current_state <= STAGE1;
         end
@@ -104,13 +108,13 @@ module rasterizer_backend #(
                 r_z <= z;
                 r_z_row_start <= z;
 
-                buffer_addr <= buffer_addr_start;
-                r_buffer_line_jump_val <= FB_WIDTH[BUFFER_ADDR_WIDTH-1:0] - (bb_br[0][BUFFER_ADDR_WIDTH-1:0] - bb_tl[0][BUFFER_ADDR_WIDTH-1:0]);
+                r_addr <= addr_start;
+                r_addr_line_jump_val <= FB_WIDTH[ADDR_WIDTH-1:0] - (bb_br[0][ADDR_WIDTH-1:0] - bb_tl[0][ADDR_WIDTH-1:0]);
             end
 
             RASTERIZE: begin
                 if (r_x < bb_br[0]) begin
-                    buffer_addr <= buffer_addr + 1;
+                    r_addr <= r_addr + 1;
                     
                     r_edge0 <= r_edge0 + edge_delta0[0];
                     r_edge1 <= r_edge1 + edge_delta1[0];
@@ -120,7 +124,7 @@ module rasterizer_backend #(
 
                     r_z <= r_z + z_delta[0];
 
-                    if (r_edge0 + edge_delta0[0] > 0 && r_edge1 + edge_delta1[0] > 0 && r_edge2 + edge_delta2[0] > 0) begin
+                    if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
                         inside_triangle <= 1'b1;
                     end
                     else begin
@@ -139,14 +143,14 @@ module rasterizer_backend #(
                         r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
 
                         r_y <= r_y + 1;
-                        buffer_addr <= buffer_addr + r_buffer_line_jump_val[BUFFER_ADDR_WIDTH-1:0];
+                        r_addr <= r_addr + r_addr_line_jump_val[ADDR_WIDTH-1:0];
 
                         r_x <= bb_tl[0];
 
                         r_z_row_start <= r_z_row_start + z_delta[1];
                         r_z <= r_z_row_start + z_delta[1];
 
-                        if (r_edge_row_start0 + edge_delta0[1] > 0 && r_edge_row_start1 + edge_delta1[1] > 0 && r_edge_row_start2 + edge_delta2[1] > 0) begin
+                        if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
                             inside_triangle <= 1'b1;
                         end
                         else begin

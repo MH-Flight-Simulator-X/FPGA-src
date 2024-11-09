@@ -114,7 +114,7 @@ module rasterizer #(
     rasterizer_backend #(
         .DATA_WIDTH(VERTEX_WIDTH),
         .DEPTH_WIDTH(VERTEX_WIDTH),
-        .BUFFER_ADDR_WIDTH(FB_ADDR_WIDTH),
+        .ADDR_WIDTH(FB_ADDR_WIDTH),
         .FB_WIDTH(FB_WIDTH)
     ) backend_inst (
         .clk(clk),
@@ -129,8 +129,8 @@ module rasterizer #(
         .edge_delta2(edge_delta2),
         .z(depth_data_start),
         .z_delta(z_delta),
-        .buffer_addr_start(fb_addr_start),
-        .buffer_addr(fb_addr),
+        .addr_start(fb_addr_start),
+        .o_addr(fb_addr),
         .depth_data(depth_data),
         .inside_triangle(inside_triangle),
         .done(backend_done)
