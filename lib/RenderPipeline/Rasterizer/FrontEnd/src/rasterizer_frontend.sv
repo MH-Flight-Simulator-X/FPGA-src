@@ -1,11 +1,30 @@
 `timescale 1ns / 1ps
 
+/* verilator lint_off DECLFILENAME */
+module edge_compute #(
+    parameter unsigned DATAWIDTH
+    ) (
+    input logic signed [DATAWIDTH-1:0] v1[2],
+    input logic signed [DATAWIDTH-1:0] v2[2],
+    input logic signed [DATAWIDTH-1:0] p[2],
+
+    output logic signed [2*DATAWIDTH-1:0] edge_function,
+    output logic signed [DATAWIDTH-1:0] edge_delta[2]
+    );
+
+    /* verilator lint_off WIDTH */
+    always_comb begin
+        edge_function = ((p[0] - v1[0]) * (v2[1] - v1[1])) - ((p[1] - v1[1]) * (v2[0] - v1[0]));
+        edge_delta = '{v2[1] - v1[1], -(v2[0] - v1[0])};
+    end
+    /* verilator lint_on WIDTH */
+endmodule
+/* verilator lint_on DECLFILENAME */
+
 module rasterizer_frontend #(
     parameter unsigned DATAWIDTH = 12,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MIN_X = 0,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MAX_X = 320,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MIN_Y = 0,
-    parameter signed [DATAWIDTH-1:0] SCREEN_MAX_Y = 320
+    parameter signed [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
+    parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320
     ) (
     input logic clk,
     input logic rstn,
@@ -28,7 +47,7 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
     output logic signed [2*DATAWIDTH-1:0] area_inv,
-    output logic signed [2*DATAWIDTH-1:0] o_area,
+    // output logic signed [2*DATAWIDTH-1:0] o_area,
     output logic o_dv
     );
 
@@ -51,15 +70,24 @@ module rasterizer_frontend #(
     logic signed [DATAWIDTH-1:0] r_edge_delta2[2];
     logic signed [2 * DATAWIDTH-1:0] r_area;
 
-    /* verilator lint_off WIDTH */
-    function automatic signed [2 * DATAWIDTH-1:0] edge_function(
-        input logic signed [DATAWIDTH-1:0] v1_x, input logic signed [DATAWIDTH-1:0] v1_y,
-        input logic signed [DATAWIDTH-1:0] v2_x, input logic signed [DATAWIDTH-1:0] v2_y,
-        input logic signed [DATAWIDTH-1:0] p_x, input logic signed [DATAWIDTH-1:0] p_y);
-        edge_function = ((p_x - v1_x) * (v2_y - v1_y)) - ((p_y - v1_y) * (v2_x - v1_x));
-    endfunction
-    /* verilator lint_on WIDTH */
+    // Edge function compute
+    logic signed [DATAWIDTH-1:0] r_edge_function_v1[2];
+    logic signed [DATAWIDTH-1:0] r_edge_function_v2[2];
+    logic signed [DATAWIDTH-1:0] r_edge_function_p[2];
+    logic signed [2*DATAWIDTH-1:0] w_edge_function_val;
+    logic signed [DATAWIDTH-1:0] w_edge_function_delta[2];
 
+    edge_compute #(
+        .DATAWIDTH(DATAWIDTH)
+    ) edge_compute_inst (
+        .v1(r_edge_function_v1),
+        .v2(r_edge_function_v2),
+        .p(r_edge_function_p),
+        .edge_function(w_edge_function_val),
+        .edge_delta(w_edge_function_delta)
+    );
+
+    // Bounding box coumpute
     logic signed [DATAWIDTH-1:0] w_bb_tl[2];
     logic signed [DATAWIDTH-1:0] w_bb_br[2];
     logic w_bb_valid;
@@ -69,10 +97,10 @@ module rasterizer_frontend #(
     logic r_bb_valid;
 
     bounding_box #(
-        .TILE_MIN_X (SCREEN_MIN_X),
-        .TILE_MAX_X (SCREEN_MAX_X),
-        .TILE_MIN_Y (SCREEN_MIN_Y),
-        .TILE_MAX_Y (SCREEN_MAX_Y),
+        .TILE_MIN_X (0),
+        .TILE_MAX_X (SCREEN_WIDTH),
+        .TILE_MIN_Y (0),
+        .TILE_MAX_Y (SCREEN_HEIGHT),
         .COORD_WIDTH(DATAWIDTH)
     ) bounding_box_inst (
         .x0(r_v0[0]),
@@ -114,10 +142,13 @@ module rasterizer_frontend #(
     );
 
     // ========== STATE ==========
-    typedef enum logic [1:0] {
+    typedef enum logic [2:0] {
         IDLE,
-        STAGE1,  // Compute edge function constants, area, edge function deltas and check winding order
-        STAGE2,  // Compute 1/area
+        COMPUTE_AREA,
+        COMPUTE_EDGE_0, // Also starts computation of area reciprocal
+        COMPUTE_EDGE_1,
+        COMPUTE_EDGE_2,
+        REGISTER_AREA_RECIPROCAL,
         DONE
     } state_t;
     state_t current_state = IDLE, next_state = IDLE;
@@ -137,25 +168,35 @@ module rasterizer_frontend #(
         case (current_state)
             IDLE: begin
                 if (i_triangle_dv) begin
-                    next_state = STAGE1;
+                    next_state = COMPUTE_AREA;
                 end else begin
                     ready = 1'b1;
                 end
             end
 
-            STAGE1: begin
-                // TODO: Add BB_valid to state
-                next_state = STAGE2;
+            COMPUTE_AREA: begin
+                next_state = COMPUTE_EDGE_0;
             end
 
-            STAGE2: begin
-                // Back-face culling by checking sign of area
+            COMPUTE_EDGE_0: begin
                 if (r_area <= '0 || ~r_bb_valid) begin
                     next_state = IDLE;
-                end else begin
-                    if (w_area_reciprocal_dv) begin
-                        next_state = DONE;
-                    end
+                end else if (w_area_division_ready) begin
+                    next_state = COMPUTE_EDGE_1;
+                end
+            end
+
+            COMPUTE_EDGE_1: begin
+                next_state = COMPUTE_EDGE_2;
+            end
+
+            COMPUTE_EDGE_2: begin
+                next_state = REGISTER_AREA_RECIPROCAL;
+            end
+
+            REGISTER_AREA_RECIPROCAL: begin
+                if (w_area_reciprocal_dv) begin
+                    next_state = DONE;
                 end
             end
 
@@ -183,6 +224,10 @@ module rasterizer_frontend #(
             r_area_division_in_A_dv <= 1'b0;
             r_area_division_in_A <= '0;
 
+            foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
+            foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;
+            foreach (r_edge_function_p[i] ) r_edge_function_p[i]  <= '0;
+
             r_edge_val0 <= '0;
             r_edge_val1 <= '0;
             r_edge_val2 <= '0;
@@ -198,6 +243,11 @@ module rasterizer_frontend #(
                         foreach (r_v0[i]) r_v0[i] <= i_v0[i];
                         foreach (r_v1[i]) r_v1[i] <= i_v1[i];
                         foreach (r_v2[i]) r_v2[i] <= i_v2[i];
+
+                        // Add values to register in order to compute area
+                        r_edge_function_v1 <= '{i_v0[0], i_v0[1]};
+                        r_edge_function_v2 <= '{i_v1[0], i_v1[1]};
+                        r_edge_function_p  <= '{i_v2[0], i_v2[1]};
                     end
 
                     r_edge_val0 <= '0;
@@ -210,21 +260,54 @@ module rasterizer_frontend #(
                     o_dv   <= '0;
                 end
 
-                STAGE1: begin
-                    r_edge_val0 <= edge_function(r_v0[0], r_v0[1], r_v1[0], r_v1[1], P0[0], P0[1]);
-                    r_edge_val1 <= edge_function(r_v1[0], r_v1[1], r_v2[0], r_v2[1], P0[0], P0[1]);
-                    r_edge_val2 <= edge_function(r_v2[0], r_v2[1], r_v0[0], r_v0[1], P0[0], P0[1]);
-                    r_edge_delta0 <= '{r_v1[1] - r_v0[1], -(r_v1[0] - r_v0[0])};
-                    r_edge_delta1 <= '{r_v2[1] - r_v1[1], -(r_v2[0] - r_v1[0])};
-                    r_edge_delta2 <= '{r_v0[1] - r_v2[1], -(r_v0[0] - r_v2[0])};
-                    r_area <= edge_function(r_v0[0], r_v0[1], r_v1[0], r_v1[1], r_v2[0], r_v2[1]);
+                COMPUTE_AREA: begin
+                    r_area <= w_edge_function_val;
 
+                    // Bounding box
                     foreach (r_bb_tl[i]) r_bb_tl[i] <= w_bb_tl[i];
                     foreach (r_bb_br[i]) r_bb_br[i] <= w_bb_br[i];
                     r_bb_valid <= w_bb_valid;
+
+                    // For next compute
+                    r_edge_function_v1 <= '{r_v0[0], r_v0[1]};
+                    r_edge_function_v2 <= '{r_v1[0], r_v1[1]};
+                    r_edge_function_p  <= P0;
                 end
 
-                STAGE2: begin
+                COMPUTE_EDGE_0: begin
+                    r_edge_val0 <= w_edge_function_val;
+                    r_edge_delta0 <= w_edge_function_delta;
+
+                    // Area reciprocal compute
+                    if (w_area_division_ready) begin
+                        r_area_division_in_A <= r_area;
+                        r_area_division_in_A_dv <= 1'b1;
+                    end else begin
+                        r_area_division_in_A_dv <= 1'b0;
+                    end
+
+                    // For next compute
+                    r_edge_function_v1 <= '{r_v1[0], r_v1[1]};
+                    r_edge_function_v2 <= '{r_v2[0], r_v2[1]};
+                    r_edge_function_p  <= P0;
+                end
+
+                COMPUTE_EDGE_1: begin
+                    r_edge_val1 <= w_edge_function_val;
+                    r_edge_delta1 <= w_edge_function_delta;
+
+                    // For next compute
+                    r_edge_function_v1 <= '{r_v2[0], r_v2[1]};
+                    r_edge_function_v2 <= '{r_v0[0], r_v0[1]};
+                    r_edge_function_p  <= P0;
+                end
+
+                COMPUTE_EDGE_2: begin
+                    r_edge_val2 <= w_edge_function_val;
+                    r_edge_delta2 <= w_edge_function_delta;
+                end
+
+                REGISTER_AREA_RECIPROCAL: begin
                     if (w_area_reciprocal_dv) begin
                         foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
                         foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
@@ -238,12 +321,8 @@ module rasterizer_frontend #(
                         area_inv <= w_area_reciprocal;
 
                         o_dv <= '1;
-                    end else if (w_area_division_ready) begin
-
-                        r_area_division_in_A <= r_area;
-                        r_area_division_in_A_dv <= 1'b1;
                     end else begin
-                        r_area_division_in_A_dv <= 1'b0;
+                        o_dv <= '0;
                     end
                 end
 
@@ -260,6 +339,6 @@ module rasterizer_frontend #(
     end
 
     // DEBUG
-    assign o_area = r_area;
+    // assign o_area = r_area;
 
 endmodule

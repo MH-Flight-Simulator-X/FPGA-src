@@ -18,14 +18,34 @@ The following is an overview of the project structure
 ├── src/  
 │   └── top_mh_flight_sim_fpga.sv  
 ├── lib/  
-│   ├── Framebuffer/  
-│   │   └── framebuffer.sv  
+│   ├── Clock/  
+|   |   ├── clock_100Mhz.sv
+│   │   └── clock_480p.sv
+│   ├── Display/  
+│   │   └── display_480p
+│   ├── MCU-FPGA-Com/
+│   ├── Math/  
+|   |   ├── FastInverse/
+|   |   ├── FixedPointDivide/
+|   |   ├── MatMul/
+│   │   └── MatVecMul/
+│   ├── Memory/  
+|   |   ├── BRAM_DP/
+|   |   ├── BRAM_SP/
+|   |   ├── Buffer/
+|   |   ├── FIFO/
+|   |   ├── G-Buffer/
+│   │   └── ROM/
 │   ├── Display/  
 │   │   └── display_480p.sv  
 │   ├── RenderPipeline/  
-│   │   └── Math/  
-│   │       ├── mat_mat_mul_dim_4.sv  
-│   │       └── mat_vec_mul_dim_4.sv  
+|   |   ├── PrimitiveAssembler/
+|   |   ├── Rasterizer/
+|   |   |   ├── FrontEnd/
+|   |   |   └── Backend/
+|   |   ├── VertexShader/
+|   |   ├── VertexPostProcessor/
+│   │   └── TransformPipeline/
 │   └── SPI/  
 │       ├── src/
 │       │   ├── spi_master.sv  

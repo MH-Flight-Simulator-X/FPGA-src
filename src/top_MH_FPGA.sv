@@ -2,12 +2,13 @@
 `timescale 1ns / 1ps
 
 module top_MH_FPGA (
-    input  wire logic clk,     // 100 MHz clock
+    input  wire logic clk,          // 100 MHz clock
+    output      logic led,          // If clk100m is locked
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
     output      logic [3:0] vga_r,  // 4-bit VGA red
     output      logic [3:0] vga_g,  // 4-bit VGA green
-    output      logic [3:0] vga_b  // 4-bit VGA blue
+    output      logic [3:0] vga_b   // 4-bit VGA blue
     );
 
     logic rstn;
@@ -15,21 +16,22 @@ module top_MH_FPGA (
     logic clk_100m_locked;
 
     clock_100Mhz clock_100m_inst (
-        .clk(clk),
-        .rst(1),
+        .clk_20m(clk),
+        .rst(0),
         .clk_100m(clk_100m),
         .clk_100m_5x(),
         .clk_100m_locked(clk_100m_locked)
     );
     always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
+    assign led = clk_100m_locked;
 
     // generate pixel clock
     logic clk_pix;
     logic clk_pix_locked;
     logic rst_pix;
     clock_480p clock_pix_inst (
-       .clk(clk_100m),
-       .rst(1),  // reset button is active low
+       .clk_100m(clk_100m),
+       .rst(0),  // reset button is active low
        .clk_pix(clk_pix),
        .clk_pix_5x(),  // not used for VGA output
        .clk_pix_locked(clk_pix_locked)

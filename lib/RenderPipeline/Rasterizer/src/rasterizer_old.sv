@@ -260,4 +260,3 @@ module rasterizer #(
         end
     end
 endmodule
-

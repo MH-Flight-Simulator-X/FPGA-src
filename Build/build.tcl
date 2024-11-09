@@ -1,8 +1,8 @@
-set design_name "mh_fpga_test"
+set design_name "top_MH_FPGA"
 set board_name "MH-FPGA"
 
 # MH FPGA
-set fpga_part "xc7a100tftg256c"
+set fpga_part "xc7a100tftg256-1"
 
 set lib_dir [file normalize "./../lib"]
 set src_dir [file normalize "./../src"]
@@ -12,22 +12,20 @@ set origin_dir [file normalize "./../"]
 file mkdir logs
 
 # Read lib files
-read_verilog -sv "${lib_dir}/Memory/BRAM_DP/src/bram_dp.sv"
-read_verilog -sv "${lib_dir}/Memory/CLUT/src/clut.sv"
-read_verilog -sv "${lib_dir}/Memory/Framebuffer/src/framebuffer.sv"
+# read_verilog -sv "${lib_dir}/Memory/BRAM_DP/src/bram_dp.sv"
+# read_verilog -sv "${lib_dir}/Memory/CLUT/src/clut.sv"
+# read_verilog -sv "${lib_dir}/Memory/Framebuffer/src/framebuffer.sv"
 read_verilog -sv "${lib_dir}/Clock/clock_480p.sv"
 read_verilog -sv "${lib_dir}/Clock/clock_100Mhz.sv"
 read_verilog -sv "${lib_dir}/Display/projectf_display_480p.sv"
-read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv"
-read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/src/rasterizer.sv"
+# read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv"
+# read_verilog -sv "${lib_dir}/RenderPipeline/Rasterizer/src/rasterizer.sv"
 
 # Read src files
 add_files "${src_dir}/image.mem"
 add_files "${src_dir}/palette.mem"
 add_files "${src_dir}/reciprocal.mem"
 read_verilog -sv "${src_dir}/${design_name}.sv"
-
-read_verilog -sv "${src_dir}/top_MH_FPGA.sv"
 
 # Read constraints
 read_xdc "${origin_dir}/Constraints/${board_name}.xdc"
