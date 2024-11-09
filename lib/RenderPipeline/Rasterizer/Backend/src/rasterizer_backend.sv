@@ -114,6 +114,7 @@ module rasterizer_backend #(
 
             RASTERIZE: begin
                 if (r_x < bb_br[0]) begin
+                    // Increment in x-direction
                     r_addr <= r_addr + 1;
                     
                     r_edge0 <= r_edge0 + edge_delta0[0];
@@ -123,40 +124,33 @@ module rasterizer_backend #(
                     r_x <= r_x + 1;
 
                     r_z <= r_z + z_delta[0];
-
-                    if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
-                        inside_triangle <= 1'b1;
-                    end
-                    else begin
-                        inside_triangle <= 1'b0;
-                    end
                 end
                 else begin
-                    if (r_y < bb_br[1]) begin
-                        r_edge0 <= r_edge_row_start0 + edge_delta0[1];
-                        r_edge_row_start0 <= r_edge_row_start0 + edge_delta0[1];
-                        
-                        r_edge1 <= r_edge_row_start1 + edge_delta1[1];
-                        r_edge_row_start1 <= r_edge_row_start1 + edge_delta1[1];
-                        
-                        r_edge2 <= r_edge_row_start2 + edge_delta2[1];
-                        r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
+                    // Increment in y-direction
+                    r_edge0 <= r_edge_row_start0 + edge_delta0[1];
+                    r_edge_row_start0 <= r_edge_row_start0 + edge_delta0[1];
+                    
+                    r_edge1 <= r_edge_row_start1 + edge_delta1[1];
+                    r_edge_row_start1 <= r_edge_row_start1 + edge_delta1[1];
+                    
+                    r_edge2 <= r_edge_row_start2 + edge_delta2[1];
+                    r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
 
-                        r_y <= r_y + 1;
-                        r_addr <= r_addr + r_addr_line_jump_val[ADDR_WIDTH-1:0];
+                    r_y <= r_y + 1;
+                    r_addr <= r_addr + r_addr_line_jump_val[ADDR_WIDTH-1:0];
 
-                        r_x <= bb_tl[0];
+                    r_x <= bb_tl[0];
 
-                        r_z_row_start <= r_z_row_start + z_delta[1];
-                        r_z <= r_z_row_start + z_delta[1];
+                    r_z_row_start <= r_z_row_start + z_delta[1];
+                    r_z <= r_z_row_start + z_delta[1];
+                end
 
-                        if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
-                            inside_triangle <= 1'b1;
-                        end
-                        else begin
-                            inside_triangle <= 1'b0;
-                        end
-                    end
+                // Check if point is inside triangle
+                if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
+                    inside_triangle <= 1'b1;
+                end
+                else begin
+                    inside_triangle <= 1'b0;
                 end
             end
 
