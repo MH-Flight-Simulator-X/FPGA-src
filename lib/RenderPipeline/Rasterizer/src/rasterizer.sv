@@ -28,14 +28,14 @@ module rasterizer #(
     localparam unsigned Z_WIDTH = VERTEX_WIDTH * 2 + RECIPROCAL_WIDTH;
 
     // Logic to store x and y coordinates while drawing
-    logic signed [VERTEX_WIDTH-1:0] x, y;
     logic signed [Z_WIDTH-1:0] z, z_dx, z_dy, z_row_start;
 
-    // Adjust the assignment to depth_data
-    assign depth_data = z[27:12];
+    logic signed [VERTEX_WIDTH-1:0] depth_data_start; 
+    assign depth_data_start = z[VERTEX_WIDTH+RECIPROCAL_WIDTH-1:RECIPROCAL_WIDTH];
 
     // logic to store bounding box coordinates
-    logic signed [VERTEX_WIDTH-1:0] min_x, max_x, min_y, max_y;
+    logic signed [VERTEX_WIDTH-1:0] bb_tl[2];
+    logic signed [VERTEX_WIDTH-1:0] bb_br[2];
 
     // edge functions
     logic signed [VERTEX_WIDTH-1:0] edge_val[3];
@@ -67,10 +67,10 @@ module rasterizer #(
         .x2(vertex[2][0]),
         .y2(vertex[2][1]),
 
-        .min_x(min_x),
-        .max_x(max_x),
-        .min_y(min_y),
-        .max_y(max_y),
+        .min_x(bb_tl[0]),
+        .max_x(bb_br[0]),
+        .min_y(bb_tl[1]),
+        .max_y(bb_br[1]),
 
         .valid(bounding_box_is_valid)
     );
@@ -86,6 +86,54 @@ module rasterizer #(
         .clk(clk),
         .addr(area),
         .data(area_reciprocal)
+    );
+
+    logic [VERTEX_WIDTH-1:0] edge_delta0[2];
+    logic [VERTEX_WIDTH-1:0] edge_delta1[2];
+    logic [VERTEX_WIDTH-1:0] edge_delta2[2];
+
+    logic [VERTEX_WIDTH-1:0] z_delta[2];
+
+    logic [FB_ADDR_WIDTH-1:0] fb_addr_start;
+
+    logic backend_rstn;
+    logic backend_done;
+
+    assign edge_delta0[0] = edge_delta[0][0];
+    assign edge_delta0[1] = edge_delta[0][1];
+    assign edge_delta1[0] = edge_delta[1][0];
+    assign edge_delta1[1] = edge_delta[1][1];
+    assign edge_delta2[0] = edge_delta[2][0];
+    assign edge_delta2[1] = edge_delta[2][1];
+
+    assign z_delta[0] = z_dx[VERTEX_WIDTH+RECIPROCAL_WIDTH-1:RECIPROCAL_WIDTH];
+    assign z_delta[1] = z_dy[VERTEX_WIDTH+RECIPROCAL_WIDTH-1:RECIPROCAL_WIDTH];
+
+    logic inside_triangle;
+
+    rasterizer_backend #(
+        .DATA_WIDTH(VERTEX_WIDTH),
+        .DEPTH_WIDTH(VERTEX_WIDTH),
+        .BUFFER_ADDR_WIDTH(FB_ADDR_WIDTH),
+        .FB_WIDTH(FB_WIDTH)
+    ) backend_inst (
+        .clk(clk),
+        .rstn(backend_rstn),
+        .bb_tl(bb_tl),
+        .bb_br(bb_br),
+        .edge0(edge_val[0]),
+        .edge1(edge_val[1]),
+        .edge2(edge_val[2]),
+        .edge_delta0(edge_delta0),
+        .edge_delta1(edge_delta1),
+        .edge_delta2(edge_delta2),
+        .z(depth_data_start),
+        .z_delta(z_delta),
+        .buffer_addr_start(fb_addr_start),
+        .buffer_addr(fb_addr),
+        .depth_data(depth_data),
+        .inside_triangle(inside_triangle),
+        .done(backend_done)
     );
 
     function automatic signed [VERTEX_WIDTH-1:0] edge_function (
@@ -119,7 +167,6 @@ module rasterizer #(
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 1'b0;
-            fb_write_enable <= 1'b0;
 
             state <= VERIFY_BBOX;
         end
@@ -135,16 +182,9 @@ module rasterizer #(
                 end
 
                 INIT_DRAW: begin
-                    x <= min_x;
-                    y <= min_y;
-
-                    line_jump_value <= FB_WIDTH[FB_ADDR_WIDTH-1:0] - (max_x[FB_ADDR_WIDTH-1:0] - min_x[FB_ADDR_WIDTH-1:0]);
-
-                    fb_addr <= (min_y[FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + min_x[FB_ADDR_WIDTH-1:0] - 1;
-
                     foreach (edge_val[i]) begin
                         // Compute edge values using cyclic vertex pairs
-                        edge_val[i] <= edge_function(vertex[i][0], vertex[i][1], vertex[cycle_map[i]][0], vertex[cycle_map[i]][1], min_x, min_y);
+                        edge_val[i] <= edge_function(vertex[i][0], vertex[i][1], vertex[cycle_map[i]][0], vertex[cycle_map[i]][1], bb_tl[0], bb_tl[1]);
 
                         // Compute edge deltas
                         edge_delta[i][0] <= vertex[cycle_map[i]][1] - vertex[i][1];
@@ -159,6 +199,7 @@ module rasterizer #(
                 INIT_DRAW_2: begin
                     // Wait for reciprocal_area
                     state <= INIT_DRAW_3;
+                    fb_addr_start <= (bb_tl[1][FB_ADDR_WIDTH-1:0]*FB_WIDTH[FB_ADDR_WIDTH-1:0]) + bb_tl[0][FB_ADDR_WIDTH-1:0] - 1;
                 end
 
                 INIT_DRAW_3: begin
@@ -169,7 +210,6 @@ module rasterizer #(
                     // Compute barycentric weights at top-left corner of bounding box
                     foreach (bar_weight[i]) begin
                         bar_weight[i] <= edge_val[i] * area_reciprocal;
-                        // bar_weight[i] <= edge_val[i] * 6;
                     end
 
                     // Compute increments for barycentric weights
@@ -195,60 +235,22 @@ module rasterizer #(
                 INIT_DRAW_5: begin
                     z_row_start <= z;
 
+                    backend_rstn <= 1'b1;
+
                     state <= DRAW;
                 end
 
                 DRAW: begin
-                    if (x < max_x) begin
-                        fb_addr <= fb_addr + 1;
-                        
-                        foreach (edge_val[i]) begin
-                            edge_val[i] <= edge_val[i] + edge_delta[i][0];
-                        end
-
-                        x <= x + 1;
-
-                        z <= z + z_dx;
-
-                        if (edge_val[0] + edge_delta[0][0] > 0 && edge_val[1] + edge_delta[1][0] > 0 && edge_val[2] + edge_delta[2][0] > 0) begin
-                            fb_write_enable <= 1'b1;
-                        end
-                        else begin
-                            fb_write_enable <= 1'b0;
-                        end
-                    end
-                    else begin
-                        if (y < max_y) begin
-                            foreach (edge_val[i]) begin
-                                edge_val[i] <= edge_row_start[i] + edge_delta[i][1];
-                                edge_row_start[i] <= edge_row_start[i] + edge_delta[i][1];
-                            end
-
-                            y <= y + 1;
-                            fb_addr <= fb_addr + line_jump_value[FB_ADDR_WIDTH-1:0];
-
-                            x <= min_x;
-
-                            z_row_start <= z_row_start + z_dy;
-                            z <= z_row_start + z_dy;
-
-                            if (edge_row_start[0] + edge_delta[0][1] > 0 && edge_row_start[1] + edge_delta[1][1] > 0 && edge_row_start[2] + edge_delta[2][1] > 0) begin
-                                fb_write_enable <= 1'b1;
-                            end
-                            else begin
-                                fb_write_enable <= 1'b0;
-                            end
-                        end
-                        else begin
-                            done <= 1'b1;
-                            state <= DONE;
-                        end
-                    end
+                    backend_rstn <= 1'b1;
+                    fb_write_enable <= inside_triangle;
+                     if (backend_done) begin
+                        state <= DONE;
+                     end
                 end
 
                 DONE: begin
-                    fb_write_enable <= 1'b0;
                     done <= 1'b1;
+                    fb_write_enable <= 1'b0;
                     state <= DONE;
                 end
 

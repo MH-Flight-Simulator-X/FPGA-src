@@ -20,6 +20,10 @@ module top (
     output logic signed [VERTEX_WIDTH-1:0] edge_val[3], 
     output logic signed [VERTEX_WIDTH-1:0] edge_delta[3][2], 
 
+    output logic signed [VERTEX_WIDTH-1:0] edge0,
+    output logic signed [VERTEX_WIDTH-1:0] edge1,
+    output logic signed [VERTEX_WIDTH-1:0] edge2,
+
     output logic signed [VERTEX_WIDTH-1:0] area,
     output logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal,
 
@@ -31,6 +35,9 @@ module top (
     output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dy,
 
     output logic signed [VERTEX_WIDTH-1:0] depth_data,
+    output logic signed [VERTEX_WIDTH-1:0] z_delta[2],
+
+    output logic unsigned [FB_ADDR_WIDTH-1:0] fb_addr_start,
 
     logic [3:0] state,
  
@@ -76,7 +83,7 @@ module top (
     logic [FB_DATA_WIDTH-1:0] fb_colr_read;
     logic fb_write_enable;
 
-    localparam signed X0 = 12;
+    localparam signed X0 = 8;
     localparam signed Y0 = 4;
     // localparam signed Z0 = 16'sh0CCD; // 0.1
     localparam signed Z0 = 16'sh7333; // 0.5
@@ -137,10 +144,18 @@ module top (
         .done
     );
 
-    assign min_x = rasterizer_inst.min_x;
-    assign max_x = rasterizer_inst.max_x;
-    assign min_y = rasterizer_inst.min_y;
-    assign max_y = rasterizer_inst.max_y;
+    assign edge0 = rasterizer_inst.backend_inst.r_edge0;
+    assign edge1 = rasterizer_inst.backend_inst.r_edge1;
+    assign edge2 = rasterizer_inst.backend_inst.r_edge2;
+
+    // assign edge_delta_0 = rasterizer_inst.backend_inst.r_edge0;
+    // assign edge_delta_1 = rasterizer_inst.backend_inst.r_edge1;
+    // assign edge_delta_2 = rasterizer_inst.backend_inst.r_edge2;
+
+    assign min_x = rasterizer_inst.bb_tl[0];
+    assign max_x = rasterizer_inst.bb_br[0];
+    assign min_y = rasterizer_inst.bb_tl[1];
+    assign max_y = rasterizer_inst.bb_br[1];
 
     assign edge_val = rasterizer_inst.edge_val;
     assign edge_delta = rasterizer_inst.edge_delta;
@@ -157,7 +172,12 @@ module top (
 
     assign state = rasterizer_inst.state;
 
-    assign depth_data_in = depth_data[15:4];
+    assign depth_data_in = depth_data[VERTEX_WIDTH-1:4];
+
+    assign z_delta[0] = rasterizer_inst.z_delta[0];
+    assign z_delta[1] = rasterizer_inst.z_delta[1];
+
+    assign fb_addr_start = rasterizer_inst.fb_addr_start;
 
     // framebuffer memory
     buffer #(

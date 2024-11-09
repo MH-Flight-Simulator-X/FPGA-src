@@ -150,9 +150,21 @@ int main(int argc, char* argv[]) {
             p->r = top->sdl_r;
         }
 
-        int e0 = nbitSigned(top->edge_val[0], VERTEX_WIDTH);
-        int e1 = nbitSigned(top->edge_val[1], VERTEX_WIDTH);
-        int e2 = nbitSigned(top->edge_val[2], VERTEX_WIDTH);
+        // int e0 = nbitSigned(top->edge_val[0], VERTEX_WIDTH);
+        // int e1 = nbitSigned(top->edge_val[1], VERTEX_WIDTH);
+        // int e2 = nbitSigned(top->edge_val[2], VERTEX_WIDTH);
+
+        // int e0_dx = nbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
+        // int e0_dy = nbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
+        // int e1_dx = nbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
+        // int e1_dy = nbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
+        // int e2_dx = nbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
+        // int e2_dy = nbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
+
+        int e0 = nbitSigned(top->edge0, VERTEX_WIDTH);
+        int e1 = nbitSigned(top->edge1, VERTEX_WIDTH);
+        int e2 = nbitSigned(top->edge2, VERTEX_WIDTH);
+
 
         int e0_dx = nbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
         int e0_dy = nbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
@@ -180,6 +192,10 @@ int main(int argc, char* argv[]) {
         float z_dy = signedFixedPointToFloat(top->z_dy, 17, 27);
 
         float depth_data = signedFixedPointToFloat(top->depth_data, 1, 15);
+        float z_delta0 = signedFixedPointToFloat(top->z_delta[0], 1, 15);
+        float z_delta1 = signedFixedPointToFloat(top->z_delta[1], 1, 15);
+
+        int addr_start = top->fb_addr_start;
 
         // printf("\n\n########\n\n");
         // printf("clk_100m_cnt: %d\n", clk_100m_cnt);
@@ -190,12 +206,9 @@ int main(int argc, char* argv[]) {
         // printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
         // printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
         // printf("z = %f\nz_dx = %f\nz_dy = %f\n", z, z_dx, z_dy);
-        // printf("depth_data = %d\n", top->depth_data);
-        // printf("Depth_data = %02X\n", top->depth_data);
-        //
-        // printBits(top->depth_data);
-        // printBits(top->z);
-        // printHex(top->z);
+        // printf("depth_data = %f\n", depth_data);
+        // printf("z_delta0 = %f\nz_delta1 = %f\n", z_delta0, z_delta1);
+        // printf("addr_start = %d\n", addr_start);
         //
         // printf("state = %d\n", top->state);
         //
