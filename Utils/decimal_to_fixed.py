@@ -43,16 +43,3 @@ def from_fixed_point_hex(hex_str: str, a: int, b: int, signed: bool = False) -> 
     float_value = int_value / scale_factor
     
     return float_value
-
-
-a = to_fixed_point_hex(1/600, 0, 12, False)
-
-print(a)
-
-print(from_fixed_point_hex(a, 0, 12, False))
-print(1/600)
-
-# with open("reciprocal.mem", "w") as f:
-#     for i in range(1, 1000):
-#         f.write(to_fixed_point_hex(1/i, 0, 12, False) + "\n")
-
