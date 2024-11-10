@@ -1,42 +1,58 @@
-def generate_fixed_point_hex_string(num, integer_bits, decimal_bits, signed):
-    bit_string = ""
-    val = 0
+def to_fixed_point_hex(n: float, a: int, b: int, signed: bool = False) -> str:
+    # Define the scale factor based on the number of fractional bits
+    scale_factor = 1 << b
+    total_bits = a + b
     
+    # Define max and min values based on signed or unsigned format
     if signed:
-        if (num < 0):
-            bit_string += "1"
-            val = -2**(integer_bits-1)
-        else:
-            bit_string += "0"
+        max_val = (1 << (total_bits - 1)) - 1
+        min_val = -(1 << (total_bits - 1))
+    else:
+        max_val = (1 << total_bits) - 1
+        min_val = 0
 
-        integer_bits -= 1
+    # Scale the number to fixed-point representation and round it
+    fixed_point_value = round(n * scale_factor)
+ 
+    # Check if the value fits in the format
+    if not (min_val <= fixed_point_value <= max_val):
+        print(f"Warning: the number {n} does not fit in the Q{a}.{b} format with signed={signed}.")
+    
+    # Adjust for signed format if needed
+    if signed and fixed_point_value < 0:
+        fixed_point_value = (1 << total_bits) + fixed_point_value
+    
+    # Convert to hexadecimal and format as string
+    hex_digits = (total_bits + 3) // 4
+    hex_str = f'{fixed_point_value:0{hex_digits}X}'
+    
+    return hex_str
 
-    while integer_bits:
-        integer_bits -= 1
-        if (val + 2**(integer_bits) <= num):
-            bit_string += "1"
-            val += 2**(integer_bits)
-        else:
-            bit_string += "0"
 
-    bit_string += "."
+def from_fixed_point_hex(hex_str: str, a: int, b: int, signed: bool = False) -> float:
+    # Convert the hex string to an integer
+    total_bits = a + b
+    int_value = int(hex_str, 16)
+    
+    # Handle signed values if specified
+    if signed and int_value >= (1 << (total_bits - 1)):
+        int_value -= (1 << total_bits)
+    
+    # Convert to floating point by dividing by the scale factor
+    scale_factor = 1 << b
+    float_value = int_value / scale_factor
+    
+    return float_value
 
-    decimal_counter = 0
 
-    while decimal_counter < decimal_bits:
-        decimal_counter += 1
-        if (val + 2**(-decimal_counter) <= num):
-            bit_string += "1"
-            val += 2**(-decimal_counter)
-        else:
-            bit_string += "0"
+a = to_fixed_point_hex(1/600, 0, 12, False)
 
-    bit_string = bit_string.replace(".", "", 1)
-    return hex(int(bit_string, 2))
+print(a)
 
-print(generate_fixed_point_hex_string(0.6, 0, 16, False))
+print(from_fixed_point_hex(a, 0, 12, False))
+print(1/600)
 
 # with open("reciprocal.mem", "w") as f:
 #     for i in range(1, 1000):
-#         f.write(generate_fixed_point_hex_string(1/i, 0, 12, False)[2:].zfill(3) + "\n")
+#         f.write(to_fixed_point_hex(1/i, 0, 12, False) + "\n")
 
