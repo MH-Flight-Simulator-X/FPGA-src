@@ -35,6 +35,9 @@ my_project/
 *.fdb_latexmk
 *.synctex.gz
 
+# Python
+__pycache__/
+
 *.zip
 *.tar.gz
 
