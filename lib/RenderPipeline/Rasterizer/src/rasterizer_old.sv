@@ -243,9 +243,9 @@ module rasterizer #(
                 DRAW: begin
                     backend_rstn <= 1'b1;
                     fb_write_enable <= inside_triangle;
-                     if (backend_done) begin
-                        state <= DONE;
-                     end
+                    if (backend_done) begin
+                       state <= DONE;
+                    end
                 end
 
                 DONE: begin

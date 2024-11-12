@@ -111,8 +111,8 @@ int main(int argc, char** argv) {
                 int32_t edge_delta1[2];
                 int32_t edge_delta2[2];
 
-                int32_t area;
-                float area_inv;
+                float z_coeff;
+                float z_coeff_delta[2];
 
                 bb_tl[0] = sign_extend(dut->bb_tl[0], DATAWIDTH);
                 bb_tl[1] = sign_extend(dut->bb_tl[1], DATAWIDTH);
@@ -132,8 +132,9 @@ int main(int argc, char** argv) {
                 edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
                 edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
 
-                area = sign_extend(dut->o_area, 2*DATAWIDTH);
-                area_inv = FixedPoint<uint32_t>(dut->area_inv, 2*DATAWIDTH, 2*DATAWIDTH, false).toFloat();
+                z_coeff = FixedPoint<uint32_t>(dut->z_coeff, DATAWIDTH, DATAWIDTH, false).toFloat();
+                z_coeff_delta[0] = FixedPoint<int32_t>(dut->z_coeff_delta[0], DATAWIDTH-1, DATAWIDTH).toFloat();
+                z_coeff_delta[1] = FixedPoint<int32_t>(dut->z_coeff_delta[1], DATAWIDTH-1, DATAWIDTH).toFloat();
 
                 printf("Bounding Box:\n");
                 printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
@@ -152,9 +153,11 @@ int main(int argc, char** argv) {
                 printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
                 printf("\n");
 
-                printf("Area Stuff:\n");
-                printf("Area: %d\n", area);
-                printf("Area inverse: %f\n", area_inv);
+                printf("Z coeffs:\n");
+                printf("z_coeff: %f\n", z_coeff);
+                printf("z_coeff_delta[0]: %f\n", z_coeff_delta[0]);
+                printf("z_coeff_delta[1]: %f\n", z_coeff_delta[1]);
+                printf("\n");
 
                 printf("\n");
             }

@@ -1,8 +1,8 @@
-v0 = (8, 4, 0.5)
-v1 = (20, 30, 0.5)
-v2 = (40, 20, 0.1)
+v0 = (12, 4, 0)
+v1 = (20, 200, 0.5)
+v2 = (40, 200, 0.8)
 
-screen_width, screen_height = (160, 120)
+screen_width, screen_height = (320, 320)
 
 def compute_bounding_box(v0, v1, v2, screen_width, screen_height):
     min_x = max(int(min(v0[0], v1[0], v2[0])), 0)

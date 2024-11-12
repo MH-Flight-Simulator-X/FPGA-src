@@ -46,13 +46,14 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] edge_delta0[2],
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
-    output logic signed [2*DATAWIDTH-1:0] area_inv,
-    // output logic signed [2*DATAWIDTH-1:0] o_area,
+
+    output logic [DATAWIDTH-1:0] z_coeff,
+    output logic signed [DATAWIDTH-1:0] z_coeff_delta[2],
+
     output logic o_dv
     );
 
-    // For now, just set sample point at (0,0)
-    localparam logic signed [DATAWIDTH-1:0] P0[2] = '{0, 0};
+    localparam unsigned Z_WIDTH = 3 * DATAWIDTH;
 
     // Register input data
     logic signed [DATAWIDTH-1:0] r_v0[3];
@@ -76,6 +77,15 @@ module rasterizer_frontend #(
     logic signed [DATAWIDTH-1:0] r_edge_function_p[2];
     logic signed [2*DATAWIDTH-1:0] w_edge_function_val;
     logic signed [DATAWIDTH-1:0] w_edge_function_delta[2];
+
+    // Barycentric coordinate compute
+    logic signed [2*DATAWIDTH-1:0] barycentric_weight[3];
+    logic signed [2*DATAWIDTH-1:0] barycentric_weight_delta[3][2];
+
+    // Z value and delta compute
+    /* verilator lint_off UNUSED */
+    logic signed [Z_WIDTH-1:0] z, z_dx, z_dy;   // Intermediate values with higher precision
+    /* verilator lint_on UNUSED */
 
     edge_compute #(
         .DATAWIDTH(DATAWIDTH)
@@ -123,8 +133,12 @@ module rasterizer_frontend #(
     logic [2*DATAWIDTH-1:0] r_area_division_in_A;
     logic r_area_division_in_A_dv;
 
+    /* verilator lint_off UNUSED */
     logic [2*DATAWIDTH-1:0] w_area_reciprocal;
     logic w_area_reciprocal_dv;
+
+    logic [DATAWIDTH-1:0] r_area_reciprocal;
+    /* verilator lint_on UNUSED */
 
     fast_inverse #(
         .DATAWIDTH(2 * DATAWIDTH),
@@ -142,13 +156,15 @@ module rasterizer_frontend #(
     );
 
     // ========== STATE ==========
-    typedef enum logic [2:0] {
+    typedef enum logic [3:0] {
         IDLE,
         COMPUTE_AREA,
         COMPUTE_EDGE_0, // Also starts computation of area reciprocal
         COMPUTE_EDGE_1,
         COMPUTE_EDGE_2,
         REGISTER_AREA_RECIPROCAL,
+        COMPUTE_BARYCENTRIC,
+        COMPUTE_Z,
         DONE
     } state_t;
     state_t current_state = IDLE, next_state = IDLE;
@@ -196,8 +212,16 @@ module rasterizer_frontend #(
 
             REGISTER_AREA_RECIPROCAL: begin
                 if (w_area_reciprocal_dv) begin
-                    next_state = DONE;
+                    next_state = COMPUTE_BARYCENTRIC;
                 end
+            end
+
+            COMPUTE_BARYCENTRIC: begin
+                next_state = COMPUTE_Z;
+            end
+
+            COMPUTE_Z: begin
+                next_state = DONE;
             end
 
             DONE: begin
@@ -234,8 +258,13 @@ module rasterizer_frontend #(
             foreach (r_edge_delta0[i]) r_edge_delta0[i] <= '0;
             foreach (r_edge_delta1[i]) r_edge_delta1[i] <= '0;
             foreach (r_edge_delta2[i]) r_edge_delta2[i] <= '0;
-            r_area <= '0;
-            o_dv   <= '0;
+
+            z_coeff <= '0;
+            z_coeff_delta[0] <= '0;
+            z_coeff_delta[1] <= '0;
+
+            o_dv <= '0;
+
         end else begin
             case (current_state)
                 IDLE: begin
@@ -271,7 +300,7 @@ module rasterizer_frontend #(
                     // For next compute
                     r_edge_function_v1 <= '{r_v0[0], r_v0[1]};
                     r_edge_function_v2 <= '{r_v1[0], r_v1[1]};
-                    r_edge_function_p  <= P0;
+                    r_edge_function_p  <= w_bb_tl;
                 end
 
                 COMPUTE_EDGE_0: begin
@@ -289,7 +318,7 @@ module rasterizer_frontend #(
                     // For next compute
                     r_edge_function_v1 <= '{r_v1[0], r_v1[1]};
                     r_edge_function_v2 <= '{r_v2[0], r_v2[1]};
-                    r_edge_function_p  <= P0;
+                    r_edge_function_p  <= r_bb_tl;
                 end
 
                 COMPUTE_EDGE_1: begin
@@ -299,7 +328,7 @@ module rasterizer_frontend #(
                     // For next compute
                     r_edge_function_v1 <= '{r_v2[0], r_v2[1]};
                     r_edge_function_v2 <= '{r_v0[0], r_v0[1]};
-                    r_edge_function_p  <= P0;
+                    r_edge_function_p  <= r_bb_tl;
                 end
 
                 COMPUTE_EDGE_2: begin
@@ -309,27 +338,49 @@ module rasterizer_frontend #(
 
                 REGISTER_AREA_RECIPROCAL: begin
                     if (w_area_reciprocal_dv) begin
-                        foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
-                        foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
-                        edge_val0 <= r_edge_val0;
-                        edge_val1 <= r_edge_val1;
-                        edge_val2 <= r_edge_val2;
-
-                        foreach (edge_delta0[i]) edge_delta0[i] <= r_edge_delta0[i];
-                        foreach (edge_delta1[i]) edge_delta1[i] <= r_edge_delta1[i];
-                        foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
-                        area_inv <= w_area_reciprocal;
-
-                        o_dv <= '1;
-                    end else begin
-                        o_dv <= '0;
+                        r_area_reciprocal <= w_area_reciprocal[2*DATAWIDTH-1:DATAWIDTH];
                     end
                 end
 
+                COMPUTE_BARYCENTRIC: begin
+                    barycentric_weight[0] <= r_edge_val0 * r_area_reciprocal;
+                    barycentric_weight[1] <= r_edge_val1 * r_area_reciprocal;
+                    barycentric_weight[2] <= r_edge_val2 * r_area_reciprocal;
+
+                    barycentric_weight_delta[0] <= '{r_edge_delta0[0] * r_area_reciprocal, r_edge_delta0[1] * r_area_reciprocal};
+                    barycentric_weight_delta[1] <= '{r_edge_delta1[0] * r_area_reciprocal, r_edge_delta1[1] * r_area_reciprocal};
+                    barycentric_weight_delta[2] <= '{r_edge_delta2[0] * r_area_reciprocal, r_edge_delta2[1] * r_area_reciprocal};
+                end
+
+                COMPUTE_Z: begin
+                    z <= (barycentric_weight[0] * r_v0[2] + 
+                          barycentric_weight[1] * r_v1[2] + 
+                          barycentric_weight[2] * r_v2[2]);
+
+                    z_dx <= (barycentric_weight_delta[0][0] * r_v0[2] + 
+                             barycentric_weight_delta[1][0] * r_v1[2] + 
+                             barycentric_weight_delta[2][0] * r_v2[2]);
+                    z_dy <= (barycentric_weight_delta[0][1] * r_v0[2] + 
+                             barycentric_weight_delta[1][1] * r_v1[2] + 
+                             barycentric_weight_delta[2][1] * r_v2[2]);
+                end
+
                 DONE: begin
-                    if (next) begin
-                        o_dv <= '0;
-                    end
+                    foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
+                    foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
+                    edge_val0 <= r_edge_val0;
+                    edge_val1 <= r_edge_val1;
+                    edge_val2 <= r_edge_val2;
+
+                    z_coeff <= z[2*DATAWIDTH-1:DATAWIDTH];
+                    z_coeff_delta[0] <= {z_dx[Z_WIDTH-1], z_dx[2*DATAWIDTH-2:DATAWIDTH]};
+                    z_coeff_delta[1] <= {z_dy[Z_WIDTH-1], z_dy[2*DATAWIDTH-2:DATAWIDTH]};
+
+                    foreach (edge_delta0[i]) edge_delta0[i] <= r_edge_delta0[i];
+                    foreach (edge_delta1[i]) edge_delta1[i] <= r_edge_delta1[i];
+                    foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
+
+                    o_dv <= '1;
                 end
 
                 default: begin
@@ -337,8 +388,5 @@ module rasterizer_frontend #(
             endcase
         end
     end
-
-    // DEBUG
-    // assign o_area = r_area;
 
 endmodule
