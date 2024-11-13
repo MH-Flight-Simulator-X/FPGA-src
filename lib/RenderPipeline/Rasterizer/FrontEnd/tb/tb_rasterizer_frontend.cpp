@@ -19,9 +19,9 @@ typedef struct {
 } Vertex;
 
 Vertex test_data[3] = {
-    {12, 4, 0},
-    {20, 200, 0.5},
-    {40, 200, 0.8}
+    {25,  50, 0.9},
+    {50, 210, 0.2},
+    {60, 220, 0.3}
 };
 
 
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
             dut->i_triangle_dv = 0;
 
             if (posedge_cnt == 4 && dut->ready) {
-                printf("Assigning data\n");
+                printf("Assigning data (%ld)\n", posedge_cnt);
                 assign_data(dut, test_data[0], test_data[1], test_data[2]);
                 dut->i_triangle_dv = 1;
             }
@@ -110,6 +110,12 @@ int main(int argc, char** argv) {
                 int32_t edge_delta0[2];
                 int32_t edge_delta1[2];
                 int32_t edge_delta2[2];
+
+                int32_t area;
+                float area_reciprocal;
+
+                float barycentric_weight[3];
+                float barycentric_weight_delta[3][2];
 
                 float z_coeff;
                 float z_coeff_delta[2];
@@ -132,9 +138,25 @@ int main(int argc, char** argv) {
                 edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
                 edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
 
-                z_coeff = FixedPoint<uint32_t>(dut->z_coeff, DATAWIDTH, DATAWIDTH, false).toFloat();
-                z_coeff_delta[0] = FixedPoint<int32_t>(dut->z_coeff_delta[0], DATAWIDTH-1, DATAWIDTH).toFloat();
-                z_coeff_delta[1] = FixedPoint<int32_t>(dut->z_coeff_delta[1], DATAWIDTH-1, DATAWIDTH).toFloat();
+                area = sign_extend(dut->rasterizer_frontend__DOT__r_area, 2*DATAWIDTH);
+                area_reciprocal = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__r_area_reciprocal, DATAWIDTH, DATAWIDTH).toFloat();
+
+                barycentric_weight[0] = FixedPoint<int32_t>(dut->debug_barycentric_weight[0], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
+                barycentric_weight[1] = FixedPoint<int32_t>(dut->debug_barycentric_weight[1], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
+                barycentric_weight[2] = FixedPoint<int32_t>(dut->debug_barycentric_weight[2], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
+
+                barycentric_weight_delta[0][0] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[0][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[0][1] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[0][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+
+                barycentric_weight_delta[1][0] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[1][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[1][1] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[1][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+
+                barycentric_weight_delta[2][0] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[2][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[2][1] = FixedPoint<int32_t>(dut->debug_barycentric_weight_delta[2][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+
+                z_coeff = FixedPoint<int32_t>(dut->z_coeff, DATAWIDTH, DATAWIDTH, false).toFloat();
+                z_coeff_delta[0] = FixedPoint<int16_t>(dut->z_coeff_delta[0], DATAWIDTH-1, DATAWIDTH, true).toFloat();
+                z_coeff_delta[1] = FixedPoint<int16_t>(dut->z_coeff_delta[1], DATAWIDTH-1, DATAWIDTH, true).toFloat();
 
                 printf("Bounding Box:\n");
                 printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
@@ -147,18 +169,44 @@ int main(int argc, char** argv) {
                 printf("Edge 2: %d\n", edge_coeffs[2]);
                 printf("\n");
 
+                printf("Area stuff:\n");
+                printf("Area: %d\n", area);
+                printf("Area reciprocal: %f\n", area_reciprocal);
+                printf("\n");
+
                 printf("Edge Deltas:\n");
                 printf("Edge 0: (%d, %d)\n", edge_delta0[0], edge_delta0[1]);
                 printf("Edge 1: (%d, %d)\n", edge_delta1[0], edge_delta1[1]);
                 printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
                 printf("\n");
 
-                printf("Z coeffs:\n");
-                printf("z_coeff: %f\n", z_coeff);
-                printf("z_coeff_delta[0]: %f\n", z_coeff_delta[0]);
-                printf("z_coeff_delta[1]: %f\n", z_coeff_delta[1]);
+                printf("Barycentric Weights:\n");
+                printf("Weight 0: %f\n", barycentric_weight[0]);
+                printf("Weight 1: %f\n", barycentric_weight[1]);
+                printf("Weight 2: %f\n", barycentric_weight[2]);
                 printf("\n");
 
+                printf("Barycentric Weight Deltas:\n");
+                printf("Delta 0: (%f, %f)\n", barycentric_weight_delta[0][0], barycentric_weight_delta[0][1]);
+                printf("Delta 1: (%f, %f)\n", barycentric_weight_delta[1][0], barycentric_weight_delta[1][1]);
+                printf("Delta 2: (%f, %f)\n", barycentric_weight_delta[2][0], barycentric_weight_delta[2][1]);
+                printf("\n");
+
+                float z_coeff_delta_calc_0 = barycentric_weight_delta[0][0] * test_data[0].z +
+                                             barycentric_weight_delta[1][0] * test_data[1].z +
+                                             barycentric_weight_delta[2][0] * test_data[2].z;
+
+                float z_coeff_delta_calc_1 = barycentric_weight_delta[0][1] * test_data[0].z +
+                                             barycentric_weight_delta[1][1] * test_data[1].z +
+                                             barycentric_weight_delta[2][1] * test_data[2].z;
+
+                printf("Z coeffs:\n");
+                printf("z_coeff: %f\t %x\n", z_coeff, dut->z_coeff);
+                printf("z_coeff_delta[0]: %f (%b vs. %b)\n", z_coeff_delta[0], dut->z_coeff_delta[0], FixedPoint<int16_t>::fromFloat(z_coeff_delta_calc_0, DATAWIDTH-1, DATAWIDTH).get() & ((1 << DATAWIDTH)-1));
+                printf("z_coeff_delta[1]: %f (%b vs. %b)\n", z_coeff_delta[1], dut->z_coeff_delta[1], FixedPoint<int16_t>::fromFloat(z_coeff_delta_calc_1, DATAWIDTH-1, DATAWIDTH).get() & ((1 << DATAWIDTH)-1));
+                printf("\n");
+
+                printf("Finished (%ld)\n", posedge_cnt);
                 printf("\n");
             }
         }

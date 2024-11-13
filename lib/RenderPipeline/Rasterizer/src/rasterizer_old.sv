@@ -223,11 +223,18 @@ module rasterizer #(
 
                 INIT_DRAW_4: begin
                     // Initialize z at the top-left corner
-                    z <= (bar_weight[0] * vertex[0][2]) + (bar_weight[1] * vertex[1][2]) + (bar_weight[2] * vertex[2][2]);
+                    z <= (bar_weight[0] * vertex[0][2]) +
+                         (bar_weight[1] * vertex[1][2]) +
+                         (bar_weight[2] * vertex[2][2]);
 
                     // Compute z increments
-                    z_dx <= (bar_weight_delta[0][0] * vertex[0][2]) + (bar_weight_delta[1][0] * vertex[1][2]) + (bar_weight_delta[2][0] * vertex[2][2]);
-                    z_dy <= (bar_weight_delta[0][1] * vertex[0][2]) + (bar_weight_delta[1][1] * vertex[1][2]) + (bar_weight_delta[2][1] * vertex[2][2]);
+                    z_dx <= (bar_weight_delta[0][0] * vertex[0][2]) +
+                            (bar_weight_delta[1][0] * vertex[1][2]) +
+                            (bar_weight_delta[2][0] * vertex[2][2]);
+
+                    z_dy <= (bar_weight_delta[0][1] * vertex[0][2]) +
+                            (bar_weight_delta[1][1] * vertex[1][2]) +
+                            (bar_weight_delta[2][1] * vertex[2][2]);
 
                     state <= INIT_DRAW_5;
                 end

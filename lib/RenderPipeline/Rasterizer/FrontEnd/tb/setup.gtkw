@@ -1,66 +1,85 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Tue Nov 12 10:26:59 2024
+[*] Tue Nov 12 23:49:40 2024
 [*]
 [dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/Rasterizer/FrontEnd/tb/waveform.vcd"
-[dumpfile_mtime] "Tue Nov 12 10:24:08 2024"
-[dumpfile_size] 24890
+[dumpfile_mtime] "Tue Nov 12 23:46:18 2024"
+[dumpfile_size] 28788
 [savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/Rasterizer/FrontEnd/tb/setup.gtkw"
 [timestart] 0
-[size] 2490 1536
-[pos] -51 -51
-*-5.237864 33 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 1280 1403
+[pos] 1229 -51
+*-5.237864 43 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
-[treeopen] TOP.rasterizer_frontend.
 [sst_width] 233
-[signals_width] 348
+[signals_width] 433
 [sst_expanded] 1
-[sst_vpaned_height] 470
-@800022
-TOP.rasterizer_frontend.edge_val0[23:0]
+[sst_vpaned_height] 423
+@22
+TOP.rasterizer_frontend.z_coeff[11:0]
+@c00022
+TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
 @28
-(0)TOP.rasterizer_frontend.edge_val0[23:0]
-(1)TOP.rasterizer_frontend.edge_val0[23:0]
-(2)TOP.rasterizer_frontend.edge_val0[23:0]
-(3)TOP.rasterizer_frontend.edge_val0[23:0]
-(4)TOP.rasterizer_frontend.edge_val0[23:0]
-(5)TOP.rasterizer_frontend.edge_val0[23:0]
-(6)TOP.rasterizer_frontend.edge_val0[23:0]
-(7)TOP.rasterizer_frontend.edge_val0[23:0]
-(8)TOP.rasterizer_frontend.edge_val0[23:0]
-(9)TOP.rasterizer_frontend.edge_val0[23:0]
-(10)TOP.rasterizer_frontend.edge_val0[23:0]
-(11)TOP.rasterizer_frontend.edge_val0[23:0]
-(12)TOP.rasterizer_frontend.edge_val0[23:0]
-(13)TOP.rasterizer_frontend.edge_val0[23:0]
-(14)TOP.rasterizer_frontend.edge_val0[23:0]
-(15)TOP.rasterizer_frontend.edge_val0[23:0]
-(16)TOP.rasterizer_frontend.edge_val0[23:0]
-(17)TOP.rasterizer_frontend.edge_val0[23:0]
-(18)TOP.rasterizer_frontend.edge_val0[23:0]
-(19)TOP.rasterizer_frontend.edge_val0[23:0]
-(20)TOP.rasterizer_frontend.edge_val0[23:0]
-(21)TOP.rasterizer_frontend.edge_val0[23:0]
-(22)TOP.rasterizer_frontend.edge_val0[23:0]
-(23)TOP.rasterizer_frontend.edge_val0[23:0]
-@1001200
+(0)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(1)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(2)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(3)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(4)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(5)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(6)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(7)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(8)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(9)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(10)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(11)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(12)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(13)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(14)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(15)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(16)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(17)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(18)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(19)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(20)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(21)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(22)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(23)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(24)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(25)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(26)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(27)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(28)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(29)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(30)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(31)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(32)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(33)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(34)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(35)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+(36)TOP.rasterizer_frontend.z_coeff_without_shift[36:0]
+@1401200
 -group_end
-@800023
-TOP.rasterizer_frontend.edge_val0_half[11:0]
-@29
-(0)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(1)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(2)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(3)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(4)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(5)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(6)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(7)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(8)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(9)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(10)TOP.rasterizer_frontend.edge_val0_half[11:0]
-(11)TOP.rasterizer_frontend.edge_val0_half[11:0]
-@1001201
+@c00022
+TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+@28
+(0)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(1)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(2)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(3)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(4)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(5)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(6)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(7)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(8)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(9)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(10)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+(11)TOP.rasterizer_frontend.z_coeff_delta(0)[11:0]
+@1401200
 -group_end
+@23
+TOP.rasterizer_frontend.z_coeff_delta_without_shift(0)[36:0]
+@22
+TOP.rasterizer_frontend.z_coeff_delta(1)[11:0]
+TOP.rasterizer_frontend.z_coeff_delta_without_shift(1)[36:0]
 [pattern_trace] 1
 [pattern_trace] 0

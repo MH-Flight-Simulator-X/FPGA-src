@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+/* verilator lint_off UNUSED */
 
 /* verilator lint_off DECLFILENAME */
 module edge_compute #(
@@ -47,7 +48,10 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
 
-    output logic [DATAWIDTH-1:0] z_coeff,
+    output logic signed [3*DATAWIDTH:0] debug_barycentric_weight[3],
+    output logic signed [2*DATAWIDTH:0] debug_barycentric_weight_delta[3][2],
+
+    output logic signed [DATAWIDTH-1:0] z_coeff,
     output logic signed [DATAWIDTH-1:0] z_coeff_delta[2],
 
     output logic o_dv
@@ -61,11 +65,9 @@ module rasterizer_frontend #(
     logic signed [DATAWIDTH-1:0] r_v2[3];
 
     // Edge function data registers
-    /* verilator lint_off UNUSED */
     logic signed [2 * DATAWIDTH-1:0] r_edge_val0;
     logic signed [2 * DATAWIDTH-1:0] r_edge_val1;
     logic signed [2 * DATAWIDTH-1:0] r_edge_val2;
-    /* verilator lint_on UNUSED */
     logic signed [DATAWIDTH-1:0] r_edge_delta0[2];
     logic signed [DATAWIDTH-1:0] r_edge_delta1[2];
     logic signed [DATAWIDTH-1:0] r_edge_delta2[2];
@@ -77,15 +79,6 @@ module rasterizer_frontend #(
     logic signed [DATAWIDTH-1:0] r_edge_function_p[2];
     logic signed [2*DATAWIDTH-1:0] w_edge_function_val;
     logic signed [DATAWIDTH-1:0] w_edge_function_delta[2];
-
-    // Barycentric coordinate compute
-    logic signed [2*DATAWIDTH-1:0] barycentric_weight[3];
-    logic signed [2*DATAWIDTH-1:0] barycentric_weight_delta[3][2];
-
-    // Z value and delta compute
-    /* verilator lint_off UNUSED */
-    logic signed [Z_WIDTH-1:0] z, z_dx, z_dy;   // Intermediate values with higher precision
-    /* verilator lint_on UNUSED */
 
     edge_compute #(
         .DATAWIDTH(DATAWIDTH)
@@ -133,16 +126,14 @@ module rasterizer_frontend #(
     logic [2*DATAWIDTH-1:0] r_area_division_in_A;
     logic r_area_division_in_A_dv;
 
-    /* verilator lint_off UNUSED */
     logic [2*DATAWIDTH-1:0] w_area_reciprocal;
     logic w_area_reciprocal_dv;
 
     logic [DATAWIDTH-1:0] r_area_reciprocal;
-    /* verilator lint_on UNUSED */
 
     fast_inverse #(
         .DATAWIDTH(2 * DATAWIDTH),
-        .NUM_ITERATIONS(2)
+        .NUM_ITERATIONS(4)
     ) fast_inverse_inst (
         .clk (clk),
         .rstn(rstn),
@@ -154,6 +145,17 @@ module rasterizer_frontend #(
         .A_inv(w_area_reciprocal),
         .A_inv_dv(w_area_reciprocal_dv)
     );
+
+    // Barycentric coordinate compute
+    logic signed [3*DATAWIDTH:0] barycentric_weight[3];
+    logic signed [2*DATAWIDTH:0] barycentric_weight_delta[3][2];
+
+    // z_coeff: A signed Q0.12 fixed-point number
+    logic signed [3*DATAWIDTH:0] z;
+
+    // z_dx and z_dy: Delta coefficients for z, also Q0.12 fixed-point numbers
+    logic signed [3*DATAWIDTH:0] z_dx;
+    logic signed [3*DATAWIDTH:0] z_dy;
 
     // ========== STATE ==========
     typedef enum logic [3:0] {
@@ -195,7 +197,8 @@ module rasterizer_frontend #(
             end
 
             COMPUTE_EDGE_0: begin
-                if (r_area <= '0 || ~r_bb_valid) begin
+                if ($signed(r_area) <= $signed(24'b0) || ~r_bb_valid) begin
+                    $display("Invalid triangle. Back-face culling");
                     next_state = IDLE;
                 end else if (w_area_division_ready) begin
                     next_state = COMPUTE_EDGE_1;
@@ -235,6 +238,9 @@ module rasterizer_frontend #(
             end
         endcase
     end
+
+    logic signed [3*DATAWIDTH:0] z_coeff_without_shift;
+    logic signed [3*DATAWIDTH:0] z_coeff_delta_without_shift[2];
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
@@ -343,26 +349,60 @@ module rasterizer_frontend #(
                 end
 
                 COMPUTE_BARYCENTRIC: begin
-                    barycentric_weight[0] <= r_edge_val0 * r_area_reciprocal;
-                    barycentric_weight[1] <= r_edge_val1 * r_area_reciprocal;
-                    barycentric_weight[2] <= r_edge_val2 * r_area_reciprocal;
+                    barycentric_weight[0] <= r_edge_val0 * $unsigned(r_area_reciprocal);
+                    barycentric_weight[1] <= r_edge_val1 * $unsigned(r_area_reciprocal);
+                    barycentric_weight[2] <= r_edge_val2 * $unsigned(r_area_reciprocal);
 
-                    barycentric_weight_delta[0] <= '{r_edge_delta0[0] * r_area_reciprocal, r_edge_delta0[1] * r_area_reciprocal};
-                    barycentric_weight_delta[1] <= '{r_edge_delta1[0] * r_area_reciprocal, r_edge_delta1[1] * r_area_reciprocal};
-                    barycentric_weight_delta[2] <= '{r_edge_delta2[0] * r_area_reciprocal, r_edge_delta2[1] * r_area_reciprocal};
+                    barycentric_weight_delta[0] <= '{
+                        r_edge_delta0[0] * $signed({1'b0, r_area_reciprocal}),
+                        r_edge_delta0[1] * $signed({1'b0, r_area_reciprocal})
+                    };
+                    barycentric_weight_delta[1] <= '{
+                        r_edge_delta1[0] * $signed({1'b0, r_area_reciprocal}),
+                        r_edge_delta1[1] * $signed({1'b0, r_area_reciprocal})
+                    };
+                    barycentric_weight_delta[2] <= '{
+                        r_edge_delta2[0] * $signed({1'b0, r_area_reciprocal}),
+                        r_edge_delta2[1] * $signed({1'b0, r_area_reciprocal})
+                    };
                 end
 
                 COMPUTE_Z: begin
-                    z <= (barycentric_weight[0] * r_v0[2] + 
-                          barycentric_weight[1] * r_v1[2] + 
-                          barycentric_weight[2] * r_v2[2]);
 
-                    z_dx <= (barycentric_weight_delta[0][0] * r_v0[2] + 
-                             barycentric_weight_delta[1][0] * r_v1[2] + 
-                             barycentric_weight_delta[2][0] * r_v2[2]);
-                    z_dy <= (barycentric_weight_delta[0][1] * r_v0[2] + 
-                             barycentric_weight_delta[1][1] * r_v1[2] + 
-                             barycentric_weight_delta[2][1] * r_v2[2]);
+                    z <= ($signed(barycentric_weight[0]) * $unsigned(r_v0[2]) +
+                          $signed(barycentric_weight[1]) * $unsigned(r_v1[2]) +
+                          $signed(barycentric_weight[2]) * $unsigned(r_v2[2])
+                         ) >>> DATAWIDTH;
+
+                    // Compute z_dx as the sum of barycentric_weight_delta[x][0] * r_vX[2]
+                    z_dx <= ($signed(barycentric_weight_delta[0][0]) * $unsigned(r_v0[2]) +
+                             $signed(barycentric_weight_delta[1][0]) * $unsigned(r_v1[2]) +
+                             $signed(barycentric_weight_delta[2][0]) * $unsigned(r_v2[2])
+                            ) >>> DATAWIDTH;
+
+                    // Compute z_dy as the sum of barycentric_weight_delta[x][1] * r_vX[2]
+                    z_dy <= ($signed(barycentric_weight_delta[0][1]) * $unsigned(r_v0[2]) +
+                             $signed(barycentric_weight_delta[1][1]) * $unsigned(r_v1[2]) +
+                             $signed(barycentric_weight_delta[2][1]) * $unsigned(r_v2[2])
+                            ) >>> DATAWIDTH;
+
+                    z_coeff_without_shift <=
+                         ($signed(barycentric_weight[0]) * $unsigned(r_v0[2]) +
+                          $signed(barycentric_weight[1]) * $unsigned(r_v1[2]) +
+                          $signed(barycentric_weight[2]) * $unsigned(r_v2[2])
+                         );
+
+                    z_coeff_delta_without_shift[0] <=
+                            ($signed(barycentric_weight_delta[0][0]) * $unsigned(r_v0[2]) +
+                             $signed(barycentric_weight_delta[1][0]) * $unsigned(r_v1[2]) +
+                             $signed(barycentric_weight_delta[2][0]) * $unsigned(r_v2[2])
+                            );
+
+                    z_coeff_delta_without_shift[1] <=
+                            ($signed(barycentric_weight_delta[0][1]) * $unsigned(r_v0[2]) +
+                             $signed(barycentric_weight_delta[1][1]) * $unsigned(r_v1[2]) +
+                             $signed(barycentric_weight_delta[2][1]) * $unsigned(r_v2[2])
+                            );
                 end
 
                 DONE: begin
@@ -372,9 +412,9 @@ module rasterizer_frontend #(
                     edge_val1 <= r_edge_val1;
                     edge_val2 <= r_edge_val2;
 
-                    z_coeff <= z[2*DATAWIDTH-1:DATAWIDTH];
-                    z_coeff_delta[0] <= {z_dx[Z_WIDTH-1], z_dx[2*DATAWIDTH-2:DATAWIDTH]};
-                    z_coeff_delta[1] <= {z_dy[Z_WIDTH-1], z_dy[2*DATAWIDTH-2:DATAWIDTH]};
+                    z_coeff <= z[DATAWIDTH-1:0];
+                    z_coeff_delta[0] <= z_dx[DATAWIDTH:1];
+                    z_coeff_delta[1] <= z_dy[DATAWIDTH:1];
 
                     foreach (edge_delta0[i]) edge_delta0[i] <= r_edge_delta0[i];
                     foreach (edge_delta1[i]) edge_delta1[i] <= r_edge_delta1[i];
@@ -388,5 +428,16 @@ module rasterizer_frontend #(
             endcase
         end
     end
+
+    assign debug_barycentric_weight[0] = barycentric_weight[0];
+    assign debug_barycentric_weight[1] = barycentric_weight[1];
+    assign debug_barycentric_weight[2] = barycentric_weight[2];
+
+    assign debug_barycentric_weight_delta[0][0] = barycentric_weight_delta[0][0];
+    assign debug_barycentric_weight_delta[0][1] = barycentric_weight_delta[0][1];
+    assign debug_barycentric_weight_delta[1][0] = barycentric_weight_delta[1][0];
+    assign debug_barycentric_weight_delta[1][1] = barycentric_weight_delta[1][1];
+    assign debug_barycentric_weight_delta[2][0] = barycentric_weight_delta[2][0];
+    assign debug_barycentric_weight_delta[2][1] = barycentric_weight_delta[2][1];
 
 endmodule
