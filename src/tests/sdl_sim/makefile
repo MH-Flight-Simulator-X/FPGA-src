@@ -11,7 +11,7 @@ VERILOG_SOURCES = \
     $(LIB_PATH)/Memory/ROM/src/rom.sv \
     $(LIB_PATH)/Memory/Buffer/src/buffer.sv \
     $(LIB_PATH)/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv \
-    $(LIB_PATH)/RenderPipeline/Rasterizer/Backend/src/rasterizer_backend.sv \
+    $(LIB_PATH)/RenderPipeline/Rasterizer/Backend/src/rasterizer_backend_old.sv \
     $(LIB_PATH)/RenderPipeline/Rasterizer/src/rasterizer_old.sv
 
 top: top.exe

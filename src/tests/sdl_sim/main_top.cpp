@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <bitset>
-#include <verilated.h>
-#include "obj_dir/Vtop.h"
 #include <SDL.h>
+#include <verilated.h>
+#include "Vtop.h"
 
 // screen dimensions
 const int H_RES = 640;
@@ -65,7 +65,7 @@ void printBits(uint64_t number) {
 
 
 void printHex(uint64_t number) {
-    // printf("0x%016llX\n", number);
+    printf("0x%016llX\n", number);
 }
 
 
@@ -186,8 +186,6 @@ int main(int argc, char* argv[]) {
         float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
         float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
         float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-
-        int32_t a = top->top__DOT__rasterizer_inst__DOT__edge_delta[0][0];
 
         float z = signedFixedPointToFloat(top->z, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
         float z_dx = signedFixedPointToFloat(top->z_dx, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);

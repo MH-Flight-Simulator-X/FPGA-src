@@ -75,12 +75,10 @@ module top (
     localparam unsigned FB_DATA_WIDTH  = 4;
     localparam unsigned FB_DEPTH = FB_WIDTH * FB_HEIGHT;
     localparam unsigned FB_ADDR_WIDTH  = $clog2(FB_DEPTH);
-    localparam string FB_IMAGE  = "../../image.mem";
-
+    localparam string FB_IMAGE_FILE  = "../../image.mem";
     // pixel read address and color
     logic [FB_ADDR_WIDTH-1:0] fb_addr_read;
-    logic [FB_ADDR_WIDTH-1:0] fb_addr_write;
-    logic [FB_DATA_WIDTH-1:0] fb_colr_read;
+    logic [FB_ADDR_WIDTH-1:0] buffer_addr_write;
     logic fb_write_enable;
 
     localparam signed X0 = 8;
@@ -105,6 +103,8 @@ module top (
 
     localparam unsigned RECIPROCAL_SIZE = 65000;
     localparam RECIPROCAL_FILE = "../../reciprocal.mem";
+
+    localparam DB_DATA_WIDTH = 12;
 
     logic signed [VERTEX_WIDTH-1:0] vertex[3][3];
 
@@ -138,7 +138,7 @@ module top (
 
         .vertex,
 
-        .fb_addr(fb_addr_write),
+        .fb_addr(buffer_addr_write),
         .fb_write_enable(fb_write_enable),
         .depth_data(depth_data),
         .done
@@ -172,56 +172,17 @@ module top (
 
     assign state = rasterizer_inst.state;
 
-    assign depth_data_in = depth_data[VERTEX_WIDTH-1:4];
+    assign depth_data_in = depth_data[VERTEX_WIDTH-1:VERTEX_WIDTH-DB_DATA_WIDTH];
 
     assign z_delta[0] = rasterizer_inst.z_delta[0];
     assign z_delta[1] = rasterizer_inst.z_delta[1];
 
-    assign fb_addr_start = rasterizer_inst.fb_addr_start;
-
-    // framebuffer memory
-    buffer #(
-        .WIDTH(FB_DATA_WIDTH),
-        .DEPTH(FB_DEPTH),
-        .FILE(FB_IMAGE)
-    ) framebuffer (
-        .clk_write(clk_100m),
-        .clk_read(clk_pix),
-        .write_enable(fb_write_enable),
-        .clear(),
-        .ready(),
-        .clear_value(),
-        .addr_write(fb_addr_write),
-        .addr_read(fb_addr_read),
-        .data_in(),
-        .data_out(fb_colr_read)
-    );
-
-    localparam DB_CLEAR_VALUE = 4095;
-    localparam DB_DATA_WIDTH = 12;
+    assign fb_addr_start = rasterizer_inst.fb_addr_start; 
 
     logic [FB_ADDR_WIDTH-1:0] db_addr_read;
     //logic [FB_ADDR_WIDTH-1:0] db_addr_write;
-    logic [11:0] db_data_out;
-    //logic db_write_enable = 1'b0;
-
-    // depth buffer memory
-    buffer #(
-        .WIDTH(DB_DATA_WIDTH),
-        .DEPTH(FB_DEPTH)
-    ) db_inst (
-        .clk_write(clk_100m),
-        .clk_read(clk_pix),
-        .write_enable(fb_write_enable),
-        .clear(),
-        .ready(),
-        .clear_value(DB_CLEAR_VALUE),
-        .addr_write(fb_addr_write),
-        .addr_read(db_addr_read),
-        .data_in(depth_data_in),
-        .data_out(db_data_out)
-    );
     
+    //logic db_write_enable = 1'b0;    
 
     // calculate framebuffer read address for display output
     logic read_fb;
@@ -229,7 +190,8 @@ module top (
         read_fb <= (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
         if (frame) begin  // reset address at start of frame
             fb_addr_read <= 0;
-        end else if (read_fb) begin  // increment address in painting area
+        end
+        else if (read_fb) begin  // increment address in painting area
             fb_addr_read <= fb_addr_read + 1;
         end
     end
@@ -239,7 +201,8 @@ module top (
         read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
         if (frame) begin  // reset address at start of frame
             db_addr_read <= 0;
-        end else if (read_db) begin  // increment address in painting area
+        end 
+        else if (read_db) begin  // increment address in painting area
             db_addr_read <= db_addr_read + 1;
         end
     end
@@ -247,19 +210,8 @@ module top (
     localparam CLUT_WIDTH = 12;
     localparam CLUT_DEPTH = 16;
     localparam PALETTE_FILE = "../../palette.mem";
+ 
     
-    // colour lookup table
-    logic [COLOR_WIDTH-1:0] fb_pix_colr;
-    rom #(
-        .WIDTH(CLUT_WIDTH),
-        .DEPTH(CLUT_DEPTH),
-        .FILE(PALETTE_FILE)
-    ) clut (
-        .clk(clk_pix),
-        .addr(fb_colr_read),
-        .data(fb_pix_colr)
-    );
-
     logic [CHANNEL_WIDTH-1:0] red, green, blue;
     display #(
         .DISPLAY_WIDTH(FB_WIDTH),
@@ -267,37 +219,29 @@ module top (
         .COORDINATE_WIDTH(CORDW),
         .FB_DATA_WIDTH(FB_DATA_WIDTH),
         .DB_DATA_WIDTH(DB_DATA_WIDTH),
-        .CHANNEL_WIDTH(CHANNEL_WIDTH)
+        .CHANNEL_WIDTH(CHANNEL_WIDTH),
+        .PALETTE_FILE(PALETTE_FILE),
+        .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
-        // .clk_pix(clk_pix),
+        .clk(clk_100m),
+        .clk_pix(clk_pix),
+
         .screen_x(sx),
         .screen_y(sy),
-        .fb_pix_colr(fb_pix_colr),
-        .db_value(db_data_out),
+
+        .fb_addr_read(fb_addr_read),
+        .db_addr_read(db_addr_read),
+
+        .buffer_addr_write(buffer_addr_write),
+
+        .addr_inside_triangle(fb_write_enable),
+
+        .i_depth_data(depth_data_in),
+
         .o_red(red),
         .o_green(green),
         .o_blue(blue)
-    );
-    
-
-    // paint screen
-    // logic paint_db;
-    // logic paint_fb;
-    // logic [CHANNEL_WIDTH-1:0] paint_r, paint_g, paint_b;  // color channels
-    // always_comb begin
-    //     paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-    //     paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-    //     if (paint_fb) begin
-    //         {paint_r, paint_g, paint_b} = fb_pix_colr;
-    //     end
-    //     else if (paint_db) begin
-    //         {paint_r, paint_g, paint_b} = {db_data_out[11:8], 8'b00000000};
-    //         // {paint_r, paint_g, paint_b} = db_data_out;
-    //     end
-    //     else begin
-    //         {paint_r, paint_g, paint_b} =  BG_COLOR;
-    //     end
-    // end
+    ); 
 
     // SDL output (8 bits per colour channel)
     always_ff @(posedge clk_pix) begin
