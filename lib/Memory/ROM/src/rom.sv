@@ -7,12 +7,12 @@ module rom#(
     parameter unsigned DEPTH = 16,
     parameter string FILE = "data.mem"
     ) (
-    input wire clk,
-    input wire [$clog2(WIDTH)-1:0] addr,
-    output reg [DEPTH-1:0] data
+    input logic clk,
+    input logic [$clog2(DEPTH)-1:0] addr,
+    output logic [WIDTH-1:0] data
     );
 
-    logic [DEPTH-1:0] memory [WIDTH];
+    logic [WIDTH-1:0] memory [DEPTH];
 
     initial begin
         $readmemh(FILE, memory);
