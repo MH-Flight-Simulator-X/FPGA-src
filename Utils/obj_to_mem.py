@@ -9,7 +9,9 @@ model_files = ["tetrahedron.obj", "cube.obj"]
 header_face_index_width = 12
 header_vertex_index_width = 12
 face_width = 12
-vertex_width = 16
+vertex_integer_width = 11
+vertex_decimal_width = 13
+vertex_width = vertex_integer_width + vertex_decimal_width
 
 
 with open("headers.mem", "w") as h_file, open("faces.mem", "w") as f_file, open("vertices.mem", "w") as v_file:
@@ -36,9 +38,9 @@ with open("headers.mem", "w") as h_file, open("faces.mem", "w") as f_file, open(
         
         for vertex in vertices:
             x, y, z = vertex
-            v_file.write(to_fixed_point_hex(x, vertex_width, 0, True))
-            v_file.write(to_fixed_point_hex(y, vertex_width, 0, True))
-            v_file.write(to_fixed_point_hex(z, vertex_width, 0, True) + "\n")
+            v_file.write(to_fixed_point_hex(x, vertex_integer_width, vertex_decimal_width, True))
+            v_file.write(to_fixed_point_hex(y, vertex_integer_width, vertex_decimal_width, True))
+            v_file.write(to_fixed_point_hex(z, vertex_integer_width, vertex_decimal_width, True) + "\n")
 
         num_vertices += len(vertices)
         

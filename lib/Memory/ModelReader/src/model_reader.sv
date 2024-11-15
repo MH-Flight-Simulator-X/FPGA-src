@@ -5,7 +5,7 @@ module model_reader #(
     parameter integer HEADER_ADDR_WIDTH = 4,
     parameter integer FACE_ADDR_WIDTH = 12,
     parameter integer VERTEX_ADDR_WIDTH = 12,
-    parameter integer COORD_WIDTH = 16,
+    parameter integer COORD_WIDTH = 24,
     parameter integer VERTEX_DATA_WIDTH = COORD_WIDTH * 3,
     parameter integer FACE_DATA_WIDTH = FACE_ADDR_WIDTH * 3,
     parameter integer HEADER_DATA_WIDTH = FACE_ADDR_WIDTH + VERTEX_ADDR_WIDTH,
