@@ -5,7 +5,7 @@ module rasterizer_backend #(
     parameter unsigned COLORWIDTH = 4,
     parameter unsigned [DATAWIDTH-1:0] SCREEN_WIDTH = 160,
     parameter unsigned [DATAWIDTH-1:0] SCREEN_HEIGHT = 160,
-    parameter unsigned ADDR_WIDTH = $clog2(SCREEN_WIDTH + SCREEN_HEIGHT)
+    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH + SCREEN_HEIGHT)
     ) (
     input logic clk,
     input logic rstn,
@@ -23,14 +23,14 @@ module rasterizer_backend #(
 
     input logic signed [DATAWIDTH-1:0] z,
     input logic signed [DATAWIDTH-1:0] z_delta[2],
+
+    input logic [ADDRWIDTH-1:0] addr_start,    // The address of the top left corner of the BBox
     input logic i_dv,
 
-    input logic [ADDR_WIDTH-1:0] addr_start,
+    output logic [ADDRWIDTH-1:0] o_fb_addr_write,
+    output logic o_fb_write_en,
 
-    output logic [ADDR_WIDTH-1:0] o_addr,
-    output logic o_buffer_write_en,
-
-    output logic signed [DATAWIDTH-1:0] depth_data,
+    output logic [DATAWIDTH-1:0] depth_data,
     output logic [COLORWIDTH-1:0] color_data,
 
     output logic ready,
@@ -40,8 +40,8 @@ module rasterizer_backend #(
     logic signed [ADDRWIDTH-1:0] r_x, r_y;
     logic signed [DATAWIDTH-1:0] r_z, r_z_row_start;
 
-    logic [ADDR_WIDTH-1:0] r_addr_delta_y;
-    logic [ADDR_WIDTH-1:0] r_addr;
+    logic [ADDRWIDTH-1:0] r_addr_delta_y;
+    logic [ADDRWIDTH-1:0] r_addr;
 
     logic signed [2*DATAWIDTH-1:0] r_edge0, r_edge1, r_edge2;
     logic signed [2*DATAWIDTH-1:0] r_edge_row_start0, r_edge_row_start1, r_edge_row_start2;
@@ -60,7 +60,7 @@ module rasterizer_backend #(
         end
         else begin
             current_state <= next_state;
-            o_addr <= r_addr; // Delay output addr by 1
+            o_fb_addr_write <= r_addr; // Delay output addr by 1
         end
     end
 
@@ -114,7 +114,7 @@ module rasterizer_backend #(
                 r_z_row_start <= z;
 
                 r_addr <= addr_start;
-                r_addr_delta_y <= SCREEN_WIDTH[ADDR_WIDTH-1:0] - (bb_br[0][ADDR_WIDTH-1:0] - bb_tl[0][ADDR_WIDTH-1:0]);
+                r_addr_delta_y <= SCREEN_WIDTH[ADDRWIDTH-1:0] - (bb_br[0][ADDRWIDTH-1:0] - bb_tl[0][ADDRWIDTH-1:0]);
             end
 
             RASTERIZE: begin
@@ -142,7 +142,7 @@ module rasterizer_backend #(
                     r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
 
                     r_y <= r_y + 1;
-                    r_addr <= r_addr + r_addr_delta_y[ADDR_WIDTH-1:0];
+                    r_addr <= r_addr + r_addr_delta_y[ADDRWIDTH-1:0];
 
                     r_x <= bb_tl[0];
 
@@ -152,10 +152,10 @@ module rasterizer_backend #(
 
                 // Check if point is inside triangle
                 if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
-                    o_buffer_write_en <= 1'b1;
+                    o_fb_write_en <= 1'b1;
                 end
                 else begin
-                    o_buffer_write_en <= 1'b0;
+                    o_fb_write_en <= 1'b0;
                 end
             end
 
@@ -164,6 +164,6 @@ module rasterizer_backend #(
         endcase
     end
 
-    assign depth_data = r_z[DEPTH_WIDTH-1:0];
+    assign depth_data = $unsigned(r_z[DEPTH_WIDTH-1:0]);
 
 endmodule
