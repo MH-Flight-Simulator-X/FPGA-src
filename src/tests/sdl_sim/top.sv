@@ -52,7 +52,7 @@ module top (
     logic signed [CORDW-1:0] sx, sy;
     logic hsync, vsync;
     logic de;
-    projectf_display_480p #(.CORDW(CORDW)) display_inst (
+    projectf_display_480p #(.CORDW(CORDW)) display_signal_inst (
         .clk_pix,
         .rst_pix(sim_rst),
         .sx,
@@ -259,34 +259,53 @@ module top (
         .addr(fb_colr_read),
         .data(fb_pix_colr)
     );
+
+    logic [CHANNEL_WIDTH-1:0] red, green, blue;
+    display #(
+        .DISPLAY_WIDTH(FB_WIDTH),
+        .DISPLAY_HEIGHT(FB_HEIGHT),
+        .COORDINATE_WIDTH(CORDW),
+        .FB_DATA_WIDTH(FB_DATA_WIDTH),
+        .DB_DATA_WIDTH(DB_DATA_WIDTH),
+        .CHANNEL_WIDTH(CHANNEL_WIDTH)
+    ) display_inst (
+        // .clk_pix(clk_pix),
+        .screen_x(sx),
+        .screen_y(sy),
+        .fb_pix_colr(fb_pix_colr),
+        .db_value(db_data_out),
+        .o_red(red),
+        .o_green(green),
+        .o_blue(blue)
+    );
     
 
     // paint screen
-    logic paint_db;
-    logic paint_fb;
-    logic [CHANNEL_WIDTH-1:0] paint_r, paint_g, paint_b;  // color channels
-    always_comb begin
-        paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-        paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-        if (paint_fb) begin
-            {paint_r, paint_g, paint_b} = fb_pix_colr;
-        end
-        else if (paint_db) begin
-            {paint_r, paint_g, paint_b} = {db_data_out[11:8], 8'b00000000};
-            // {paint_r, paint_g, paint_b} = db_data_out;
-        end
-        else begin
-            {paint_r, paint_g, paint_b} =  BG_COLOR;
-        end
-    end
+    // logic paint_db;
+    // logic paint_fb;
+    // logic [CHANNEL_WIDTH-1:0] paint_r, paint_g, paint_b;  // color channels
+    // always_comb begin
+    //     paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
+    //     paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
+    //     if (paint_fb) begin
+    //         {paint_r, paint_g, paint_b} = fb_pix_colr;
+    //     end
+    //     else if (paint_db) begin
+    //         {paint_r, paint_g, paint_b} = {db_data_out[11:8], 8'b00000000};
+    //         // {paint_r, paint_g, paint_b} = db_data_out;
+    //     end
+    //     else begin
+    //         {paint_r, paint_g, paint_b} =  BG_COLOR;
+    //     end
+    // end
 
     // SDL output (8 bits per colour channel)
     always_ff @(posedge clk_pix) begin
         sdl_sx <= sx;
         sdl_sy <= sy;
         sdl_de <= de;
-        sdl_r <= {2{paint_r}};  // double signal width from 4 to 8 bits
-        sdl_g <= {2{paint_g}};
-        sdl_b <= {2{paint_b}};
+        sdl_r <= {2{red}};  // double signal width from 4 to 8 bits
+        sdl_g <= {2{green}};
+        sdl_b <= {2{blue}};
     end
 endmodule
