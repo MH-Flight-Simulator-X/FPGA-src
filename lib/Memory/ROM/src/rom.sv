@@ -7,9 +7,9 @@ module rom#(
     parameter unsigned DEPTH = 16,
     parameter string FILE = "data.mem"
     ) (
-    input wire clk,
-    input wire [$clog2(DEPTH)-1:0] addr,
-    output reg [WIDTH-1:0] data
+    input logic clk,
+    input logic [$clog2(DEPTH)-1:0] addr,
+    output logic [WIDTH-1:0] data
     );
 
     logic [WIDTH-1:0] memory [DEPTH];
