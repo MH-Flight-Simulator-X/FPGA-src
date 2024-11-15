@@ -43,21 +43,15 @@ module rasterizer_frontend #(
     output logic signed [2*DATAWIDTH-1:0] edge_val0,
     output logic signed [2*DATAWIDTH-1:0] edge_val1,
     output logic signed [2*DATAWIDTH-1:0] edge_val2,
-
     output logic signed [DATAWIDTH-1:0] edge_delta0[2],
     output logic signed [DATAWIDTH-1:0] edge_delta1[2],
     output logic signed [DATAWIDTH-1:0] edge_delta2[2],
-
-    output logic signed [3*DATAWIDTH:0] debug_barycentric_weight[3],
-    output logic signed [2*DATAWIDTH:0] debug_barycentric_weight_delta[3][2],
 
     output logic signed [DATAWIDTH-1:0] z_coeff,
     output logic signed [DATAWIDTH-1:0] z_coeff_delta[2],
 
     output logic o_dv
     );
-
-    localparam unsigned Z_WIDTH = 3 * DATAWIDTH;
 
     // Register input data
     logic signed [DATAWIDTH-1:0] r_v0[3];
@@ -239,9 +233,6 @@ module rasterizer_frontend #(
         endcase
     end
 
-    logic signed [3*DATAWIDTH:0] z_coeff_without_shift;
-    logic signed [3*DATAWIDTH:0] z_coeff_delta_without_shift[2];
-
     always_ff @(posedge clk) begin
         if (~rstn) begin
             foreach (r_v0[i]) r_v0[i] <= '0;
@@ -385,30 +376,12 @@ module rasterizer_frontend #(
                              $signed(barycentric_weight_delta[1][1]) * $unsigned(r_v1[2]) +
                              $signed(barycentric_weight_delta[2][1]) * $unsigned(r_v2[2])
                             ) >>> DATAWIDTH;
-
-                    z_coeff_without_shift <=
-                         ($signed(barycentric_weight[0]) * $unsigned(r_v0[2]) +
-                          $signed(barycentric_weight[1]) * $unsigned(r_v1[2]) +
-                          $signed(barycentric_weight[2]) * $unsigned(r_v2[2])
-                         );
-
-                    z_coeff_delta_without_shift[0] <=
-                            ($signed(barycentric_weight_delta[0][0]) * $unsigned(r_v0[2]) +
-                             $signed(barycentric_weight_delta[1][0]) * $unsigned(r_v1[2]) +
-                             $signed(barycentric_weight_delta[2][0]) * $unsigned(r_v2[2])
-                            );
-
-                    z_coeff_delta_without_shift[1] <=
-                            ($signed(barycentric_weight_delta[0][1]) * $unsigned(r_v0[2]) +
-                             $signed(barycentric_weight_delta[1][1]) * $unsigned(r_v1[2]) +
-                             $signed(barycentric_weight_delta[2][1]) * $unsigned(r_v2[2])
-                            );
                 end
 
                 DONE: begin
                     foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
                     foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
-                    edge_val0 <= r_edge_val0;
+                    edge_val2 <= r_edge_val0;
                     edge_val1 <= r_edge_val1;
                     edge_val2 <= r_edge_val2;
 
@@ -428,16 +401,4 @@ module rasterizer_frontend #(
             endcase
         end
     end
-
-    assign debug_barycentric_weight[0] = barycentric_weight[0];
-    assign debug_barycentric_weight[1] = barycentric_weight[1];
-    assign debug_barycentric_weight[2] = barycentric_weight[2];
-
-    assign debug_barycentric_weight_delta[0][0] = barycentric_weight_delta[0][0];
-    assign debug_barycentric_weight_delta[0][1] = barycentric_weight_delta[0][1];
-    assign debug_barycentric_weight_delta[1][0] = barycentric_weight_delta[1][0];
-    assign debug_barycentric_weight_delta[1][1] = barycentric_weight_delta[1][1];
-    assign debug_barycentric_weight_delta[2][0] = barycentric_weight_delta[2][0];
-    assign debug_barycentric_weight_delta[2][1] = barycentric_weight_delta[2][1];
-
 endmodule

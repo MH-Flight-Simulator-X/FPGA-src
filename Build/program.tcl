@@ -1,4 +1,5 @@
 set design_name "top_MH_FPGA"
+# set design_name "design_1_wrapper"
 
 open_hw_manager
 connect_hw_server
