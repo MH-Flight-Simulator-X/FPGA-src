@@ -244,8 +244,8 @@ module top (
         end
     end
     
-    localparam CLUT_WIDTH = 16;
-    localparam CLUT_DEPTH = 12;
+    localparam CLUT_WIDTH = 12;
+    localparam CLUT_DEPTH = 16;
     localparam PALETTE_FILE = "../../palette.mem";
     
     // colour lookup table

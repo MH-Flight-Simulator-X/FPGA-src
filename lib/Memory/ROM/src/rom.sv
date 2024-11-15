@@ -8,11 +8,11 @@ module rom#(
     parameter string FILE = "data.mem"
     ) (
     input wire clk,
-    input wire [$clog2(WIDTH)-1:0] addr,
-    output reg [DEPTH-1:0] data
+    input wire [$clog2(DEPTH)-1:0] addr,
+    output reg [WIDTH-1:0] data
     );
 
-    logic [DEPTH-1:0] memory [WIDTH];
+    logic [WIDTH-1:0] memory [DEPTH];
 
     initial begin
         $readmemh(FILE, memory);

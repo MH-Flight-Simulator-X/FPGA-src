@@ -79,8 +79,8 @@ module rasterizer #(
     logic signed [VERTEX_WIDTH-1:0] area;
 
     rom #(
-        .WIDTH(RECIPROCAL_SIZE),
-        .DEPTH(RECIPROCAL_WIDTH),
+        .WIDTH(RECIPROCAL_WIDTH),
+        .DEPTH(RECIPROCAL_SIZE),
         .FILE(RECIPROCAL_FILE)
     ) reciprocal_inst (
         .clk(clk),
