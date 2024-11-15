@@ -47,23 +47,6 @@ module top (
     parameter VERTEX_WIDTH = 16;
     parameter RECIPROCAL_WIDTH = 12;
 
-    // display sync signals and coordinates
-    localparam CORDW = 16;  // signed coordinate width (bits)
-    logic signed [CORDW-1:0] sx, sy;
-    logic hsync, vsync;
-    logic de;
-    projectf_display_480p #(.CORDW(CORDW)) display_signal_inst (
-        .clk_pix,
-        .rst_pix(sim_rst),
-        .sx,
-        .sy,
-        .hsync,
-        .vsync,
-        .de,
-        .frame,
-        .line()
-    );
-
     // color parameters
     localparam CHANNEL_WIDTH = 4;
     localparam COLOR_WIDTH = 3*CHANNEL_WIDTH;
@@ -77,7 +60,6 @@ module top (
     localparam unsigned FB_ADDR_WIDTH  = $clog2(FB_DEPTH);
     localparam string FB_IMAGE_FILE  = "../../image.mem";
     // pixel read address and color
-    logic [FB_ADDR_WIDTH-1:0] fb_addr_read;
     logic [FB_ADDR_WIDTH-1:0] buffer_addr_write;
     logic fb_write_enable;
 
@@ -98,6 +80,8 @@ module top (
     localparam signed TILE_MIN_Y = 0;
     localparam signed TILE_MAX_X = 160;
     localparam signed TILE_MAX_Y = 120;
+
+    localparam CORDW = 16;  // signed coordinate width (bits)
 
     logic [11:0] depth_data_in;
 
@@ -177,35 +161,7 @@ module top (
     assign z_delta[0] = rasterizer_inst.z_delta[0];
     assign z_delta[1] = rasterizer_inst.z_delta[1];
 
-    assign fb_addr_start = rasterizer_inst.fb_addr_start; 
-
-    logic [FB_ADDR_WIDTH-1:0] db_addr_read;
-    //logic [FB_ADDR_WIDTH-1:0] db_addr_write;
-    
-    //logic db_write_enable = 1'b0;    
-
-    // calculate framebuffer read address for display output
-    logic read_fb;
-    always_ff @(posedge clk_pix) begin
-        read_fb <= (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-        if (frame) begin  // reset address at start of frame
-            fb_addr_read <= 0;
-        end
-        else if (read_fb) begin  // increment address in painting area
-            fb_addr_read <= fb_addr_read + 1;
-        end
-    end
-
-    logic read_db;
-    always_ff @(posedge clk_pix) begin
-        read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-        if (frame) begin  // reset address at start of frame
-            db_addr_read <= 0;
-        end 
-        else if (read_db) begin  // increment address in painting area
-            db_addr_read <= db_addr_read + 1;
-        end
-    end
+    assign fb_addr_start = rasterizer_inst.fb_addr_start;  
     
     localparam CLUT_WIDTH = 12;
     localparam CLUT_DEPTH = 16;
@@ -216,7 +172,7 @@ module top (
     display #(
         .DISPLAY_WIDTH(FB_WIDTH),
         .DISPLAY_HEIGHT(FB_HEIGHT),
-        .COORDINATE_WIDTH(CORDW),
+        .DISPLAY_COORD_WIDTH(CORDW),
         .FB_DATA_WIDTH(FB_DATA_WIDTH),
         .DB_DATA_WIDTH(DB_DATA_WIDTH),
         .CHANNEL_WIDTH(CHANNEL_WIDTH),
@@ -226,28 +182,28 @@ module top (
         .clk(clk_100m),
         .clk_pix(clk_pix),
 
-        .screen_x(sx),
-        .screen_y(sy),
-
-        .fb_addr_read(fb_addr_read),
-        .db_addr_read(db_addr_read),
-
         .buffer_addr_write(buffer_addr_write),
 
         .addr_inside_triangle(fb_write_enable),
 
         .i_depth_data(depth_data_in),
 
+        .clear(),
+
+        .ready(),
+
         .o_red(red),
         .o_green(green),
         .o_blue(blue)
     ); 
 
+    assign sdl_sx = display_inst.screen_x;
+    assign sdl_sy = display_inst.screen_y;
+    assign sdl_de = display_inst.de;
+    assign frame = display_inst.frame;
+
     // SDL output (8 bits per colour channel)
     always_ff @(posedge clk_pix) begin
-        sdl_sx <= sx;
-        sdl_sy <= sy;
-        sdl_de <= de;
         sdl_r <= {2{red}};  // double signal width from 4 to 8 bits
         sdl_g <= {2{green}};
         sdl_b <= {2{blue}};
