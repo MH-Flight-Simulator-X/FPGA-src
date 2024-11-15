@@ -1,8 +1,20 @@
-v0 = (12, 4, 0)
-v1 = (20, 200, 0.5)
-v2 = (40, 200, 0.8)
+v0 = (25,  50, 0.9)
+v1 = (50, 210, 0.2)
+v2 = (60, 220, 0.3)
 
 screen_width, screen_height = (320, 320)
+
+def to_fixed_point(value, fracbits, totalbits, signed=False):
+    """
+    Convert a floating point number to a fixed point number
+    """
+    if signed:
+        value = int(value * (1 << fracbits))
+        if value < 0:
+            value = (1 << totalbits) + value
+    else:
+        value = int(value * (1 << fracbits))
+    return value
 
 def compute_bounding_box(v0, v1, v2, screen_width, screen_height):
     min_x = max(int(min(v0[0], v1[0], v2[0])), 0)
@@ -72,14 +84,9 @@ def print_constants(v0, v1, v2):
     w2_dx = e2_dx / area
     w2_dy = e2_dy / area
 
-    print(f"w0_dx = {w0_dx}")
-    print(f"w0_dy = {w0_dy}")
-
-    print(f"w1_dx = {w1_dx}")
-    print(f"w1_dy = {w1_dy}")
-
-    print(f"w2_dx = {w2_dx}")
-    print(f"w2_dy = {w2_dy}")
+    print(f"w0_delta = {w0_dx, w0_dy}")
+    print(f"w1_delta = {w1_dx, w1_dy}")
+    print(f"w2_delta = {w2_dx, w2_dy}")
 
     z = (w0 * v0[2]) + (w1 * v1[2]) + (w2 * v2[2])
     z_dx = (w0_dx * v0[2]) + (w1_dx * v1[2]) + (w2_dx * v2[2])

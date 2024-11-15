@@ -104,7 +104,7 @@ module rasterizer_backend #(
                 r_edge_row_start0 <= edge0;
                 r_edge_row_start1 <= edge1;
                 r_edge_row_start2 <= edge2;
-                
+
                 r_z <= z;
                 r_z_row_start <= z;
 
@@ -116,7 +116,7 @@ module rasterizer_backend #(
                 if (r_x < bb_br[0]) begin
                     // Increment in x-direction
                     r_addr <= r_addr + 1;
-                    
+
                     r_edge0 <= r_edge0 + edge_delta0[0];
                     r_edge1 <= r_edge1 + edge_delta1[0];
                     r_edge2 <= r_edge2 + edge_delta2[0];
@@ -129,10 +129,10 @@ module rasterizer_backend #(
                     // Increment in y-direction
                     r_edge0 <= r_edge_row_start0 + edge_delta0[1];
                     r_edge_row_start0 <= r_edge_row_start0 + edge_delta0[1];
-                    
+
                     r_edge1 <= r_edge_row_start1 + edge_delta1[1];
                     r_edge_row_start1 <= r_edge_row_start1 + edge_delta1[1];
-                    
+
                     r_edge2 <= r_edge_row_start2 + edge_delta2[1];
                     r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
 
@@ -156,7 +156,7 @@ module rasterizer_backend #(
 
             DONE: begin
             end
-            
+
             default begin 
             end 
         endcase
