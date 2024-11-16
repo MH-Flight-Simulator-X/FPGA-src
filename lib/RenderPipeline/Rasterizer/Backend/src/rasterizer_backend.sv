@@ -66,9 +66,11 @@ module rasterizer_backend #(
     always_ff @(posedge clk) begin
         if (~rstn) begin
             current_state <= IDLE;
+            o_fb_addr_write <= '0;
         end
         else begin
             current_state <= next_state;
+            o_fb_addr_write <= r_addr;
         end
     end
 
@@ -147,19 +149,19 @@ module rasterizer_backend #(
                 end
                 else begin
                     // Increment in y-direction
-                    r_edge0 <= r_edge_row_start0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[1]};
-                    r_edge_row_start0 <= r_edge_row_start0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[1]};
+                    r_edge0 <= r_edge_row_start0 + {{DATAWIDTH{r_edge_delta0[1][DATAWIDTH-1]}}, r_edge_delta0[1]};
+                    r_edge_row_start0 <= r_edge_row_start0 + {{DATAWIDTH{r_edge_delta0[1][DATAWIDTH-1]}}, r_edge_delta0[1]};
 
-                    r_edge1 <= r_edge_row_start1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[1]};
-                    r_edge_row_start1 <= r_edge_row_start1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[1]};
+                    r_edge1 <= r_edge_row_start1 + {{DATAWIDTH{r_edge_delta1[1][DATAWIDTH-1]}}, r_edge_delta1[1]};
+                    r_edge_row_start1 <= r_edge_row_start1 + {{DATAWIDTH{r_edge_delta1[1][DATAWIDTH-1]}}, r_edge_delta1[1]};
 
-                    r_edge2 <= r_edge_row_start2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[1]};
-                    r_edge_row_start2 <= r_edge_row_start2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[1]};
+                    r_edge2 <= r_edge_row_start2 + {{DATAWIDTH{r_edge_delta2[1][DATAWIDTH-1]}}, r_edge_delta2[1]};
+                    r_edge_row_start2 <= r_edge_row_start2 + {{DATAWIDTH{r_edge_delta2[1][DATAWIDTH-1]}}, r_edge_delta2[1]};
 
                     r_y <= r_y + 1;
                     r_addr <= r_addr + r_addr_delta_y;
 
-                    r_x <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_tl[0]};
+                    r_x <= {{(ADDRWIDTH-DATAWIDTH){r_bb_tl[0][DATAWIDTH-1]}}, r_bb_tl[0]};
 
                     r_z_row_start <= r_z_row_start + z_delta[1];
                     r_z <= r_z_row_start + z_delta[1];
@@ -209,6 +211,5 @@ module rasterizer_backend #(
 
     assign depth_data = $unsigned(r_z[DATAWIDTH-1:0]);
     assign color_data = r_color;
-    assign o_fb_addr_write = r_addr;
 
 endmodule

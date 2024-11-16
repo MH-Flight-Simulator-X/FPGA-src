@@ -127,12 +127,11 @@ int main(int argc, char* argv[]) {
 
             // update texture once per frame (in blanking)
             if (top->frame) { 
-
                 // check for quit event
                 SDL_Event e;
                 if (SDL_PollEvent(&e)) {
-                    if (e.type == SDL_QUIT) {
-                        break;
+                    if (e.type == SDL_KEYDOWN) {
+                        printf("Hi\n");
                     }
                 }
 
@@ -143,6 +142,8 @@ int main(int argc, char* argv[]) {
                 SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
+
+                printf("New frame\n");
             }
         }
     }
