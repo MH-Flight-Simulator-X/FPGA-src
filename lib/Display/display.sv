@@ -9,10 +9,7 @@ module display#(
     parameter unsigned CLUT_WIDTH = 12,
     parameter unsigned CLUT_DEPTH = 16,
     parameter unsigned CHANNEL_WIDTH = 4,
-    parameter unsigned COLOR_WIDTH = CHANNEL_WIDTH*3,
-    parameter unsigned BG_COLOR = 'h137,
-    parameter unsigned BUFFER_DEPTH = DISPLAY_WIDTH*DISPLAY_HEIGHT,
-    parameter unsigned BUFFER_ADDR_WIDTH = $clog2(BUFFER_DEPTH),
+    parameter unsigned BG_COLOR = 'h137, 
     parameter string PALETTE_FILE = "palette.mem",
     parameter string FB_IMAGE_FILE = "image.mem"
     ) (
@@ -21,7 +18,8 @@ module display#(
 
     input logic unsigned [BUFFER_ADDR_WIDTH-1:0] buffer_addr_write,
 
-    input logic unsigned [DB_DATA_WIDTH-1:0] i_depth_data,
+    input logic unsigned [FB_DATA_WIDTH-1:0] i_fb_data,
+    input logic unsigned [DB_DATA_WIDTH-1:0] i_db_data,
 
     input logic addr_inside_triangle,
 
@@ -34,24 +32,28 @@ module display#(
     output ready
     );
 
-    // display sync signals and coordinates
+    localparam unsigned COLOR_WIDTH = CHANNEL_WIDTH*3;
+
+    localparam unsigned BUFFER_DEPTH = DISPLAY_WIDTH*DISPLAY_HEIGHT;
+    localparam unsigned BUFFER_ADDR_WIDTH = $clog2(BUFFER_DEPTH);
+
+    // Display signals and coordinates
     logic signed [DISPLAY_COORD_WIDTH-1:0] screen_x, screen_y;
-    logic hsync, vsync;
     logic de;
     logic frame;
     projectf_display_480p #(.CORDW(DISPLAY_COORD_WIDTH)) display_signal_inst (
-        .clk_pix,
+        .clk_pix(clk_pix),
         .rst_pix(),
         .sx(screen_x),
         .sy(screen_y),
-        .hsync,
-        .vsync,
-        .de,
-        .frame,
+        .hsync(),
+        .vsync(),
+        .de(de),
+        .frame(frame),
         .line()
     );
 
-    // colour lookup table
+    // Color lookup table
     logic [COLOR_WIDTH-1:0] clut_data;
     rom #(
         .WIDTH(CLUT_WIDTH),
@@ -63,10 +65,10 @@ module display#(
         .data(clut_data)
     );
 
+
+    // Framebuffer memory
     logic [FB_DATA_WIDTH-1:0] fb_data;
     logic fb_ready;
-
-    // framebuffer memory
     buffer #(
         .WIDTH(FB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH),
@@ -80,17 +82,15 @@ module display#(
         .clear_value(),
         .addr_write(buffer_addr_write),
         .addr_read(fb_addr_read),
-        .data_in(),
+        .data_in(i_fb_data),
         .data_out(fb_data)
     );
 
 
-    logic [DB_DATA_WIDTH-1:0] db_value;
+    // Depth buffer memory
+    logic [DB_DATA_WIDTH-1:0] db_data;
     logic db_ready;
-
-    localparam DB_CLEAR_VALUE = 4095;
-
-    // depth buffer memory
+    localparam DB_CLEAR_VALUE = {DB_DATA_WIDTH{1'b1}};
     buffer #(
         .WIDTH(DB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH)
@@ -103,51 +103,49 @@ module display#(
         .clear_value(DB_CLEAR_VALUE),
         .addr_write(buffer_addr_write),
         .addr_read(db_addr_read),
-        .data_in(i_depth_data),
-        .data_out(db_value)
+        .data_in(i_db_data),
+        .data_out(db_data)
     );
-
-
-    assign ready = fb_ready && db_ready;
-
 
     logic [BUFFER_ADDR_WIDTH-1:0] fb_addr_read;
     logic [BUFFER_ADDR_WIDTH-1:0] db_addr_read;
 
     // calculate framebuffer read address for display output
-    logic read_fb;
-    always_ff @(posedge clk_pix) begin
-        read_fb <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
-        if (frame) begin  // reset address at start of frame
+    logic pixel_in_fb;
+    logic pixel_in_db;
+
+    always_ff @(posedge clk_pix) begin 
+        // Check if pixel is inside buffer drawing area
+        pixel_in_fb <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
+        pixel_in_db <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
+
+        if (frame) begin
+            // reset addresses at start of frame
             fb_addr_read <= 0;
+            db_addr_read <= 0;
         end
-        else if (read_fb) begin  // increment address in painting area
+        else if (pixel_in_fb) begin  
             fb_addr_read <= fb_addr_read + 1;
         end
-    end
-
-    logic read_db;
-    always_ff @(posedge clk_pix) begin
-        read_db <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
-        if (frame) begin  // reset address at start of frame
-            db_addr_read <= 0;
-        end 
-        else if (read_db) begin  // increment address in painting area
+        else if (pixel_in_db) begin  
             db_addr_read <= db_addr_read + 1;
         end
     end
 
-    // paint screen
-    logic paint_db;
-    logic paint_fb;
+
     always_comb begin
-        paint_fb = (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
-        paint_db = (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
-        if (paint_fb) begin
+        // Check if display is ready
+        ready = fb_ready && db_ready;
+
+        // Output color logic
+        if (~de) begin
+            {o_red, o_green, o_blue} = 0;
+        end
+        else if (pixel_in_fb) begin
             {o_red, o_green, o_blue} = clut_data;
         end
-        else if (paint_db) begin
-            {o_red, o_green, o_blue} = {db_value[11:8], 8'b00000000};
+        else if (pixel_in_db) begin
+            {o_red, o_green, o_blue} = {db_data[11:8], 8'b00000000};
         end
         else begin
             {o_red, o_green, o_blue} = BG_COLOR;

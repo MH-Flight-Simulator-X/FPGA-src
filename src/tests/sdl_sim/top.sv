@@ -186,7 +186,8 @@ module top (
 
         .addr_inside_triangle(fb_write_enable),
 
-        .i_depth_data(depth_data_in),
+        .i_fb_data(),
+        .i_db_data(depth_data_in),
 
         .clear(),
 
