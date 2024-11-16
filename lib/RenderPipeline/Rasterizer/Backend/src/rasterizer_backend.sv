@@ -116,8 +116,8 @@ module rasterizer_backend #(
                 r_edge_delta1[0] <= edge_delta1[0]; r_edge_delta1[1] <= edge_delta1[1];
                 r_edge_delta2[0] <= edge_delta2[0]; r_edge_delta2[1] <= edge_delta2[1];
 
-                r_x <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, bb_tl[0]};
-                r_y <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, bb_tl[1]};
+                r_x <= {{(ADDRWIDTH-DATAWIDTH){bb_tl[0][DATAWIDTH-1]}}, bb_tl[0]};
+                r_y <= {{(ADDRWIDTH-DATAWIDTH){bb_tl[1][DATAWIDTH-1]}}, bb_tl[1]};
 
                 r_edge0 <= edge_val0;
                 r_edge1 <= edge_val1;
@@ -136,13 +136,13 @@ module rasterizer_backend #(
             end
 
             RASTERIZE: begin
-                if (r_x < {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[0]}) begin
+                if (r_x < {{(ADDRWIDTH-DATAWIDTH){r_bb_br[0][DATAWIDTH-1]}}, r_bb_br[0]}) begin
                     // Increment in x-direction
                     r_addr <= r_addr + 1;
 
-                    r_edge0 <= r_edge0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[0]};
-                    r_edge1 <= r_edge1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[0]};
-                    r_edge2 <= r_edge2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[0]};
+                    r_edge0 <= r_edge0 + {{DATAWIDTH{r_edge_delta0[0][DATAWIDTH-1]}}, r_edge_delta0[0]};
+                    r_edge1 <= r_edge1 + {{DATAWIDTH{r_edge_delta1[0][DATAWIDTH-1]}}, r_edge_delta1[0]};
+                    r_edge2 <= r_edge2 + {{DATAWIDTH{r_edge_delta2[0][DATAWIDTH-1]}}, r_edge_delta2[0]};
 
                     r_x <= r_x + 1;
                     r_z <= r_z + z_delta[0];
@@ -168,7 +168,7 @@ module rasterizer_backend #(
                 end
 
                 // Check if point is inside triangle
-                if (r_edge0 > 0 && r_edge1 > 0 && r_edge2 > 0) begin
+                if ($signed(r_edge0) > $signed({(2*DATAWIDTH){1'b0}}) && $signed(r_edge1) > $signed({(2*DATAWIDTH){1'b0}}) && $signed(r_edge2) > $signed({(2*DATAWIDTH){1'b0}})) begin
                     o_fb_write_en <= 1'b1;
                 end
                 else begin

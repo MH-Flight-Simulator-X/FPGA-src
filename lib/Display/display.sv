@@ -124,10 +124,10 @@ module display#(
             fb_addr_read <= 0;
             db_addr_read <= 0;
         end
-        else if (pixel_in_fb) begin  
+        else if (pixel_in_fb) begin
             fb_addr_read <= fb_addr_read + 1;
         end
-        else if (pixel_in_db) begin  
+        else if (pixel_in_db) begin
             db_addr_read <= db_addr_read + 1;
         end
     end

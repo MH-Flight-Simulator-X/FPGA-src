@@ -41,12 +41,12 @@ module top #(
     localparam signed Y0 = 4;
     localparam signed Z0 = 12'b100000000000; // 0.5
 
-    localparam signed X1 = 20;
-    localparam signed Y1 = 30;
+    localparam signed X1 = 30;
+    localparam signed Y1 = 45;
     localparam signed Z1 = 12'b100000000000; // 0.5
 
-    localparam signed X2 = 40;
-    localparam signed Y2 = 20;
+    localparam signed X2 = 60;
+    localparam signed Y2 = 30;
     localparam signed Z2 = 12'b000110011001; // 0.1
 
     logic signed [DATAWIDTH-1:0] v0[3];
