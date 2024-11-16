@@ -55,7 +55,7 @@ module buffer #(
                 end
             end
             CLEARING: begin
-                if (clear_counter < ADDR_WIDTH'(WIDTH - 1)) begin
+                if (clear_counter < ADDR_WIDTH'(DEPTH - 1)) begin
                     clear_counter <= clear_counter + 1;
                 end else begin
                     state <= IDLE;
