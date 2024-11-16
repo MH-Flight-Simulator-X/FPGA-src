@@ -3,37 +3,149 @@
 module display#(
     parameter unsigned DISPLAY_WIDTH = 160,
     parameter unsigned DISPLAY_HEIGHT = 120,
-    parameter unsigned COORDINATE_WIDTH = 16,
+    parameter unsigned DISPLAY_COORD_WIDTH = 16,
     parameter unsigned FB_DATA_WIDTH = 4,
     parameter unsigned DB_DATA_WIDTH = 12,
+    parameter unsigned CLUT_WIDTH = 12,
+    parameter unsigned CLUT_DEPTH = 16,
     parameter unsigned CHANNEL_WIDTH = 4,
-    parameter unsigned COLOR_WIDTH = CHANNEL_WIDTH*3,
-    parameter unsigned BG_COLOR = 'h137
+    parameter unsigned BG_COLOR = 'h137, 
+    parameter string PALETTE_FILE = "palette.mem",
+    parameter string FB_IMAGE_FILE = "image.mem"
     ) (
-    // input logic clk_pix,
+    input logic clk,
+    input logic clk_pix,
 
-    input logic signed [COORDINATE_WIDTH-1:0] screen_x,
-    input logic signed [COORDINATE_WIDTH-1:0] screen_y,
+    input logic unsigned [BUFFER_ADDR_WIDTH-1:0] buffer_addr_write,
 
-    input logic signed [COLOR_WIDTH-1:0] fb_pix_colr,
-    input logic signed [DB_DATA_WIDTH-1:0] db_value,
+    input logic unsigned [FB_DATA_WIDTH-1:0] i_fb_data,
+    input logic unsigned [DB_DATA_WIDTH-1:0] i_db_data,
 
-    output logic signed [CHANNEL_WIDTH-1:0] o_red,
-    output logic signed [CHANNEL_WIDTH-1:0] o_green,
-    output logic signed [CHANNEL_WIDTH-1:0] o_blue
+    input logic addr_inside_triangle,
+
+    input logic clear,
+
+    output logic unsigned [CHANNEL_WIDTH-1:0] o_red,
+    output logic unsigned [CHANNEL_WIDTH-1:0] o_green,
+    output logic unsigned [CHANNEL_WIDTH-1:0] o_blue,
+
+    output ready
     );
 
-    // paint screen
-    logic paint_db;
-    logic paint_fb;
-    always_comb begin
-        paint_fb = (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
-        paint_db = (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
-        if (paint_fb) begin
-            {o_red, o_green, o_blue} = fb_pix_colr;
+    localparam unsigned COLOR_WIDTH = CHANNEL_WIDTH*3;
+
+    localparam unsigned BUFFER_DEPTH = DISPLAY_WIDTH*DISPLAY_HEIGHT;
+    localparam unsigned BUFFER_ADDR_WIDTH = $clog2(BUFFER_DEPTH);
+
+    // Display signals and coordinates
+    logic signed [DISPLAY_COORD_WIDTH-1:0] screen_x, screen_y;
+    logic de;
+    logic frame;
+    projectf_display_480p #(.CORDW(DISPLAY_COORD_WIDTH)) display_signal_inst (
+        .clk_pix(clk_pix),
+        .rst_pix(),
+        .sx(screen_x),
+        .sy(screen_y),
+        .hsync(),
+        .vsync(),
+        .de(de),
+        .frame(frame),
+        .line()
+    );
+
+    // Color lookup table
+    logic [COLOR_WIDTH-1:0] clut_data;
+    rom #(
+        .WIDTH(CLUT_WIDTH),
+        .DEPTH(CLUT_DEPTH),
+        .FILE(PALETTE_FILE)
+    ) clut (
+        .clk(clk_pix),
+        .addr(fb_data),
+        .data(clut_data)
+    );
+
+
+    // Framebuffer memory
+    logic [FB_DATA_WIDTH-1:0] fb_data;
+    logic fb_ready;
+    buffer #(
+        .WIDTH(FB_DATA_WIDTH),
+        .DEPTH(BUFFER_DEPTH),
+        .FILE(FB_IMAGE_FILE)
+    ) framebuffer (
+        .clk_write(clk),
+        .clk_read(clk_pix),
+        .write_enable(addr_inside_triangle),
+        .clear(clear),
+        .ready(fb_ready),
+        .clear_value(),
+        .addr_write(buffer_addr_write),
+        .addr_read(fb_addr_read),
+        .data_in(i_fb_data),
+        .data_out(fb_data)
+    );
+
+
+    // Depth buffer memory
+    logic [DB_DATA_WIDTH-1:0] db_data;
+    logic db_ready;
+    localparam DB_CLEAR_VALUE = {DB_DATA_WIDTH{1'b1}};
+    buffer #(
+        .WIDTH(DB_DATA_WIDTH),
+        .DEPTH(BUFFER_DEPTH)
+    ) depth_buffer (
+        .clk_write(clk),
+        .clk_read(clk_pix),
+        .write_enable(addr_inside_triangle),
+        .clear(clear),
+        .ready(db_ready),
+        .clear_value(DB_CLEAR_VALUE),
+        .addr_write(buffer_addr_write),
+        .addr_read(db_addr_read),
+        .data_in(i_db_data),
+        .data_out(db_data)
+    );
+
+    logic [BUFFER_ADDR_WIDTH-1:0] fb_addr_read;
+    logic [BUFFER_ADDR_WIDTH-1:0] db_addr_read;
+
+    // calculate framebuffer read address for display output
+    logic pixel_in_fb;
+    logic pixel_in_db;
+
+    always_ff @(posedge clk_pix) begin 
+        // Check if pixel is inside buffer drawing area
+        pixel_in_fb <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
+        pixel_in_db <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
+
+        if (frame) begin
+            // reset addresses at start of frame
+            fb_addr_read <= 0;
+            db_addr_read <= 0;
         end
-        else if (paint_db) begin
-            {o_red, o_green, o_blue} = {db_value[11:8], 8'b00000000};
+        else if (pixel_in_fb) begin  
+            fb_addr_read <= fb_addr_read + 1;
+        end
+        else if (pixel_in_db) begin  
+            db_addr_read <= db_addr_read + 1;
+        end
+    end
+
+
+    always_comb begin
+        // Check if display is ready
+        ready = fb_ready && db_ready;
+
+        // Output color logic
+        if (~de) begin
+            {o_red, o_green, o_blue} = 0;
+        end
+        else if (pixel_in_fb) begin
+            {o_red, o_green, o_blue} = clut_data;
+        end
+        else if (pixel_in_db) begin
+            {o_red, o_green, o_blue} = {db_data[11:8], 8'b00000000};
         end
         else begin
             {o_red, o_green, o_blue} = BG_COLOR;

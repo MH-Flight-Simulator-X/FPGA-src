@@ -20,24 +20,6 @@ module top #(
     output logic done
     );
 
-    // display sync signals and coordinates
-    logic signed [ADDRWIDTH-1:0] sx, sy;
-    logic hsync, vsync;
-    logic de;
-    projectf_display_480p #(
-        .CORDW(ADDRWIDTH)
-    ) display_signal_inst (
-        .clk_pix,
-        .rst_pix(sim_rst),
-        .sx,
-        .sy,
-        .hsync,
-        .vsync,
-        .de,
-        .frame,
-        .line()
-    );
-
     // color parameters
     localparam unsigned COLOR_LOOKUP_WIDTH = 4;
     localparam unsigned CHANNEL_WIDTH = 4;
@@ -47,12 +29,11 @@ module top #(
     // framebuffer (FB)
     localparam unsigned FB_DATA_WIDTH  = 4;
     localparam unsigned FB_DEPTH = SCREEN_WIDTH * SCREEN_HEIGHT;
-    localparam string FB_IMAGE  = "../../image.mem";
+    localparam unsigned FB_ADDR_WIDTH  = $clog2(FB_DEPTH);
+    localparam string FB_IMAGE_FILE  = "../../image.mem";
 
     // pixel read address and color
-    logic [ADDRWIDTH-1:0] fb_addr_read;
-    logic [ADDRWIDTH-1:0] fb_addr_write;
-    logic [FB_DATA_WIDTH-1:0] fb_color_read;
+    logic [FB_ADDR_WIDTH-1:0] buffer_addr_write;
     logic fb_write_enable;
 
     // TODO: FIX
@@ -103,115 +84,53 @@ module top #(
         .i_triangle_dv(1),
         .i_triangle_last(1),
 
-        .o_fb_addr_write(fb_addr_write),
+        .o_fb_addr_write(buffer_addr_write),
         .o_fb_write_en(fb_write_enable),
         .o_fb_depth_data(w_depth_data),
         .o_fb_color_data(w_color_data),
+
         .finished(done)
     );
-
-    // framebuffer memory
-    buffer #(
-        .WIDTH(FB_DATA_WIDTH),
-        .DEPTH(FB_DEPTH),
-        .FILE(FB_IMAGE)
-    ) framebuffer (
-        .clk_write(clk_100m),
-        .clk_read(clk_pix),
-        .write_enable(fb_write_enable),
-        .clear(),
-        .ready(),
-        .clear_value(),
-        .addr_write(fb_addr_write),
-        .addr_read(fb_addr_read),
-        .data_in(w_color_data),
-        .data_out(fb_color_read)
-    );
-
-    localparam unsigned DB_CLEAR_VALUE = (1 << DATAWIDTH)-1;
-    localparam unsigned DB_DATA_WIDTH = 12;
-
-    logic [ADDRWIDTH-1:0] db_addr_read;
-    logic [DATAWIDTH-1:0] db_data_out;
-
-    // Depth Buffer memory
-    buffer #(
-        .WIDTH(DB_DATA_WIDTH),
-        .DEPTH(FB_DEPTH)
-    ) db_inst (
-        .clk_write(clk_100m),
-        .clk_read(clk_pix),
-        .write_enable(fb_write_enable),
-        .clear(),
-        .ready(),
-        .clear_value(DB_CLEAR_VALUE),
-        .addr_write(fb_addr_write),
-        .addr_read(db_addr_read),
-        .data_in(w_depth_data),
-        .data_out(db_data_out)
-    );
-
-    // calculate framebuffer read address for display output
-    logic read_fb;
-    always_ff @(posedge clk_pix) begin
-        read_fb <= (sy >= 0 && sy < SCREEN_HEIGHT && sx >= 0 && sx < SCREEN_WIDTH);
-        if (frame) begin  // reset address at start of frame
-            fb_addr_read <= 0;
-        end else if (read_fb) begin  // increment address in painting area
-            fb_addr_read <= fb_addr_read + 1;
-        end
-    end
-
-    logic read_db;
-    always_ff @(posedge clk_pix) begin
-        read_db <= (sy >= 0 && sy < SCREEN_HEIGHT && sx >= SCREEN_WIDTH && sx < SCREEN_WIDTH*2);
-        if (frame) begin  // reset address at start of frame
-            db_addr_read <= 0;
-        end else if (read_db) begin  // increment address in painting area
-            db_addr_read <= db_addr_read + 1;
-        end
-    end
 
     localparam CLUT_WIDTH = 12;
     localparam CLUT_DEPTH = 16;
     localparam PALETTE_FILE = "../../palette.mem";
 
-    // Colour Lookup Table
-    logic [COLOR_WIDTH-1:0] fb_pix_color;
-    rom #(
-        .WIDTH(CLUT_WIDTH),
-        .DEPTH(CLUT_DEPTH),
-        .FILE(PALETTE_FILE)
-    ) clut (
-        .clk(clk_pix),
-        .addr(fb_color_read),
-        .data(fb_pix_color)
-    );
-
     logic [CHANNEL_WIDTH-1:0] red, green, blue;
     display #(
         .DISPLAY_WIDTH(SCREEN_WIDTH),
         .DISPLAY_HEIGHT(SCREEN_HEIGHT),
-        .COORDINATE_WIDTH(ADDRWIDTH),
+        .DISPLAY_COORD_WIDTH(ADDRWIDTH),
         .FB_DATA_WIDTH(FB_DATA_WIDTH),
-        .DB_DATA_WIDTH(DB_DATA_WIDTH),
-        .CHANNEL_WIDTH(CHANNEL_WIDTH)
+        .DB_DATA_WIDTH(DATAWIDTH),
+        .CHANNEL_WIDTH(CHANNEL_WIDTH),
+        .PALETTE_FILE(PALETTE_FILE),
+        .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
-        // .clk_pix(clk_pix),
-        .screen_x(sx),
-        .screen_y(sy),
-        .fb_pix_colr(fb_pix_color),
-        .db_value(db_data_out),
+        .clk(clk_100m),
+        .clk_pix(clk_pix),
+
+        .buffer_addr_write(buffer_addr_write),
+        .addr_inside_triangle(fb_write_enable),
+
+        .i_fb_data(w_color_data),
+        .i_db_data(w_depth_data),
+
+        .clear(),
+        .ready(),
+
         .o_red(red),
         .o_green(green),
         .o_blue(blue)
-    );
+    ); 
+
+    assign sdl_sx = display_inst.screen_x;
+    assign sdl_sy = display_inst.screen_y;
+    assign sdl_de = display_inst.de;
+    assign frame = display_inst.frame;
 
     // SDL output (8 bits per colour channel)
     always_ff @(posedge clk_pix) begin
-        sdl_sx <= sx;
-        sdl_sy <= sy;
-        sdl_de <= de;
         sdl_r <= {2{red}};  // double signal width from 4 to 8 bits
         sdl_g <= {2{green}};
         sdl_b <= {2{blue}};
