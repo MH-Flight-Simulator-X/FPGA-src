@@ -4,32 +4,32 @@
 `timescale 1ns / 1ps
 
 module rasterizer #(
-    parameter unsigned DATAWIDTH = 12,
-    parameter unsigned COLORWIDTH = 4,
-    parameter unsigned SCREEN_WIDTH = 320,
-    parameter unsigned SCREEN_HEIGHT = 320,
-    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH + SCREEN_HEIGHT)
+        parameter unsigned DATAWIDTH = 12,
+        parameter unsigned COLORWIDTH = 4,
+        parameter unsigned SCREEN_WIDTH = 320,
+        parameter unsigned SCREEN_HEIGHT = 320,
+        parameter unsigned ADDRWIDTH = 16
     ) (
-    input logic clk,
-    input logic rstn,
+        input logic clk,
+        input logic rstn,
 
-    output logic ready,
+        output logic ready,
 
-    // INPUT SIGNALS TO THE RASTERIZER FRONTEND
-    input logic signed [DATAWIDTH-1:0] i_v0[3],
-    input logic signed [DATAWIDTH-1:0] i_v1[3],
-    input logic signed [DATAWIDTH-1:0] i_v2[3],
-    input logic i_triangle_dv,
-    input logic i_triangle_last,
+        // INPUT SIGNALS TO THE RASTERIZER FRONTEND
+        input logic signed [DATAWIDTH-1:0] i_v0[3],
+        input logic signed [DATAWIDTH-1:0] i_v1[3],
+        input logic signed [DATAWIDTH-1:0] i_v2[3],
+        input logic i_triangle_dv,
+        input logic i_triangle_last,
 
-    // OUPUT SIGNALS FROM THE RASTERIZER BACKEND
-    output logic [ADDRWIDTH-1:0] o_fb_addr_write,
-    output logic o_fb_write_en,
+        // OUPUT SIGNALS FROM THE RASTERIZER BACKEND
+        output logic [ADDRWIDTH-1:0] o_fb_addr_write,
+        output logic o_fb_write_en,
 
-    output logic [DATAWIDTH-1:0] o_fb_depth_data,
-    output logic [COLORWIDTH-1:0] o_fb_color_data,
+        output logic [DATAWIDTH-1:0] o_fb_depth_data,
+        output logic [COLORWIDTH-1:0] o_fb_color_data,
 
-    output logic finished
+        output logic finished
     );
 
     // ========== RASTERIZER FRONTEND ==========
@@ -90,10 +90,11 @@ module rasterizer #(
         .DATAWIDTH(DATAWIDTH),
         .COLORWIDTH(COLORWIDTH),
         .SCREEN_WIDTH(SCREEN_WIDTH),
-        .SCREEN_HEIGHT(SCREEN_HEIGHT)
+        .SCREEN_HEIGHT(SCREEN_HEIGHT),
+        .ADDRWIDTH(ADDRWIDTH)
     ) rasterizer_backend_inst (
         .clk(clk),
-        .rsnt(rstn),
+        .rstn(rstn),
 
         .bb_tl(w_bb_tl),
         .bb_br(w_bb_br),
@@ -109,14 +110,14 @@ module rasterizer #(
         .z(w_z_coeff),
         .z_delta(w_z_coeff_delta),
 
-        .addr_start(w_addr_start),
         .i_dv(w_rasterizer_frontend_o_dv),
+        .i_last(last_triangle_last),
 
         .o_fb_addr_write(o_fb_addr_write),
         .o_fb_write_en(o_fb_write_en),
 
-        .o_fb_depth_data(o_fb_depth_data),
-        .o_fb_color_data(o_fb_color_data),
+        .depth_data(o_fb_depth_data),
+        .color_data(o_fb_color_data),
 
         .ready(w_rasterizer_backend_ready),
         .done(w_rasterizer_backend_done)
@@ -133,7 +134,7 @@ module rasterizer #(
             end
 
             if (w_rasterizer_backend_done) begin
-                if (i_triangle_dv) begin
+                if (last_triangle_last) begin
                     finished <= 1'b1;
                 end else begin
                     finished <= 1'b0;

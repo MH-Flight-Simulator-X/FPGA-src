@@ -1,15 +1,15 @@
 #include <stdio.h>
-#include <iostream>
-#include <bitset>
 #include <verilated.h>
+#include <SDL2/SDL.h>
+
+#include "../../../verilator_utils/fixed_point.h"
 #include "obj_dir/Vtop.h"
-#include <SDL.h>
 
 // screen dimensions
 const int H_RES = 640;
 const int V_RES = 480;
 
-const int VERTEX_WIDTH = 16;
+const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
 
 typedef struct Pixel {
@@ -19,55 +19,24 @@ typedef struct Pixel {
     uint8_t r;
 } Pixel;
 
+vluint64_t clk_100m_cnt = 0;
 
-int clk_100m_cnt = 0;
-
-
-int nbitSigned(uint64_t value, int n) {
-    // Mask the value to the n-bit width
-    int mask = (1 << n) - 1;
-    value &= mask;
-
-    // Check if the sign bit (the n-th bit) is set
-    int sign_bit = 1 << (n - 1);
-    if (value & sign_bit) {
-        // Sign extend the value by setting all bits above the n-th bit
-        value |= ~mask;
+int32_t sign_extend(int32_t a, int data_width) {
+    int32_t sign = (a >> (data_width - 1)) & 1;
+    int32_t sign_extended = a;
+    if (sign) {
+        for (int i = sizeof(int32_t) * 8 - 1; i >= data_width; i--) {
+            sign_extended |= (1 << i);
+        }
     }
-    
-    return value;
+    return sign_extended; 
 }
 
-
-float unsignedFixedPointToFloat(uint64_t fixed_point_int, int b) {
-    return static_cast<float>(fixed_point_int) / static_cast<float>(1 << b);
+// Turn int32_t into lower datawidth
+int32_t truncate(int32_t a, int data_width) {
+    int32_t truncated = a & ((1 << data_width) - 1);
+    return truncated;
 }
-
-
-float signedFixedPointToFloat(uint64_t fixed_point_int, int a, int b) {
-    int totalBits = a + b;
-
-    // Check if the sign bit is set for the fixed-point number
-    if (fixed_point_int & (1ULL << (totalBits - 1))) {
-        // If the sign bit is set, perform sign extension
-        fixed_point_int |= ~((1ULL << totalBits) - 1);  // Sign-extend to 64 bits
-    }
-
-    // Convert to float, interpreting fixed_point_int as signed after sign extension
-    return static_cast<float>(static_cast<int64_t>(fixed_point_int)) / static_cast<float>(1 << b);
-}
-
-
-void printBits(uint64_t number) {
-    std::bitset<64> bits(number);
-    std::cout << bits << std::endl;
-}
-
-
-void printHex(uint64_t number) {
-    // printf("0x%016llX\n", number);
-}
-
 
 int main(int argc, char* argv[]) {
     printf("Program started\n");
@@ -107,7 +76,6 @@ int main(int argc, char* argv[]) {
 
     // reference SDL keyboard state array: https://wiki.libsdl.org/SDL_GetKeyboardState
     const Uint8 *keyb_state = SDL_GetKeyboardState(NULL);
-
     printf("Simulation running. Press 'Q' in simulation window to quit.\n\n");
 
     // initialize Verilog module
@@ -149,74 +117,6 @@ int main(int argc, char* argv[]) {
             p->g = top->sdl_g;
             p->r = top->sdl_r;
         }
-
-        // int e0 = nbitSigned(top->edge_val[0], VERTEX_WIDTH);
-        // int e1 = nbitSigned(top->edge_val[1], VERTEX_WIDTH);
-        // int e2 = nbitSigned(top->edge_val[2], VERTEX_WIDTH);
-
-        // int e0_dx = nbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
-        // int e0_dy = nbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
-        // int e1_dx = nbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
-        // int e1_dy = nbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
-        // int e2_dx = nbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
-        // int e2_dy = nbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
-
-        int e0 = nbitSigned(top->edge0, VERTEX_WIDTH);
-        int e1 = nbitSigned(top->edge1, VERTEX_WIDTH);
-        int e2 = nbitSigned(top->edge2, VERTEX_WIDTH);
-
-
-        int e0_dx = nbitSigned(top->edge_delta[0][0], VERTEX_WIDTH);
-        int e0_dy = nbitSigned(top->edge_delta[0][1], VERTEX_WIDTH);
-        int e1_dx = nbitSigned(top->edge_delta[1][0], VERTEX_WIDTH);
-        int e1_dy = nbitSigned(top->edge_delta[1][1], VERTEX_WIDTH);
-        int e2_dx = nbitSigned(top->edge_delta[2][0], VERTEX_WIDTH);
-        int e2_dy = nbitSigned(top->edge_delta[2][1], VERTEX_WIDTH);
-
-        int area = nbitSigned(top->area, VERTEX_WIDTH);
-        float area_reciprocal = unsignedFixedPointToFloat(top->area_reciprocal, RECIPROCAL_WIDTH);
-
-        float w0 = signedFixedPointToFloat(top->bar_weight[0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w1 = signedFixedPointToFloat(top->bar_weight[1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w2 = signedFixedPointToFloat(top->bar_weight[2], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-
-        float w0_dx = signedFixedPointToFloat(top->bar_weight_delta[0][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w0_dy = signedFixedPointToFloat(top->bar_weight_delta[0][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w1_dx = signedFixedPointToFloat(top->bar_weight_delta[1][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w1_dy = signedFixedPointToFloat(top->bar_weight_delta[1][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w2_dx = signedFixedPointToFloat(top->bar_weight_delta[2][0], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-        float w2_dy = signedFixedPointToFloat(top->bar_weight_delta[2][1], VERTEX_WIDTH, RECIPROCAL_WIDTH);
-
-        int32_t a = top->top__DOT__rasterizer_inst__DOT__edge_delta[0][0];
-
-        float z = signedFixedPointToFloat(top->z, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
-        float z_dx = signedFixedPointToFloat(top->z_dx, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
-        float z_dy = signedFixedPointToFloat(top->z_dy, VERTEX_WIDTH, VERTEX_WIDTH+RECIPROCAL_WIDTH);
-
-        float depth_data = signedFixedPointToFloat(top->depth_data, 0, VERTEX_WIDTH);
-        float z_delta0 = signedFixedPointToFloat(top->z_delta[0], 0, VERTEX_WIDTH);
-        float z_delta1 = signedFixedPointToFloat(top->z_delta[1], 0, VERTEX_WIDTH);
-
-        int addr_start = top->fb_addr_start;
-
-        // printf("\n\n########\n\n");
-        // printf("clk_100m_cnt: %d\n", clk_100m_cnt);
-        // printf("e0: %d\ne1: %d\ne2: %d\n", e0, e1, e2);
-        // printf("e0_dx: %d\ne0_dy: %d\ne1_dx: %d\ne1_dy: %d\ne2_dx: %d\ne2_dy: %d\n", e0_dx, e0_dy, e1_dx, e1_dy, e2_dx, e2_dy); 
-        // printf("area = %d\narea_reciprocal = %f\n", area, area_reciprocal);
-        // printf("area_reciprocal_int = %d\n", top->area_reciprocal);
-        // printf("w0 = %f\nw1 = %f\nw2 = %f\n", w0, w1, w2);
-        // printf("w0_dx = %f\nw0_dy = %f\nw1_dx = %f\nw1_dy = %f\nw2_dx = %f\nw2_dy = %f\n", w0_dx, w0_dy, w1_dx, w1_dy, w2_dx, w2_dy);
-        // printf("z = %f\nz_dx = %f\nz_dy = %f\n", z, z_dx, z_dy);
-        // printf("depth_data = %f\n", depth_data);
-        // printf("z_delta0 = %f\nz_delta1 = %f\n", z_delta0, z_delta1);
-        // printf("addr_start = %d\n", addr_start);
-        //
-        // printf("state = %d\n", top->state);
-        //
-        // if (clk_100m_cnt > 11) {
-        //     return 0;
-        // }
 
         // update texture once per frame (in blanking)
         if (top->frame) { 

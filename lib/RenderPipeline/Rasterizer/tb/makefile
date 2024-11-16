@@ -1,6 +1,8 @@
 SRC_DIR = ../src
-BOUNDING_BOX_FILE = ../BoundingBox/src/bounding_box.sv
-ROM_FILE = ../../../Memory/ROM/src/rom.sv
+BOUNDING_BOX = ../BoundingBox/src/bounding_box.sv
+FAST_INVERSE = ../../../Math/FastInverse/src/fast_inverse.sv
+RASTERIZER_FRONTEND = ../Frontend/src/rasterizer_frontend.sv
+RASTERIZER_BACKEND = ../Backend/src/rasterizer_backend.sv
 MODULE = rasterizer
 
 .PHONY:sim
@@ -28,11 +30,14 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
 
-.stamp.verilate: $(SRC_DIR)/$(MODULE).sv tb_$(MODULE).cpp
+.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX) $(FAST_INVERSE) \
+				 $(RASTERIZER_FRONTEND) $(RASTERIZER_BACKEND) tb_$(MODULE).cpp
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
-	-cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX_FILE) $(ROM_FILE) --exe tb_$(MODULE).cpp
+			  -cc $(SRC_DIR)/$(MODULE).sv $(BOUNDING_BOX) $(FAST_INVERSE) \
+				  $(RASTERIZER_FRONTEND) $(RASTERIZER_BACKEND) \
+			  --exe tb_$(MODULE).cpp
 	@touch .stamp.verilate
 
 .PHONY:lint

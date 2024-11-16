@@ -191,7 +191,7 @@ module rasterizer_frontend #(
             end
 
             COMPUTE_EDGE_0: begin
-                if ($signed(r_area) <= $signed(24'b0) || ~r_bb_valid) begin
+                if ($signed(r_area) <= $signed({(2*DATAWIDTH){1'b0}}) || ~r_bb_valid) begin
                     $display("Invalid triangle. Back-face culling");
                     next_state = IDLE;
                 end else if (w_area_division_ready) begin
@@ -381,7 +381,7 @@ module rasterizer_frontend #(
                 DONE: begin
                     foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
                     foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
-                    edge_val2 <= r_edge_val0;
+                    edge_val0 <= r_edge_val0;
                     edge_val1 <= r_edge_val1;
                     edge_val2 <= r_edge_val2;
 

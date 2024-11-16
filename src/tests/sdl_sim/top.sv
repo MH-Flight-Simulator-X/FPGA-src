@@ -1,58 +1,32 @@
 `timescale 1ns / 1ps
 
-module top (
-    input  wire logic clk_100m,            // 100MHz clock
-    input  wire logic clk_pix,             // pixel clock
-    input  wire logic sim_rst,             // sim reset
-    output      logic [CORDW-1:0] sdl_sx,  // horizontal SDL position
-    output      logic [CORDW-1:0] sdl_sy,  // vertical SDL position
-    output      logic sdl_de,              // data enable (low in blanking interval)
-    output      logic [7:0] sdl_r,         // 8-bit red
-    output      logic [7:0] sdl_g,         // 8-bit green
-    output      logic [7:0] sdl_b,         // 8-bit blue
-    output      logic frame,
-    
-    output logic signed [CORDW-1:0] min_x,
-    output logic signed [CORDW-1:0] max_x,
-    output logic signed [CORDW-1:0] min_y,
-    output logic signed [CORDW-1:0] max_y,
-
-    output logic signed [VERTEX_WIDTH-1:0] edge_val[3], 
-    output logic signed [VERTEX_WIDTH-1:0] edge_delta[3][2], 
-
-    output logic signed [VERTEX_WIDTH-1:0] edge0,
-    output logic signed [VERTEX_WIDTH-1:0] edge1,
-    output logic signed [VERTEX_WIDTH-1:0] edge2,
-
-    output logic signed [VERTEX_WIDTH-1:0] area,
-    output logic signed [RECIPROCAL_WIDTH-1:0] area_reciprocal,
-
-    output logic signed [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight[3],
-    output logic signed [VERTEX_WIDTH+RECIPROCAL_WIDTH-1:0] bar_weight_delta[3][2],
-
-    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z,
-    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dx,
-    output logic signed [VERTEX_WIDTH*2+RECIPROCAL_WIDTH-1:0] z_dy,
-
-    output logic signed [VERTEX_WIDTH-1:0] depth_data,
-    output logic signed [VERTEX_WIDTH-1:0] z_delta[2],
-
-    output logic unsigned [FB_ADDR_WIDTH-1:0] fb_addr_start,
-
-    logic [3:0] state,
- 
+/* verilator lint_off UNUSED */
+module top #(
+    parameter unsigned DATAWIDTH = 12,
+    parameter unsigned SCREEN_WIDTH = 160,
+    parameter unsigned SCREEN_HEIGHT = 120,
+    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT)
+    ) (
+    input  logic clk_100m,            // 100MHz clock
+    input  logic clk_pix,             // pixel clock
+    input  logic sim_rst,             // sim reset
+    output logic [ADDRWIDTH-1:0] sdl_sx,  // horizontal SDL position
+    output logic [ADDRWIDTH-1:0] sdl_sy,  // vertical SDL position
+    output logic sdl_de,              // data enable (low in blanking interval)
+    output logic [7:0] sdl_r,         // 8-bit red
+    output logic [7:0] sdl_g,         // 8-bit green
+    output logic [7:0] sdl_b,         // 8-bit blue
+    output logic frame,
     output logic done
     );
 
-    parameter VERTEX_WIDTH = 16;
-    parameter RECIPROCAL_WIDTH = 12;
-
     // display sync signals and coordinates
-    localparam CORDW = 16;  // signed coordinate width (bits)
-    logic signed [CORDW-1:0] sx, sy;
+    logic signed [ADDRWIDTH-1:0] sx, sy;
     logic hsync, vsync;
     logic de;
-    projectf_display_480p #(.CORDW(CORDW)) display_signal_inst (
+    projectf_display_480p #(
+        .CORDW(ADDRWIDTH)
+    ) display_signal_inst (
         .clk_pix,
         .rst_pix(sim_rst),
         .sx,
@@ -65,119 +39,76 @@ module top (
     );
 
     // color parameters
-    localparam CHANNEL_WIDTH = 4;
-    localparam COLOR_WIDTH = 3*CHANNEL_WIDTH;
-    localparam BG_COLOR = 'h137;
+    localparam unsigned COLOR_LOOKUP_WIDTH = 4;
+    localparam unsigned CHANNEL_WIDTH = 4;
+    localparam unsigned COLOR_WIDTH = 3*CHANNEL_WIDTH;
+    logic [COLOR_WIDTH-1:0] BG_COLOR = 'h137;
 
     // framebuffer (FB)
-    localparam unsigned FB_WIDTH  = 160;
-    localparam unsigned FB_HEIGHT = 120;
     localparam unsigned FB_DATA_WIDTH  = 4;
-    localparam unsigned FB_DEPTH = FB_WIDTH * FB_HEIGHT;
-    localparam unsigned FB_ADDR_WIDTH  = $clog2(FB_DEPTH);
+    localparam unsigned FB_DEPTH = SCREEN_WIDTH * SCREEN_HEIGHT;
     localparam string FB_IMAGE  = "../../image.mem";
 
     // pixel read address and color
-    logic [FB_ADDR_WIDTH-1:0] fb_addr_read;
-    logic [FB_ADDR_WIDTH-1:0] fb_addr_write;
-    logic [FB_DATA_WIDTH-1:0] fb_colr_read;
+    logic [ADDRWIDTH-1:0] fb_addr_read;
+    logic [ADDRWIDTH-1:0] fb_addr_write;
+    logic [FB_DATA_WIDTH-1:0] fb_color_read;
     logic fb_write_enable;
 
+    // TODO: FIX
     localparam signed X0 = 8;
     localparam signed Y0 = 4;
-    // localparam signed Z0 = 16'sh0CCD; // 0.1
-    localparam signed Z0 = 16'sh7333; // 0.5
+    localparam signed Z0 = 12'b100000000000; // 0.5
+
     localparam signed X1 = 20;
     localparam signed Y1 = 30;
-    // localparam signed Z1 = 16'sh199A; // 0.2
-    localparam signed Z1 = 16'sh7333; // 0.5
+    localparam signed Z1 = 12'b100000000000; // 0.5
+
     localparam signed X2 = 40;
     localparam signed Y2 = 20;
-    localparam signed Z2 = 16'sh0CCD; // 0.1
-    // localparam signed Z2 = 16'sh7333; // 0.5
+    localparam signed Z2 = 12'b000110011001; // 0.1
 
     localparam signed TILE_MIN_X = 0;
     localparam signed TILE_MIN_Y = 0;
-    localparam signed TILE_MAX_X = 160;
-    localparam signed TILE_MAX_Y = 120;
+    localparam signed TILE_MAX_X = SCREEN_WIDTH;
+    localparam signed TILE_MAX_Y = SCREEN_HEIGHT;
 
-    logic [11:0] depth_data_in;
-
-    localparam unsigned RECIPROCAL_SIZE = 65000;
-    localparam RECIPROCAL_FILE = "../../reciprocal.mem";
-
-    logic signed [VERTEX_WIDTH-1:0] vertex[3][3];
+    logic signed [DATAWIDTH-1:0] v0[3];
+    logic signed [DATAWIDTH-1:0] v1[3];
+    logic signed [DATAWIDTH-1:0] v2[3];
 
     initial begin
-        vertex[0][0] = X0;
-        vertex[0][1] = Y0;
-        vertex[0][2] = Z0;
-        
-        vertex[1][0] = X1;
-        vertex[1][1] = Y1;
-        vertex[1][2] = Z1;
-
-        vertex[2][0] = X2;
-        vertex[2][1] = Y2;
-        vertex[2][2] = Z2;
+        v0[0] = X0; v0[1] = Y0; v0[2] = Z0;
+        v1[0] = X1; v1[1] = Y1; v1[2] = Z1;
+        v2[0] = X2; v2[1] = Y2; v2[2] = Z2;
     end
 
+    logic unsigned [DATAWIDTH-1:0] w_depth_data;
+    logic unsigned [COLOR_LOOKUP_WIDTH-1:0] w_color_data;
+
     rasterizer #(
-        .VERTEX_WIDTH(CORDW),
-        .FB_ADDR_WIDTH(FB_ADDR_WIDTH),
-        .FB_WIDTH(FB_WIDTH),
-        .TILE_MIN_X(TILE_MIN_X),
-        .TILE_MIN_Y(TILE_MIN_Y),
-        .TILE_MAX_X(TILE_MAX_X),
-        .TILE_MAX_Y(TILE_MAX_Y),
-        .RECIPROCAL_SIZE(RECIPROCAL_SIZE),
-        .RECIPROCAL_FILE(RECIPROCAL_FILE)
+        .DATAWIDTH(DATAWIDTH),
+        .COLORWIDTH(COLOR_LOOKUP_WIDTH),
+        .SCREEN_WIDTH(SCREEN_WIDTH),
+        .SCREEN_HEIGHT(SCREEN_HEIGHT),
+        .ADDRWIDTH(ADDRWIDTH)
     ) rasterizer_inst (
         .clk(clk_100m),
-        .rst(sim_rst),
+        .rstn(~sim_rst),
+        .ready(),
 
-        .vertex,
+        .i_v0(v0),
+        .i_v1(v1),
+        .i_v2(v2),
+        .i_triangle_dv(1),
+        .i_triangle_last(1),
 
-        .fb_addr(fb_addr_write),
-        .fb_write_enable(fb_write_enable),
-        .depth_data(depth_data),
-        .done
+        .o_fb_addr_write(fb_addr_write),
+        .o_fb_write_en(fb_write_enable),
+        .o_fb_depth_data(w_depth_data),
+        .o_fb_color_data(w_color_data),
+        .finished(done)
     );
-
-    assign edge0 = rasterizer_inst.backend_inst.r_edge0;
-    assign edge1 = rasterizer_inst.backend_inst.r_edge1;
-    assign edge2 = rasterizer_inst.backend_inst.r_edge2;
-
-    // assign edge_delta_0 = rasterizer_inst.backend_inst.r_edge0;
-    // assign edge_delta_1 = rasterizer_inst.backend_inst.r_edge1;
-    // assign edge_delta_2 = rasterizer_inst.backend_inst.r_edge2;
-
-    assign min_x = rasterizer_inst.bb_tl[0];
-    assign max_x = rasterizer_inst.bb_br[0];
-    assign min_y = rasterizer_inst.bb_tl[1];
-    assign max_y = rasterizer_inst.bb_br[1];
-
-    assign edge_val = rasterizer_inst.edge_val;
-    assign edge_delta = rasterizer_inst.edge_delta;
-
-    assign area = rasterizer_inst.area;
-    assign area_reciprocal = rasterizer_inst.area_reciprocal;
-    
-    assign bar_weight = rasterizer_inst.bar_weight;
-    assign bar_weight_delta = rasterizer_inst.bar_weight_delta;
-
-    assign z = rasterizer_inst.z;
-    assign z_dx = rasterizer_inst.z_dx;
-    assign z_dy = rasterizer_inst.z_dy;
-
-    assign state = rasterizer_inst.state;
-
-    assign depth_data_in = depth_data[VERTEX_WIDTH-1:4];
-
-    assign z_delta[0] = rasterizer_inst.z_delta[0];
-    assign z_delta[1] = rasterizer_inst.z_delta[1];
-
-    assign fb_addr_start = rasterizer_inst.fb_addr_start;
 
     // framebuffer memory
     buffer #(
@@ -193,19 +124,17 @@ module top (
         .clear_value(),
         .addr_write(fb_addr_write),
         .addr_read(fb_addr_read),
-        .data_in(),
-        .data_out(fb_colr_read)
+        .data_in(w_color_data),
+        .data_out(fb_color_read)
     );
 
-    localparam DB_CLEAR_VALUE = 4095;
-    localparam DB_DATA_WIDTH = 12;
+    localparam unsigned DB_CLEAR_VALUE = (1 << DATAWIDTH)-1;
+    localparam unsigned DB_DATA_WIDTH = 12;
 
-    logic [FB_ADDR_WIDTH-1:0] db_addr_read;
-    //logic [FB_ADDR_WIDTH-1:0] db_addr_write;
-    logic [11:0] db_data_out;
-    //logic db_write_enable = 1'b0;
+    logic [ADDRWIDTH-1:0] db_addr_read;
+    logic [DATAWIDTH-1:0] db_data_out;
 
-    // depth buffer memory
+    // Depth Buffer memory
     buffer #(
         .WIDTH(DB_DATA_WIDTH),
         .DEPTH(FB_DEPTH)
@@ -218,15 +147,14 @@ module top (
         .clear_value(DB_CLEAR_VALUE),
         .addr_write(fb_addr_write),
         .addr_read(db_addr_read),
-        .data_in(depth_data_in),
+        .data_in(w_depth_data),
         .data_out(db_data_out)
     );
-    
 
     // calculate framebuffer read address for display output
     logic read_fb;
     always_ff @(posedge clk_pix) begin
-        read_fb <= (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
+        read_fb <= (sy >= 0 && sy < SCREEN_HEIGHT && sx >= 0 && sx < SCREEN_WIDTH);
         if (frame) begin  // reset address at start of frame
             fb_addr_read <= 0;
         end else if (read_fb) begin  // increment address in painting area
@@ -236,35 +164,35 @@ module top (
 
     logic read_db;
     always_ff @(posedge clk_pix) begin
-        read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
+        read_db <= (sy >= 0 && sy < SCREEN_HEIGHT && sx >= SCREEN_WIDTH && sx < SCREEN_WIDTH*2);
         if (frame) begin  // reset address at start of frame
             db_addr_read <= 0;
         end else if (read_db) begin  // increment address in painting area
             db_addr_read <= db_addr_read + 1;
         end
     end
-    
+
     localparam CLUT_WIDTH = 12;
     localparam CLUT_DEPTH = 16;
     localparam PALETTE_FILE = "../../palette.mem";
-    
-    // colour lookup table
-    logic [COLOR_WIDTH-1:0] fb_pix_colr;
+
+    // Colour Lookup Table
+    logic [COLOR_WIDTH-1:0] fb_pix_color;
     rom #(
         .WIDTH(CLUT_WIDTH),
         .DEPTH(CLUT_DEPTH),
         .FILE(PALETTE_FILE)
     ) clut (
         .clk(clk_pix),
-        .addr(fb_colr_read),
-        .data(fb_pix_colr)
+        .addr(fb_color_read),
+        .data(fb_pix_color)
     );
 
     logic [CHANNEL_WIDTH-1:0] red, green, blue;
     display #(
-        .DISPLAY_WIDTH(FB_WIDTH),
-        .DISPLAY_HEIGHT(FB_HEIGHT),
-        .COORDINATE_WIDTH(CORDW),
+        .DISPLAY_WIDTH(SCREEN_WIDTH),
+        .DISPLAY_HEIGHT(SCREEN_HEIGHT),
+        .COORDINATE_WIDTH(ADDRWIDTH),
         .FB_DATA_WIDTH(FB_DATA_WIDTH),
         .DB_DATA_WIDTH(DB_DATA_WIDTH),
         .CHANNEL_WIDTH(CHANNEL_WIDTH)
@@ -272,32 +200,12 @@ module top (
         // .clk_pix(clk_pix),
         .screen_x(sx),
         .screen_y(sy),
-        .fb_pix_colr(fb_pix_colr),
+        .fb_pix_colr(fb_pix_color),
         .db_value(db_data_out),
         .o_red(red),
         .o_green(green),
         .o_blue(blue)
     );
-    
-
-    // paint screen
-    // logic paint_db;
-    // logic paint_fb;
-    // logic [CHANNEL_WIDTH-1:0] paint_r, paint_g, paint_b;  // color channels
-    // always_comb begin
-    //     paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-    //     paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-    //     if (paint_fb) begin
-    //         {paint_r, paint_g, paint_b} = fb_pix_colr;
-    //     end
-    //     else if (paint_db) begin
-    //         {paint_r, paint_g, paint_b} = {db_data_out[11:8], 8'b00000000};
-    //         // {paint_r, paint_g, paint_b} = db_data_out;
-    //     end
-    //     else begin
-    //         {paint_r, paint_g, paint_b} =  BG_COLOR;
-    //     end
-    // end
 
     // SDL output (8 bits per colour channel)
     always_ff @(posedge clk_pix) begin

@@ -3,9 +3,9 @@
 module rasterizer_backend #(
     parameter unsigned DATAWIDTH = 12,
     parameter unsigned COLORWIDTH = 4,
-    parameter unsigned [DATAWIDTH-1:0] SCREEN_WIDTH = 160,
-    parameter unsigned [DATAWIDTH-1:0] SCREEN_HEIGHT = 160,
-    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH + SCREEN_HEIGHT)
+    parameter unsigned [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
+    parameter unsigned [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
+    parameter unsigned ADDRWIDTH = 16
     ) (
     input logic clk,
     input logic rstn,
@@ -23,9 +23,8 @@ module rasterizer_backend #(
 
     input logic signed [DATAWIDTH-1:0] z,
     input logic signed [DATAWIDTH-1:0] z_delta[2],
-
-    input logic [ADDRWIDTH-1:0] addr_start,    // The address of the top left corner of the BBox
     input logic i_dv,
+    input logic i_last,
 
     output logic [ADDRWIDTH-1:0] o_fb_addr_write,
     output logic o_fb_write_en,
@@ -37,6 +36,14 @@ module rasterizer_backend #(
     output logic done
     );
 
+    // Register later used input signals
+    logic signed [DATAWIDTH-1:0] r_bb_tl[2];
+    logic signed [DATAWIDTH-1:0] r_bb_br[2];
+
+    logic signed [DATAWIDTH-1:0] r_edge_delta0[2];
+    logic signed [DATAWIDTH-1:0] r_edge_delta1[2];
+    logic signed [DATAWIDTH-1:0] r_edge_delta2[2];
+
     logic signed [ADDRWIDTH-1:0] r_x, r_y;
     logic signed [DATAWIDTH-1:0] r_z, r_z_row_start;
 
@@ -45,6 +52,8 @@ module rasterizer_backend #(
 
     logic signed [2*DATAWIDTH-1:0] r_edge0, r_edge1, r_edge2;
     logic signed [2*DATAWIDTH-1:0] r_edge_row_start0, r_edge_row_start1, r_edge_row_start2;
+
+    logic r_is_last = '0;
 
     // ========== STATE ==========
     typedef enum logic [1:0] {
@@ -79,7 +88,7 @@ module rasterizer_backend #(
             end
 
             RASTERIZE: begin
-                if (r_x >= bb_br[0] && r_y >= bb_br[1]) begin
+                if (r_x >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[0]} && r_y >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[1]}) begin
                     next_state = DONE;
                 end
             end
@@ -99,8 +108,15 @@ module rasterizer_backend #(
     always_ff @(posedge clk) begin
         case (current_state)
             IDLE: begin
-                r_x <= bb_tl[0];
-                r_y <= bb_tl[1];
+                r_bb_tl[0] <= bb_tl[0]; r_bb_tl[1] <= bb_tl[1];
+                r_bb_br[0] <= bb_tl[0]; r_bb_br[1] <= bb_tl[1];
+
+                r_edge_delta0[0] <= edge_delta0[0]; r_edge_delta0[1] <= edge_delta0[1];
+                r_edge_delta1[0] <= edge_delta1[0]; r_edge_delta1[1] <= edge_delta1[1];
+                r_edge_delta2[0] <= edge_delta2[0]; r_edge_delta2[1] <= edge_delta2[1];
+
+                r_x <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, bb_tl[0]};
+                r_y <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, bb_tl[1]};
 
                 r_edge0 <= edge_val0;
                 r_edge1 <= edge_val1;
@@ -113,38 +129,38 @@ module rasterizer_backend #(
                 r_z <= z;
                 r_z_row_start <= z;
 
-                r_addr <= addr_start;
-                r_addr_delta_y <= SCREEN_WIDTH[ADDRWIDTH-1:0] - (bb_br[0][ADDRWIDTH-1:0] - bb_tl[0][ADDRWIDTH-1:0]);
+                r_addr <= {{(ADDRWIDTH-DATAWIDTH){1'b0}},
+                           $signed(bb_tl[1] * SCREEN_WIDTH) + $signed(bb_tl[0] - {{(DATAWIDTH-1){1'b0}}, 1'b1})};
+                r_addr_delta_y <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, SCREEN_WIDTH - (bb_br[0] - bb_tl[0])};
             end
 
             RASTERIZE: begin
-                if (r_x < bb_br[0]) begin
+                if (r_x < {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[0]}) begin
                     // Increment in x-direction
                     r_addr <= r_addr + 1;
 
-                    r_edge0 <= r_edge0 + edge_delta0[0];
-                    r_edge1 <= r_edge1 + edge_delta1[0];
-                    r_edge2 <= r_edge2 + edge_delta2[0];
+                    r_edge0 <= r_edge0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[0]};
+                    r_edge1 <= r_edge1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[0]};
+                    r_edge2 <= r_edge2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[0]};
 
                     r_x <= r_x + 1;
-
                     r_z <= r_z + z_delta[0];
                 end
                 else begin
                     // Increment in y-direction
-                    r_edge0 <= r_edge_row_start0 + edge_delta0[1];
-                    r_edge_row_start0 <= r_edge_row_start0 + edge_delta0[1];
+                    r_edge0 <= r_edge_row_start0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[1]};
+                    r_edge_row_start0 <= r_edge_row_start0 + {{DATAWIDTH{1'b0}}, r_edge_delta0[1]};
 
-                    r_edge1 <= r_edge_row_start1 + edge_delta1[1];
-                    r_edge_row_start1 <= r_edge_row_start1 + edge_delta1[1];
+                    r_edge1 <= r_edge_row_start1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[1]};
+                    r_edge_row_start1 <= r_edge_row_start1 + {{DATAWIDTH{1'b0}}, r_edge_delta1[1]};
 
-                    r_edge2 <= r_edge_row_start2 + edge_delta2[1];
-                    r_edge_row_start2 <= r_edge_row_start2 + edge_delta2[1];
+                    r_edge2 <= r_edge_row_start2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[1]};
+                    r_edge_row_start2 <= r_edge_row_start2 + {{DATAWIDTH{1'b0}}, r_edge_delta2[1]};
 
                     r_y <= r_y + 1;
-                    r_addr <= r_addr + r_addr_delta_y[ADDRWIDTH-1:0];
+                    r_addr <= r_addr + r_addr_delta_y;
 
-                    r_x <= bb_tl[0];
+                    r_x <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_tl[0]};
 
                     r_z_row_start <= r_z_row_start + z_delta[1];
                     r_z <= r_z_row_start + z_delta[1];
@@ -164,6 +180,35 @@ module rasterizer_backend #(
         endcase
     end
 
-    assign depth_data = $unsigned(r_z[DEPTH_WIDTH-1:0]);
+    // ASSIGN COLOR TO OUTPUT -- FOR NOW JUST ASSIGN BASED ON ORDER OF
+    // RENDERING
+    logic [COLORWIDTH-1:0] r_color;
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            r_color <= '0;
+            r_is_last <= '0;
+        end else begin
+            case (current_state)
+                IDLE: begin
+                    if (i_dv) begin
+                        r_color <= r_color + 1;
+                        r_is_last <= i_last;
+                    end
+                end
+
+                DONE: begin
+                    if (r_is_last) begin
+                        r_color <= '0;
+                    end
+                end
+
+                default: begin
+                end
+            endcase
+        end
+    end
+
+    assign depth_data = $unsigned(r_z[DATAWIDTH-1:0]);
+    assign color_data = r_color;
 
 endmodule
