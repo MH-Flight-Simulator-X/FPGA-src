@@ -49,11 +49,6 @@ module top #(
     localparam signed Y2 = 20;
     localparam signed Z2 = 12'b000110011001; // 0.1
 
-    localparam signed TILE_MIN_X = 0;
-    localparam signed TILE_MIN_Y = 0;
-    localparam signed TILE_MAX_X = SCREEN_WIDTH;
-    localparam signed TILE_MAX_Y = SCREEN_HEIGHT;
-
     logic signed [DATAWIDTH-1:0] v0[3];
     logic signed [DATAWIDTH-1:0] v1[3];
     logic signed [DATAWIDTH-1:0] v2[3];

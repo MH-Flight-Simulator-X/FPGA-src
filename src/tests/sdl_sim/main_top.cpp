@@ -109,33 +109,41 @@ int main(int argc, char* argv[]) {
 
         top->eval(); 
 
-        // update pixel if not in blanking interval
-        if (top->sdl_de) {
-            Pixel* p = &screenbuffer[top->sdl_sy*H_RES + top->sdl_sx];
-            p->a = 0xFF;
-            p->b = top->sdl_b;
-            p->g = top->sdl_g;
-            p->r = top->sdl_r;
-        }
-
-        // update texture once per frame (in blanking)
-        if (top->frame) { 
-
-            // check for quit event
-            SDL_Event e;
-            if (SDL_PollEvent(&e)) {
-                if (e.type == SDL_QUIT) {
-                    break;
-                }
+        if (top->clk_100m == 1) {
+            // update pixel if not in blanking interval
+            if (top->sdl_de) {
+                Pixel* p = &screenbuffer[top->sdl_sy*H_RES + top->sdl_sx];
+                p->a = 0xFF;
+                p->b = top->sdl_b;
+                p->g = top->sdl_g;
+                p->r = top->sdl_r;
             }
 
-            if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
+            // int top_done = top->done;
+            // if (top_done) {
+            //     printf("Simulation done\n");
+            //     break;
+            // }
 
-            SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
-            SDL_RenderClear(sdl_renderer);
-            SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-            SDL_RenderPresent(sdl_renderer);
-            frame_count++;
+            // update texture once per frame (in blanking)
+            if (top->frame) { 
+
+                // check for quit event
+                SDL_Event e;
+                if (SDL_PollEvent(&e)) {
+                    if (e.type == SDL_QUIT) {
+                        break;
+                    }
+                }
+
+                if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
+
+                SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
+                SDL_RenderClear(sdl_renderer);
+                SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+                SDL_RenderPresent(sdl_renderer);
+                frame_count++;
+            }
         }
     }
 

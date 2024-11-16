@@ -274,6 +274,10 @@ module rasterizer_frontend #(
                         r_edge_function_v1 <= '{i_v0[0], i_v0[1]};
                         r_edge_function_v2 <= '{i_v1[0], i_v1[1]};
                         r_edge_function_p  <= '{i_v2[0], i_v2[1]};
+                    end else begin
+                        foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
+                        foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;
+                        foreach (r_edge_function_p[i] ) r_edge_function_p[i]  <= '0;
                     end
 
                     r_edge_val0 <= '0;
@@ -284,6 +288,14 @@ module rasterizer_frontend #(
                     foreach (r_edge_delta2[i]) r_edge_delta2[i] <= '0;
                     r_area <= '0;
                     o_dv   <= '0;
+
+                    barycentric_weight[0] <= '0;
+                    barycentric_weight[1] <= '0;
+                    barycentric_weight[2] <= '0;
+
+                    barycentric_weight_delta[0] <= '{'0, '0};
+                    barycentric_weight_delta[1] <= '{'0, '0};
+                    barycentric_weight_delta[2] <= '{'0, '0};
                 end
 
                 COMPUTE_AREA: begin
@@ -308,14 +320,14 @@ module rasterizer_frontend #(
                     if (w_area_division_ready) begin
                         r_area_division_in_A <= r_area;
                         r_area_division_in_A_dv <= 1'b1;
+
+                        // For next compute
+                        r_edge_function_v1 <= '{r_v1[0], r_v1[1]};
+                        r_edge_function_v2 <= '{r_v2[0], r_v2[1]};
+                        r_edge_function_p  <= r_bb_tl;
                     end else begin
                         r_area_division_in_A_dv <= 1'b0;
                     end
-
-                    // For next compute
-                    r_edge_function_v1 <= '{r_v1[0], r_v1[1]};
-                    r_edge_function_v2 <= '{r_v2[0], r_v2[1]};
-                    r_edge_function_p  <= r_bb_tl;
                 end
 
                 COMPUTE_EDGE_1: begin
@@ -337,6 +349,9 @@ module rasterizer_frontend #(
                     if (w_area_reciprocal_dv) begin
                         r_area_reciprocal <= w_area_reciprocal[2*DATAWIDTH-1:DATAWIDTH];
                     end
+                    foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
+                    foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;
+                    foreach (r_edge_function_p[i] ) r_edge_function_p[i]  <= '0;
                 end
 
                 COMPUTE_BARYCENTRIC: begin

@@ -69,7 +69,6 @@ module rasterizer_backend #(
         end
         else begin
             current_state <= next_state;
-            o_fb_addr_write <= r_addr; // Delay output addr by 1
         end
     end
 
@@ -83,8 +82,8 @@ module rasterizer_backend #(
                 if (i_dv) begin
                     next_state = RASTERIZE;
                 end else begin
-                    ready = 1'b1;
                 end
+                ready = 1'b1;
             end
 
             RASTERIZE: begin
@@ -109,7 +108,7 @@ module rasterizer_backend #(
         case (current_state)
             IDLE: begin
                 r_bb_tl[0] <= bb_tl[0]; r_bb_tl[1] <= bb_tl[1];
-                r_bb_br[0] <= bb_tl[0]; r_bb_br[1] <= bb_tl[1];
+                r_bb_br[0] <= bb_br[0]; r_bb_br[1] <= bb_br[1];
 
                 r_edge_delta0[0] <= edge_delta0[0]; r_edge_delta0[1] <= edge_delta0[1];
                 r_edge_delta1[0] <= edge_delta1[0]; r_edge_delta1[1] <= edge_delta1[1];
@@ -210,5 +209,6 @@ module rasterizer_backend #(
 
     assign depth_data = $unsigned(r_z[DATAWIDTH-1:0]);
     assign color_data = r_color;
+    assign o_fb_addr_write = r_addr;
 
 endmodule
