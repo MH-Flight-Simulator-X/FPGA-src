@@ -52,7 +52,8 @@ module primitive_assembler #(
         output logic signed [DATAWIDTH-1:0] o_v1[3],
         output logic signed [DATAWIDTH-1:0] o_v2[3],
 
-        output logic o_dv
+        output logic o_dv,
+        output logic o_last
     );
 
     // Buffer address
@@ -132,6 +133,7 @@ module primitive_assembler #(
             foreach (o_v2[i]) o_v2[i] <= '0;
 
             o_dv <= '0;
+            o_last <= '0;
 
         end else begin
             case (current_state)
@@ -159,13 +161,16 @@ module primitive_assembler #(
                         foreach (o_v1[i]) o_v1[i] <= i_v1[i];
                         foreach (o_v2[i]) o_v2[i] <= i_v2[i];
                         o_dv <= '1;
+                        o_last <= r_triangle_last;
                     end else begin
                         o_dv <= '0;
+                        o_last <= '0;
                     end
                 end
 
                 PA_ASSEMBLE_DONE: begin
                     o_dv <= '0;
+                    o_last <= '0;
                 end
 
                 default: begin

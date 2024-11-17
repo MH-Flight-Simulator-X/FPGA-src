@@ -8,7 +8,7 @@ module rasterizer #(
         parameter unsigned COLORWIDTH = 4,
         parameter unsigned SCREEN_WIDTH = 320,
         parameter unsigned SCREEN_HEIGHT = 320,
-        parameter unsigned ADDRWIDTH = 16
+        parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT)
     ) (
         input logic clk,
         input logic rstn,

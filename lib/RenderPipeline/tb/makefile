@@ -1,68 +1,59 @@
+# Makefile for Verilator and SDL Simulation
+
+# Verilator options
+VFLAGS = -O3 --x-assign fast --x-initial fast --noassert
+
+# SDL flags
+SDL_CFLAGS = $(shell sdl2-config --cflags)
+SDL_LDFLAGS = $(shell sdl2-config --libs)
+
+# Design and output file names
+TOP_MODULE = render_pipeline
+EXEC = render_pipeline
+
+# Directories
 SRC_DIR = ../src
-MODULE=render_pipeline
+OBJ_DIR = obj_dir
 
-MAT_VEC_MUL = ../../Math/MatVecMul/src/mat_vec_mul.sv
-VERTEX_SHADER = ../VertexShader/src/vertex_shader.sv
+VERILOG_SOURCES = \
+	../../Math/MatVecMul/src/mat_vec_mul.sv \
+	../VertexShader/src/vertex_shader.sv \
+	../../Math/FixedPointDivide/src/fixed_point_divide.sv \
+	../VertexPostProcessor/src/vertex_post_processor.sv \
+	../../Memory/BRAM_SP/src/bram_sp.sv \
+	../../Memory/G-Buffer/src/g_buffer.sv \
+	../PrimitiveAssembler/src/primitive_assembler.sv \
+	../TransformPipeline/src/transform_pipeline.sv \
+	../Rasterizer/BoundingBox/src/bounding_box.sv \
+	../../Math/FastInverse/src/fast_inverse.sv \
+	../Rasterizer/Frontend/src/rasterizer_frontend.sv \
+	../Rasterizer/Backend/src/rasterizer_backend.sv \
+	../Rasterizer/src/rasterizer.sv
 
-FIXED_POINT_DIVIDE = ../../Math/FixedPointDivide/src/fixed_point_divide.sv
-VERTEX_POST_PROCESSOR = ../VertexPostProcessor/src/vertex_post_processor.sv
+# Verilog file (Top module)
+VERILOG_FILE = $(SRC_DIR)/render_pipeline.sv
 
-BRAM_SP = ../../Memory/BRAM_SP/src/bram_sp.sv
-GBUFFER = ../../Memory/G-Buffer/src/g_buffer.sv
+# C++ source file (Main simulation driver)
+CPP_FILE = tb_render_pipeline.cpp
 
-PRIMITIVE_ASSEMBLER = ../PrimitiveAssembler/src/primitive_assembler.sv
+# Make target: all
+all: $(EXEC)
 
-TRANSFORM_PIPELINE = ../TransformPipeline/src/transform_pipeline.sv
+# Rule to build the final executable
+$(EXEC): $(OBJ_DIR)/V$(TOP_MODULE).mk
+	make -C $(OBJ_DIR) -f V$(TOP_MODULE).mk
 
-BBOX_FILE = ../Rasterizer/BoundingBox/src/bounding_box.sv
-FAST_INVERSE = ../../Math/FastInverse/src/fast_inverse.sv
-RASTERIZER_FRONTEND = ../Rasterizer/FrontEnd/src/rasterizer_frontend.sv
+# Rule to generate the object files and Verilator C++ model
+$(OBJ_DIR)/V$(TOP_MODULE).mk: $(VERILOG_FILE) $(CPP_FILE)
+	verilator $(VFLAGS) -I$(SRC_DIR) -cc $(VERILOG_FILE) $(VERILOG_SOURCES) --exe $(CPP_FILE) -o $(EXEC) \
+		-CFLAGS "$(SDL_CFLAGS)" -LDFLAGS "$(SDL_LDFLAGS)"
 
-INCLUDES = $(MAT_VEC_MUL) $(VERTEX_SHADER) $(FIXED_POINT_DIVIDE) \
-		   $(VERTEX_POST_PROCESSOR) $(BRAM_SP) $(GBUFFER) \
-		   $(PRIMITIVE_ASSEMBLER) $(TRANSFORM_PIPELINE) \
-		   $(BBOX_FILE) $(FAST_INVERSE) $(RASTERIZER_FRONTEND)
-
-.PHONY:sim
-sim: waveform.vcd
-
-.PHONY:verilate
-verilate: .stamp.verilate
-
-.PHONY:build
-build: obj_dir/V$(MODULE)
-
-.PHONY:waves
-waves: waveform.vcd
-	@echo
-	@echo "### WAVES ###"
-	gtkwave waveform.vcd
-
-waveform.vcd: ./obj_dir/V$(MODULE)
-	@echo
-	@echo "### SIMULATING ###"
-	@./obj_dir/V$(MODULE) +verilator+rand+reset+2
-
-./obj_dir/V$(MODULE): .stamp.verilate
-	@echo
-	@echo "### BUILDING SIM ###"
-	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
-
-.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(INCLUDES) tb_$(MODULE).cpp
-	@echo
-	@echo "### VERILATING ###"
-	verilator -Wall --trace --x-assign unique --x-initial unique \
-		-cc $(SRC_DIR)/$(MODULE).sv $(INCLUDES) \
-		--exe tb_$(MODULE).cpp
-	@touch .stamp.verilate
-
-.PHONY:lint
-lint: $(MODULE).sv
-	verilator --lint-only $(MODULE).sv
-
-.PHONY: clean
+# Rule for cleaning up build files
 clean:
-	rm -rf .stamp.*;
-	rm -rf ./obj_dir
-	rm -rf waveform.vcd
+	rm -rf $(OBJ_DIR)
+
+run: $(EXEC)
+	./obj_dir/$(EXEC)
+
+.PHONY: all clean
 

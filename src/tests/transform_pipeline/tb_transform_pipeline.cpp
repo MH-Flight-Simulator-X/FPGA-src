@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "../../../verilator_utils/fixed_point.h"
+#include "../../../verilator_utils/file_data.h"
 
 #include "obj_dir/Vtb_transform_pipeline.h"
 
@@ -23,88 +24,6 @@
 #define SCREEN_HEIGHT 320
 #define ZFAR 100.0f
 #define ZNEAR 0.1f
-
-typedef struct {
-    glm::ivec2 v0;
-    float v0_z;
-    glm::ivec2 v1;
-    float v1_z;
-    glm::ivec2 v2;
-    float v2_z;
-} Triangle_t;
-
-std::vector<glm::vec3> read_vertex_data(const std::string& filename) {
-    std::ifstream infile(filename);
-    std::vector<glm::vec3> vertices;
-    std::string line;
-
-    if (!infile.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return vertices;
-    }
-
-    while (std::getline(infile, line)) {
-        std::stringstream ss(line);
-        float x, y, z;
-        char comma1, comma2;
-
-        // Parsing the "x, y, z" format
-        ss >> x >> comma1 >> y >> comma2 >> z;
-        if (ss.fail() || comma1 != ',' || comma2 != ',') {
-            std::cerr << "Error parsing line: " << line << std::endl;
-            continue;
-        }
-
-        vertices.emplace_back(x, y, z);  // Store as glm::vec3
-    }
-
-    infile.close();
-    return vertices;
-}
-
-std::vector<glm::ivec3> read_index_data(const std::string& filename) {
-    std::ifstream infile(filename);
-    std::vector<glm::ivec3> indices;
-    std::string line;
-
-    if (!infile.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return indices;
-    }
-
-    while (std::getline(infile, line)) {
-        std::stringstream ss(line);
-        int x, y, z;
-        char comma1, comma2;
-
-        // Parsing the "x, y, z" format
-        ss >> x >> comma1 >> y >> comma2 >> z;
-        if (ss.fail() || comma1 != ',' || comma2 != ',') {
-            std::cerr << "Error parsing line: " << line << std::endl;
-            continue;
-        }
-
-        x--; y--; z--;  // Convert to 0-based indexing
-        indices.emplace_back(x, y, z);  // Store as glm::ivec3
-    }
-
-    infile.close();
-    return indices;
-}
-
-void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& triangles) {
-    std::ofstream outfile(filename);
-    if (!outfile.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return;
-    }
-
-    for (const auto& tri : triangles) {
-        outfile << tri.v0.x << ", " << tri.v0.y << ", " << tri.v0_z << ", " << tri.v1.x << ", " << tri.v1.y  << ", " <<  tri.v1_z << ", " << tri.v2.x << ", " << tri.v2.y  << ", " <<  tri.v2_z << std::endl;
-    }
-
-    outfile.close();
-}
 
 glm::mat4 generate_mvp() {
     // Generate matrix and vector data using GLM
@@ -132,7 +51,6 @@ glm::mat4 generate_mvp() {
 #define MAX_SIM_TIME 1152921504606846976
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
-
 
 void print_matrix(float mat[4][4]);
 void print_vector(float vec[4]);
@@ -193,8 +111,8 @@ int main(int argc, char** argv) {
     dut->trace(m_trace, 5);
     m_trace->open("waveform.vcd");
 
-    std::vector<glm::vec3> vertex_buffer = read_vertex_data("model.vert");
-    std::vector<glm::ivec3> index_buffer = read_index_data("model.face");
+    std::vector<glm::vec3> vertex_buffer = SimDataFileHandler::read_vertex_data("model.vert");
+    std::vector<glm::ivec3> index_buffer = SimDataFileHandler::read_index_data("model.face");
     glm::mat4 mvp = generate_mvp();
 
     // Reset
@@ -324,7 +242,7 @@ int main(int argc, char** argv) {
         sim_time++;
     }
 
-    write_triangle_data("model.tri", output_triangles);
+    SimDataFileHandler::write_triangle_data("model.tri", output_triangles);
     
     m_trace->close();
     delete dut;

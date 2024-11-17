@@ -4,12 +4,15 @@ module render_pipeline #(
     parameter unsigned INPUT_DATAWIDTH = 24,
     parameter unsigned INPUT_FRACBITS  = 13,
     parameter unsigned OUTPUT_DATAWIDTH = 12,
+    parameter unsigned COLORWIDTH = 4,
 
     parameter unsigned MAX_TRIANGLE_COUNT = 4096,
     parameter unsigned MAX_VERTEX_COUNT   = 4096,
 
     parameter unsigned SCREEN_WIDTH  = 320,
     parameter unsigned SCREEN_HEIGHT = 320,
+
+    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT),
 
     parameter real ZFAR = 100.0,
     parameter real ZNEAR = 0.1
@@ -19,6 +22,7 @@ module render_pipeline #(
 
     input  logic start,
     output logic ready,
+    output logic finished,
 
     // Transform matrix from MVP Matrix FIFO
     output logic o_mvp_matrix_read_en,
@@ -35,7 +39,14 @@ module render_pipeline #(
     output logic o_model_buff_index_read_en,
     input  logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_index_data[3],
     input  logic i_index_dv,
-    input  logic i_index_last
+    input  logic i_index_last,
+
+    // Rasterizer Output
+    output logic [ADDRWIDTH-1:0] o_fb_addr_write,
+    output logic o_fb_write_en,
+
+    output logic [OUTPUT_DATAWIDTH-1:0] o_fb_depth_data,
+    output logic [COLORWIDTH-1:0] o_fb_color_data
     );
 
     // TODO: Actually use the signals for something
@@ -51,6 +62,7 @@ module render_pipeline #(
     logic signed [OUTPUT_DATAWIDTH-1:0] tp_v1[3];
     logic signed [OUTPUT_DATAWIDTH-1:0] tp_v2[3];
     logic tp_o_triangle_dv;
+    logic tp_o_triangle_last;
 
     transform_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
@@ -91,61 +103,46 @@ module render_pipeline #(
         .o_v0(tp_v0),
         .o_v1(tp_v1),
         .o_v2(tp_v2),
-        .o_triangle_dv(tp_o_triangle_dv)
+        .o_triangle_dv(tp_o_triangle_dv),
+        .o_triangle_last(tp_o_triangle_last)
     );
 
     // TODO: Replace with finished Rasterizer
-    logic rasterizer_frontend_ready;
-    logic rasterizer_frontend_next;
-
-    logic signed [OUTPUT_DATAWIDTH-1:0] rf_bb_tl[2];
-    logic signed [OUTPUT_DATAWIDTH-1:0] rf_bb_br[2];
-
-    logic signed [2*OUTPUT_DATAWIDTH-1:0] rf_edge_val0;
-    logic signed [2*OUTPUT_DATAWIDTH-1:0] rf_edge_val1;
-    logic signed [2*OUTPUT_DATAWIDTH-1:0] rf_edge_val2;
-
-    logic signed [OUTPUT_DATAWIDTH-1:0] rf_edge_delta0[2];
-    logic signed [OUTPUT_DATAWIDTH-1:0] rf_edge_delta1[2];
-    logic signed [OUTPUT_DATAWIDTH-1:0] rf_edge_delta2[2];
-
-    logic [2*OUTPUT_DATAWIDTH-1:0] rf_area_inv;
-    logic rf_o_dv;
-
-    rasterizer_frontend #(
+    logic w_rasterizer_ready;
+    logic w_rasterizer_finished;
+    rasterizer #(
         .DATAWIDTH(OUTPUT_DATAWIDTH),
+        .COLORWIDTH(COLORWIDTH),
         .SCREEN_WIDTH(SCREEN_WIDTH),
-        .SCREEN_HEIGHT(SCREEN_HEIGHT)
-    ) rasterizer_frontend_inst (
+        .SCREEN_HEIGHT(SCREEN_HEIGHT),
+        .ADDRWIDTH(ADDRWIDTH)
+    ) rasterizer_inst (
         .clk(clk),
         .rstn(rstn),
 
-        .ready(rasterizer_frontend_ready),
-        .next(rasterizer_frontend_next),
+        .ready(w_rasterizer_ready),
 
         .i_v0(tp_v0),
         .i_v1(tp_v1),
         .i_v2(tp_v2),
         .i_triangle_dv(tp_o_triangle_dv),
+        .i_triangle_last(tp_o_triangle_last),
 
-        .bb_tl(rf_bb_tl),
-        .bb_br(rf_bb_br),
-        .edge_val0(rf_edge_val0),
-        .edge_val1(rf_edge_val1),
-        .edge_val2(rf_edge_val2),
+        .o_fb_addr_write(o_fb_addr_write),
+        .o_fb_write_en(o_fb_write_en),
 
-        .edge_delta0(rf_edge_delta0),
-        .edge_delta1(rf_edge_delta1),
-        .edge_delta2(rf_edge_delta2),
-        .area_inv(rf_area_inv),
-        .o_dv(rf_o_dv)
+        .o_fb_depth_data(o_fb_depth_data),
+        .o_fb_color_data(o_fb_color_data),
+
+        .finished(w_rasterizer_finished)
     );
 
     // Assign internal signals
     assign transform_pipeline_start = start;
-    assign transform_pipeline_next = rasterizer_frontend_ready;
+    assign transform_pipeline_next = w_rasterizer_ready;
 
     // Assign external signals
     assign ready = transform_pipeline_ready;
+    assign finished = w_rasterizer_finished;
 
 endmodule

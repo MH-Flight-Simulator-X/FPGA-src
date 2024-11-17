@@ -52,7 +52,8 @@ module transform_pipeline #(
     output logic signed [OUTPUT_DATAWIDTH-1:0] o_v0[3],
     output logic signed [OUTPUT_DATAWIDTH-1:0] o_v1[3],
     output logic signed [OUTPUT_DATAWIDTH-1:0] o_v2[3],
-    output logic o_triangle_dv
+    output logic o_triangle_dv,
+    output logic o_triangle_last
     );
 
     // ====== STATE ======
@@ -276,7 +277,8 @@ module transform_pipeline #(
         .o_v0(o_v0),
         .o_v1(o_v1),
         .o_v2(o_v2),
-        .o_dv(o_triangle_dv)
+        .o_dv(o_triangle_dv),
+        .o_last(o_triangle_last)
     );
 
     // ===== MORE STATE STUFF =====

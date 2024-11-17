@@ -84,8 +84,8 @@ module rasterizer_backend #(
                 if (i_dv) begin
                     next_state = RASTERIZE;
                 end else begin
+                    ready = 1'b1;
                 end
-                ready = 1'b1;
             end
 
             RASTERIZE: begin
