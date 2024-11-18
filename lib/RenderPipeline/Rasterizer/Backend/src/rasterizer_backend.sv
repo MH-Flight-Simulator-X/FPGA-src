@@ -61,7 +61,7 @@ module rasterizer_backend #(
         RASTERIZE,
         DONE
     } state_t;
-    state_t current_state = IDLE, next_state = IDLE;
+    state_t current_state = IDLE, next_state;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin

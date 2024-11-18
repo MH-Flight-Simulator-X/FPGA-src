@@ -9,7 +9,9 @@ module top #(
     ) (
     input  logic clk_100m,            // 100MHz clock
     input  logic clk_pix,             // pixel clock
-    input  logic sim_rst,             // sim reset
+    input  logic sim_rst,
+    input  logic rasterizer_dv,
+    input  logic display_clear,
     output logic [ADDRWIDTH-1:0] sdl_sx,  // horizontal SDL position
     output logic [ADDRWIDTH-1:0] sdl_sy,  // vertical SDL position
     output logic sdl_de,              // data enable (low in blanking interval)
@@ -37,8 +39,8 @@ module top #(
     logic fb_write_enable;
 
     // TODO: FIX
-    localparam signed X0 = 8;
-    localparam signed Y0 = 4;
+    localparam signed X0 = 1;
+    localparam signed Y0 = 1;
     localparam signed Z0 = 12'b100000000000; // 0.5
 
     localparam signed X1 = 30;
@@ -111,7 +113,7 @@ module top #(
         .i_fb_data(w_color_data),
         .i_db_data(w_depth_data),
 
-        .clear(),
+        .clear(display_clear),
         .ready(),
 
         .o_red(red),
