@@ -41,12 +41,12 @@ Pixel color_palette[10] = {
 
 vluint64_t clk_100m_cnt = 0;
 
-glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot) {
+glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
     model = glm::rotate(model, glm::radians(rot.x), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.y * t), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
 
     float scale = 2.0f;
@@ -220,6 +220,7 @@ int main(int argc, char* argv[]) {
     dut->rstn = 1;
 
     // Main loop
+    float t = 0.0f;
     vluint64_t clk_frame_start = posedge_cnt;
     while (true) {
         SDL_Event e;
@@ -248,16 +249,13 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -0.75f, -1.0f), glm::vec3(15.0f, -10.0f, 0.0f));
-                //
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -1.5f), glm::vec3(0.0f, -25.0f, 0.0f), 1.0f);
+                t = t + 1.0f;
+
                 // glm::mat4 mvp = glm::mat4(1.0f);
                 assign_mvp_data(dut, mvp);                
                 dut->i_mvp_dv = 1;
             }
-
-            // if (dut->render_pipeline__DOT__rasterizer_inst__DOT__w_rasterizer_backend_done) {
-            //     printf("Backend DONE!\n");
-            // }
 
             assign_vertex_data(dut, vertex_buffer, new_frame);
             assign_index_data(dut, index_buffer, new_frame);
@@ -268,9 +266,16 @@ int main(int argc, char* argv[]) {
 
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
-                p->b = color_palette[dut->o_fb_color_data % 10].b;
-                p->g = color_palette[dut->o_fb_color_data % 10].g;
-                p->r = color_palette[dut->o_fb_color_data % 10].r;
+
+                if (dut->o_fb_color_data == 0) {
+                    p->b = 0x00;
+                    p->g = 0x00;
+                    p->r = 0xFF;
+                } else {
+                    p->b = color_palette[dut->o_fb_color_data % 10].b;
+                    p->g = color_palette[dut->o_fb_color_data % 10].g;
+                    p->r = color_palette[dut->o_fb_color_data % 10].r;
+                }
             }
 
             if (dut->finished) {
@@ -281,12 +286,24 @@ int main(int argc, char* argv[]) {
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
 
+                if (frame_count == 2) {
+                    break;
+                }
+
+                // Clear screen buffer
+                for (int i = 0; i < H_RES*V_RES; i++) {
+                    screenbuffer[i].a = 0xFF;
+                    screenbuffer[i].b = 0x00;
+                    screenbuffer[i].g = 0x00;
+                    screenbuffer[i].r = 0x00;
+                }
+
                 vluint64_t clk_frame_end = posedge_cnt;
                 float time_per_frame = (clk_frame_end - clk_frame_start) * 1e-8;
                 float frame_rate = 1.0 / time_per_frame;
-                printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
-                printf("Time per frame: %fs\n", time_per_frame);
-                printf("Frame rate: %f\n", frame_rate);
+                // printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
+                // printf("Time per frame: %fs\n", time_per_frame);
+                // printf("Frame rate: %f\n", frame_rate);
                 clk_frame_start = clk_frame_end;
 
                 new_frame = true;

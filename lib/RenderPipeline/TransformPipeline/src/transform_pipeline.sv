@@ -360,7 +360,6 @@ module transform_pipeline #(
                             r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_pixel[2]};
                         end else begin
                             r_gbuff_write_en <= '0;
-                            $display("Invalid vertex");
                         end
 
                         // If this was the last vertex, latch vpp finished signal

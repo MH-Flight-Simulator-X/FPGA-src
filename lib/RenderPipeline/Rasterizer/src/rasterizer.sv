@@ -32,6 +32,8 @@ module rasterizer #(
         output logic finished
     );
 
+    parameter unsigned IDWIDTH = 16;
+
     // ========== RASTERIZER FRONTEND ==========
     logic signed [DATAWIDTH-1:0] w_bb_tl[2];
     logic signed [DATAWIDTH-1:0] w_bb_br[2];
@@ -47,12 +49,16 @@ module rasterizer #(
     logic signed [DATAWIDTH-1:0] w_z_coeff;
     logic signed [DATAWIDTH-1:0] w_z_coeff_delta[2];
 
+    logic [IDWIDTH-1:0] w_rasterizer_triangle_id;
     logic w_rasterizer_frontend_o_dv;
+    logic w_rasterizer_frontend_o_last;
+    logic w_rasterizer_frontend_finished_with_cull;
 
     rasterizer_frontend #(
         .DATAWIDTH(DATAWIDTH),
         .SCREEN_WIDTH(SCREEN_WIDTH),
-        .SCREEN_HEIGHT(SCREEN_HEIGHT)
+        .SCREEN_HEIGHT(SCREEN_HEIGHT),
+        .IDWIDTH(IDWIDTH)
     ) rasterizer_frontend_inst (
         .clk(clk),
         .rstn(rstn),
@@ -64,6 +70,7 @@ module rasterizer #(
         .i_v1(i_v1),
         .i_v2(i_v2),
         .i_triangle_dv(i_triangle_dv),
+        .i_triangle_last(i_triangle_last),
 
         .bb_tl(w_bb_tl),
         .bb_br(w_bb_br),
@@ -79,12 +86,16 @@ module rasterizer #(
         .z_coeff(w_z_coeff),
         .z_coeff_delta(w_z_coeff_delta),
 
-        .o_dv(w_rasterizer_frontend_o_dv)
+        .id(w_rasterizer_triangle_id),
+        .o_dv(w_rasterizer_frontend_o_dv),
+        .o_last(w_rasterizer_frontend_o_last),
+        .finished_with_cull(w_rasterizer_frontend_finished_with_cull)
     );
 
     // ========== RASTERIZER BACKEND ==========
     logic w_rasterizer_backend_ready;
     logic w_rasterizer_backend_done;
+    logic w_rasterizer_backend_finished;
 
     rasterizer_backend #(
         .DATAWIDTH(DATAWIDTH),
@@ -110,8 +121,9 @@ module rasterizer #(
         .z(w_z_coeff),
         .z_delta(w_z_coeff_delta),
 
+        .id(w_rasterizer_triangle_id),
         .i_dv(w_rasterizer_frontend_o_dv),
-        .i_last(last_triangle_last),
+        .i_last(w_rasterizer_frontend_o_last),
 
         .o_fb_addr_write(o_fb_addr_write),
         .o_fb_write_en(o_fb_write_en),
@@ -120,29 +132,10 @@ module rasterizer #(
         .color_data(o_fb_color_data),
 
         .ready(w_rasterizer_backend_ready),
-        .done(w_rasterizer_backend_done)
+        .done(w_rasterizer_backend_done),
+        .finished(w_rasterizer_backend_finished)
     );
 
-    // Check if we are finished
-    logic last_triangle_last;
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
-            finished <= '0;
-        end else begin
-            if (i_triangle_dv) begin
-                last_triangle_last <= i_triangle_last;
-            end
-
-            if (w_rasterizer_backend_done) begin
-                if (last_triangle_last) begin
-                    finished <= 1'b1;
-                end else begin
-                    finished <= 1'b0;
-                end
-            end else begin
-                finished <= 1'b0;
-            end
-        end
-    end
+    assign finished = w_rasterizer_frontend_finished_with_cull || w_rasterizer_backend_finished;
 
 endmodule

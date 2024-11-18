@@ -6,8 +6,8 @@ module render_pipeline #(
     parameter unsigned OUTPUT_DATAWIDTH = 12,
     parameter unsigned COLORWIDTH = 4,
 
-    parameter unsigned MAX_TRIANGLE_COUNT = 4096,
-    parameter unsigned MAX_VERTEX_COUNT   = 4096,
+    parameter unsigned MAX_TRIANGLE_COUNT = 32768,
+    parameter unsigned MAX_VERTEX_COUNT   = 32768,
 
     parameter unsigned SCREEN_WIDTH  = 320,
     parameter unsigned SCREEN_HEIGHT = 320,

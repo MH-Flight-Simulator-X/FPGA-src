@@ -25,7 +25,8 @@ endmodule
 module rasterizer_frontend #(
     parameter unsigned DATAWIDTH = 12,
     parameter signed [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
-    parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320
+    parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
+    parameter unsigned IDWIDTH = 16
     ) (
     input logic clk,
     input logic rstn,
@@ -37,6 +38,7 @@ module rasterizer_frontend #(
     input logic signed [DATAWIDTH-1:0] i_v1[3],
     input logic signed [DATAWIDTH-1:0] i_v2[3],
     input logic i_triangle_dv,
+    input logic i_triangle_last,
 
     output logic signed [DATAWIDTH-1:0] bb_tl[2],
     output logic signed [DATAWIDTH-1:0] bb_br[2],
@@ -50,13 +52,19 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] z_coeff,
     output logic signed [DATAWIDTH-1:0] z_coeff_delta[2],
 
-    output logic o_dv
+    output [IDWIDTH-1:0] id,
+    output logic o_dv,
+    output logic o_last,
+    output logic finished_with_cull
     );
 
     // Register input data
     logic signed [DATAWIDTH-1:0] r_v0[3];
     logic signed [DATAWIDTH-1:0] r_v1[3];
     logic signed [DATAWIDTH-1:0] r_v2[3];
+
+    logic [IDWIDTH-1:0] r_id = '0;
+    logic r_i_triangle_last = '0;
 
     // Edge function data registers
     logic signed [2 * DATAWIDTH-1:0] r_edge_val0;
@@ -151,6 +159,11 @@ module rasterizer_frontend #(
     logic signed [3*DATAWIDTH:0] z_dx;
     logic signed [3*DATAWIDTH:0] z_dy;
 
+    logic w_should_be_culled = '0;
+    always_comb begin
+        w_should_be_culled = $signed(r_area) <= $signed({(2*DATAWIDTH){1'b0}}) || ~r_bb_valid;
+    end
+
     // ========== STATE ==========
     typedef enum logic [3:0] {
         IDLE,
@@ -191,7 +204,7 @@ module rasterizer_frontend #(
             end
 
             COMPUTE_EDGE_0: begin
-                if ($signed(r_area) <= $signed({(2*DATAWIDTH){1'b0}}) || ~r_bb_valid) begin
+                if (w_should_be_culled) begin
                     // $display("Invalid triangle. Back-face culling");
                     next_state = IDLE;
                 end else if (w_area_division_ready) begin
@@ -239,6 +252,10 @@ module rasterizer_frontend #(
             foreach (r_v1[i]) r_v1[i] <= '0;
             foreach (r_v2[i]) r_v2[i] <= '0;
 
+            r_id <= '0;
+            r_i_triangle_last <= '0;
+            finished_with_cull <= '0;
+
             foreach (r_bb_tl[i]) r_bb_tl[i] <= '0;
             foreach (r_bb_br[i]) r_bb_br[i] <= '0;
 
@@ -261,6 +278,7 @@ module rasterizer_frontend #(
             z_coeff_delta[1] <= '0;
 
             o_dv <= '0;
+            o_last <= '0;
 
         end else begin
             case (current_state)
@@ -270,11 +288,7 @@ module rasterizer_frontend #(
                         foreach (r_v1[i]) r_v1[i] <= i_v1[i];
                         foreach (r_v2[i]) r_v2[i] <= i_v2[i];
 
-                        // $display("Triangle: (%d, %d), (%d, %d), (%d, %d)",
-                        //     i_v0[0], i_v0[1],
-                        //     i_v1[0], i_v1[1],
-                        //     i_v2[0], i_v2[1]
-                        // );
+                        r_i_triangle_last <= i_triangle_last;
 
                         // Add values to register in order to compute area
                         r_edge_function_v1 <= '{i_v0[0], i_v0[1]};
@@ -295,6 +309,7 @@ module rasterizer_frontend #(
                     foreach (r_edge_delta2[i]) r_edge_delta2[i] <= '0;
                     r_area <= '0;
                     o_dv   <= '0;
+                    finished_with_cull <= '0;
 
                     barycentric_weight[0] <= '0;
                     barycentric_weight[1] <= '0;
@@ -320,6 +335,14 @@ module rasterizer_frontend #(
                 end
 
                 COMPUTE_EDGE_0: begin
+                    if (w_should_be_culled & r_i_triangle_last) begin
+                        finished_with_cull <= '1;
+                        r_i_triangle_last <= '0;
+                        r_id <= '0;
+                    end else begin
+                        finished_with_cull <= '0;
+                    end
+
                     r_edge_val0 <= w_edge_function_val;
                     r_edge_delta0 <= w_edge_function_delta;
 
@@ -338,6 +361,7 @@ module rasterizer_frontend #(
                 end
 
                 COMPUTE_EDGE_1: begin
+                    r_area_division_in_A_dv <= 1'b0;
                     r_edge_val1 <= w_edge_function_val;
                     r_edge_delta1 <= w_edge_function_delta;
 
@@ -416,10 +440,17 @@ module rasterizer_frontend #(
                     foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
 
                     o_dv <= '1;
+                    id <= r_id;
+                    o_last <= r_i_triangle_last;
 
-                    // if (next) begin
-                    //     $display("Ready for next triangle");
-                    // end
+                    if (next) begin
+                        if (r_i_triangle_last) begin
+                            r_id <= '0;
+                            r_i_triangle_last <= '0;
+                        end else begin
+                            r_id <= r_id + 1'b1;
+                        end
+                    end
                 end
 
                 default: begin

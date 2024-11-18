@@ -293,7 +293,6 @@ module tb_transform_pipeline #(
                     r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_z};
                 end else begin
                     r_gbuff_write_en <= '0;
-                    $display("invalid");
                 end
 
                 // If this was the last vertex, latch vpp finished signal
