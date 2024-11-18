@@ -5,7 +5,7 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module projectf_display_480p #(
+module display_signals_480p #(
     CORDW=16,    // signed coordinate width (bits)
     H_RES=640,   // horizontal resolution (pixels)
     V_RES=480,   // vertical resolution (lines)

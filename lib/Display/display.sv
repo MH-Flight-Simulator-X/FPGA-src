@@ -10,7 +10,6 @@ module display#(
     parameter unsigned CLUT_WIDTH = 12,
     parameter unsigned CLUT_DEPTH = 16,
     parameter unsigned CHANNEL_WIDTH = 4,
-    parameter unsigned BG_COLOR = 'h137, 
     parameter string PALETTE_FILE = "palette.mem",
     parameter string FB_IMAGE_FILE = "image.mem"
     ) (
@@ -30,7 +29,10 @@ module display#(
     output logic unsigned [CHANNEL_WIDTH-1:0] o_green,
     output logic unsigned [CHANNEL_WIDTH-1:0] o_blue,
 
-    output ready
+    output logic hsync,
+    output logic vsync,
+
+    output logic ready
     );
 
     localparam unsigned COLOR_WIDTH = CHANNEL_WIDTH*3;
@@ -42,13 +44,13 @@ module display#(
     logic signed [DISPLAY_COORD_WIDTH-1:0] screen_x, screen_y;
     logic de;
     logic frame;
-    projectf_display_480p #(.CORDW(DISPLAY_COORD_WIDTH)) display_signal_inst (
+    display_signals_480p #(.CORDW(DISPLAY_COORD_WIDTH)) display_signal_inst (
         .clk_pix(clk_pix),
-        .rst_pix(),
+        .rst_pix(1'b0),
         .sx(screen_x),
         .sy(screen_y),
-        .hsync(),
-        .vsync(),
+        .hsync(hsync),
+        .vsync(vsync),
         .de(de),
         .frame(frame),
         .line()
@@ -167,14 +169,11 @@ module display#(
         ready = fb_ready && db_ready;
 
         // Output color logic
-        if (~de) begin
-            {o_red, o_green, o_blue} = 0;
-        end
-        else if (pixel_in_fb) begin
+        if (pixel_in_fb && de) begin
             {o_red, o_green, o_blue} = clut_data;
         end
         else begin
-            {o_red, o_green, o_blue} = BG_COLOR;
+            {o_red, o_green, o_blue} = 0;
         end
     end 
 

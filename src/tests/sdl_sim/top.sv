@@ -116,6 +116,9 @@ module top #(
     localparam PALETTE_FILE = "../../palette.mem";
 
     logic [CHANNEL_WIDTH-1:0] red, green, blue;
+
+    logic hsync;
+    logic vsync;
     display #(
         .DISPLAY_WIDTH(SCREEN_WIDTH),
         .DISPLAY_HEIGHT(SCREEN_HEIGHT),
@@ -140,7 +143,10 @@ module top #(
 
         .o_red(red),
         .o_green(green),
-        .o_blue(blue)
+        .o_blue(blue),
+
+        .hsync(hsync),
+        .vsync(vsync)
     ); 
 
     assign sdl_sx = display_inst.screen_x;
