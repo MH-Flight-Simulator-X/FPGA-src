@@ -160,22 +160,34 @@ int main(int argc, char* argv[]) {
     SDL_Renderer* sdl_renderer = NULL;
     SDL_Texture*  sdl_texture  = NULL;
 
-    sdl_window = SDL_CreateWindow("MH-Flight-Simulator", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, H_RES, V_RES, SDL_WINDOW_SHOWN);
+    sdl_window = SDL_CreateWindow(
+        "MH-Flight-Simulator", 
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, 
+        H_RES * 4,  // Double the width
+        V_RES * 4,  // Double the height
+        SDL_WINDOW_SHOWN
+    );
     if (!sdl_window) {
         printf("Window creation failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    sdl_renderer = SDL_CreateRenderer(sdl_window, -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!sdl_renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888,
-        SDL_TEXTUREACCESS_TARGET, H_RES, V_RES);
+    SDL_RenderSetLogicalSize(sdl_renderer, H_RES, V_RES);
+
+    sdl_texture = SDL_CreateTexture(
+        sdl_renderer, 
+        SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_STREAMING, 
+        H_RES, 
+        V_RES
+    );
     if (!sdl_texture) {
         printf("Texture creation failed: %s\n", SDL_GetError());
         return 1;
@@ -249,7 +261,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -1.5f), glm::vec3(0.0f, -25.0f, 0.0f), 1.0f);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -25.0f, 0.0f), t);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
@@ -266,16 +278,9 @@ int main(int argc, char* argv[]) {
 
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
-
-                if (dut->o_fb_color_data == 0) {
-                    p->b = 0x00;
-                    p->g = 0x00;
-                    p->r = 0xFF;
-                } else {
-                    p->b = color_palette[dut->o_fb_color_data % 10].b;
-                    p->g = color_palette[dut->o_fb_color_data % 10].g;
-                    p->r = color_palette[dut->o_fb_color_data % 10].r;
-                }
+                p->b = color_palette[dut->o_fb_color_data % 10].b;
+                p->g = color_palette[dut->o_fb_color_data % 10].g;
+                p->r = color_palette[dut->o_fb_color_data % 10].r;
             }
 
             if (dut->finished) {
@@ -285,10 +290,6 @@ int main(int argc, char* argv[]) {
                 SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
-
-                if (frame_count == 2) {
-                    break;
-                }
 
                 // Clear screen buffer
                 for (int i = 0; i < H_RES*V_RES; i++) {
@@ -301,9 +302,9 @@ int main(int argc, char* argv[]) {
                 vluint64_t clk_frame_end = posedge_cnt;
                 float time_per_frame = (clk_frame_end - clk_frame_start) * 1e-8;
                 float frame_rate = 1.0 / time_per_frame;
-                // printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
-                // printf("Time per frame: %fs\n", time_per_frame);
-                // printf("Frame rate: %f\n", frame_rate);
+                printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
+                printf("Time per frame: %fs\n", time_per_frame);
+                printf("Frame rate: %f\n", frame_rate);
                 clk_frame_start = clk_frame_end;
 
                 new_frame = true;

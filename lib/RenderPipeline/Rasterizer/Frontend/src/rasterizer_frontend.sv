@@ -205,8 +205,9 @@ module rasterizer_frontend #(
 
             COMPUTE_EDGE_0: begin
                 if (w_should_be_culled) begin
-                    // $display("Invalid triangle. Back-face culling");
-                    next_state = IDLE;
+                    if (next) begin
+                        next_state = IDLE;
+                    end
                 end else if (w_area_division_ready) begin
                     next_state = COMPUTE_EDGE_1;
                 end
@@ -335,10 +336,10 @@ module rasterizer_frontend #(
                 end
 
                 COMPUTE_EDGE_0: begin
-                    if (w_should_be_culled & r_i_triangle_last) begin
+                    if (w_should_be_culled & r_i_triangle_last & next) begin
                         finished_with_cull <= '1;
                         r_i_triangle_last <= '0;
-                        r_id <= '0;
+                        // r_id <= '0;
                     end else begin
                         finished_with_cull <= '0;
                     end
@@ -425,31 +426,34 @@ module rasterizer_frontend #(
                 end
 
                 DONE: begin
-                    foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
-                    foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
-                    edge_val0 <= r_edge_val0;
-                    edge_val1 <= r_edge_val1;
-                    edge_val2 <= r_edge_val2;
-
-                    z_coeff <= z[DATAWIDTH-1:0];
-                    z_coeff_delta[0] <= z_dx[DATAWIDTH:1];
-                    z_coeff_delta[1] <= z_dy[DATAWIDTH:1];
-
-                    foreach (edge_delta0[i]) edge_delta0[i] <= r_edge_delta0[i];
-                    foreach (edge_delta1[i]) edge_delta1[i] <= r_edge_delta1[i];
-                    foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
-
-                    o_dv <= '1;
-                    id <= r_id;
-                    o_last <= r_i_triangle_last;
-
                     if (next) begin
+                        foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
+                        foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
+                        edge_val0 <= r_edge_val0;
+                        edge_val1 <= r_edge_val1;
+                        edge_val2 <= r_edge_val2;
+
+                        z_coeff <= z[DATAWIDTH-1:0];
+                        z_coeff_delta[0] <= z_dx[DATAWIDTH:1];
+                        z_coeff_delta[1] <= z_dy[DATAWIDTH:1];
+
+                        foreach (edge_delta0[i]) edge_delta0[i] <= r_edge_delta0[i];
+                        foreach (edge_delta1[i]) edge_delta1[i] <= r_edge_delta1[i];
+                        foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
+
+                        o_last <= r_i_triangle_last;
+                        o_dv <= '1;
+                        id <= r_id;
+
                         if (r_i_triangle_last) begin
-                            r_id <= '0;
                             r_i_triangle_last <= '0;
+                            r_id <= '0;
                         end else begin
-                            r_id <= r_id + 1'b1;
+                            r_id <= r_id + 1;
                         end
+                    end else begin
+                        o_dv <= '0;
+                        o_last <= '0;
                     end
                 end
 

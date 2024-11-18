@@ -70,6 +70,7 @@ module primitive_assembler #(
         end
     end
 
+    logic [31:0] num_triangles = 0;
     always_comb begin
         next_state = current_state;
 
@@ -162,6 +163,7 @@ module primitive_assembler #(
                         foreach (o_v2[i]) o_v2[i] <= i_v2[i];
                         o_dv <= '1;
                         o_last <= r_triangle_last;
+                        num_triangles <= num_triangles + 1;
                     end else begin
                         o_dv <= '0;
                         o_last <= '0;
