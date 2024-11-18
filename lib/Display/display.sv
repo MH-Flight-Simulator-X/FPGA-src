@@ -10,6 +10,7 @@ module display#(
     parameter unsigned CLUT_WIDTH = 12,
     parameter unsigned CLUT_DEPTH = 16,
     parameter unsigned CHANNEL_WIDTH = 4,
+    parameter unsigned FB_CLEAR_VALUE = 0,
     parameter string PALETTE_FILE = "palette.mem",
     parameter string FB_IMAGE_FILE = "image.mem"
     ) (
@@ -68,10 +69,10 @@ module display#(
         .data(clut_data)
     );
 
-
     // Framebuffer memory
     logic [FB_DATA_WIDTH-1:0] fb_data;
     logic fb_ready;
+    logic framebuffer_write_enable;
     buffer #(
         .WIDTH(FB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH),
@@ -79,13 +80,13 @@ module display#(
     ) framebuffer (
         .clk_write(clk),
         .clk_read(clk_pix),
-        .write_enable(addr_inside_triangle),
+        .write_enable(framebuffer_write_enable),
         .clear(clear),
         .ready(fb_ready),
-        .clear_value(),
-        .addr_write(buffer_addr_write),
+        .clear_value(FB_CLEAR_VALUE),
+        .addr_write(buffer_addr_write_d),
         .addr_read(fb_addr_read),
-        .data_in(i_fb_data),
+        .data_in(i_fb_data_d),
         .data_out(fb_data)
     );
 
@@ -94,20 +95,22 @@ module display#(
     logic [DB_DATA_WIDTH-1:0] db_data;
     logic db_ready;
     localparam DB_CLEAR_VALUE = {DB_DATA_WIDTH{1'b1}};
+    logic depth_write_enable;
+    logic [BUFFER_ADDR_WIDTH-1:0] depth_read_addr;
 
     buffer #(
         .WIDTH(DB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH)
     ) depth_buffer (
         .clk_write(clk),
-        .clk_read(clk_pix),
-        .write_enable(addr_inside_triangle),
+        .clk_read(clk),
+        .write_enable(depth_write_enable),
         .clear(clear),
         .ready(db_ready),
         .clear_value(DB_CLEAR_VALUE),
-        .addr_write(buffer_addr_write),
-        .addr_read(db_addr_read),
-        .data_in(i_db_data),
+        .addr_write(buffer_addr_write_d),
+        .addr_read(depth_read_addr),
+        .data_in(i_db_data_d),
         .data_out(db_data)
     );
 
@@ -118,6 +121,12 @@ module display#(
 
     logic unsigned [DISPLAY_COORD_WIDTH-1:0] x_scale_counter, y_scale_counter;
     logic unsigned [DISPLAY_COORD_WIDTH-1:0] fb_x, fb_y;
+
+    // Delayed signals for depth test
+    logic [DB_DATA_WIDTH-1:0] i_db_data_d;
+    logic [FB_DATA_WIDTH-1:0] i_fb_data_d;
+    logic [BUFFER_ADDR_WIDTH-1:0] buffer_addr_write_d;
+    logic addr_inside_triangle_d;
 
     always_ff @(posedge clk_pix) begin 
         // Check if pixel is inside buffer drawing area
@@ -133,25 +142,21 @@ module display#(
             fb_addr_read <= 0;
         end
         else if (pixel_in_fb) begin
-            // Update horizontal scaling counter
             if (x_scale_counter < SCALE - 1) begin
                 x_scale_counter <= x_scale_counter + 1;
             end
             else begin
                 x_scale_counter <= 0;
-                // Move to next framebuffer pixel horizontally
                 if (fb_x < DISPLAY_WIDTH - 1) begin
                     fb_x <= fb_x + 1;
                 end
                 else begin
                     fb_x <= 0;
-                    // Update vertical scaling counter
                     if (y_scale_counter < SCALE - 1) begin
                         y_scale_counter <= y_scale_counter + 1;
                     end
                     else begin
                         y_scale_counter <= 0;
-                        // Move to next framebuffer line vertically
                         if (fb_y < DISPLAY_HEIGHT - 1) begin
                             fb_y <= fb_y + 1;
                         end
@@ -163,6 +168,35 @@ module display#(
         end
     end
 
+    // Depth test and write logic
+    always_ff @(posedge clk) begin
+        // Delay signals by one clock cycle
+        addr_inside_triangle_d <= addr_inside_triangle;
+        i_db_data_d <= i_db_data;
+        i_fb_data_d <= i_fb_data;
+        buffer_addr_write_d <= buffer_addr_write;
+
+        if (addr_inside_triangle) begin
+            // Set the read address to the write address
+            depth_read_addr <= buffer_addr_write;
+        end else begin
+            depth_read_addr <= '0; // Default or idle value
+        end
+
+        // After one clock cycle, perform the depth test
+        if (addr_inside_triangle_d) begin
+            if (i_db_data_d < db_data) begin
+                depth_write_enable <= 1;
+                framebuffer_write_enable <= 1;
+            end else begin
+                depth_write_enable <= 0;
+                framebuffer_write_enable <= 0;
+            end
+        end else begin
+            depth_write_enable <= 0;
+            framebuffer_write_enable <= 0;
+        end
+    end
 
     always_comb begin
         // Check if display is ready
