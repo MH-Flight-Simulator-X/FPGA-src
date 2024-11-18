@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <verilated.h>
-#include <SDL2/SDL.h>
-
+#ifdef __APPLE__
+    #include <SDL.h>
+#else
+    #include <SDL2/SDL.h>
+#endif
 #include "../../../verilator_utils/fixed_point.h"
 #include "obj_dir/Vtop.h"
 
