@@ -11,6 +11,27 @@ module top_MH_FPGA (
     output      logic [3:0] vga_b   // 4-bit VGA blue
     );
 
+    // =========================== PARAMETERS ===========================
+    parameter unsigned INPUT_DATAWIDTH = 24;
+    parameter unsigned INPUT_FRACBITS  = 13;
+    parameter unsigned OUTPUT_DATAWIDTH = 12;
+    parameter unsigned COLORWIDTH = 4;
+
+    parameter unsigned MAX_TRIANGLE_COUNT = 32768;
+    parameter unsigned MAX_VERTEX_COUNT   = 32768;
+    parameter unsigned MAX_INDEX_COUNT    = 32768;
+    parameter unsigned MAX_MODEL_COUNT    = 32768;
+    parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
+
+    parameter unsigned SCREEN_WIDTH  = 160;
+    parameter unsigned SCREEN_HEIGHT = 120;
+
+    parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT);
+
+    parameter real ZFAR = 100.0;
+    parameter real ZNEAR = 0.1;
+
+    // =========================== CLOCKS ===========================
     logic rstn;
     logic clk_100m;
     logic clk_100m_locked;
@@ -25,213 +46,182 @@ module top_MH_FPGA (
     always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
     assign led = clk_100m_locked;
 
-    // generate pixel clock
-    logic clk_pix;
-    logic clk_pix_locked;
-    logic rst_pix;
-    clock_480p clock_pix_inst (
-       .clk_100m(clk_100m),
-       .rst(0),  // reset button is active low
-       .clk_pix(clk_pix),
-       .clk_pix_5x(),  // not used for VGA output
-       .clk_pix_locked(clk_pix_locked)
+    // =========================== FPGA-MCU-COM ===========================
+    logic [MAX_NUM_OBJECTS_PER_FRAME-1:0] w_mcu_num_objects;
+
+    // =========================== MODEL DATA ===========================
+
+    // =========================== RENDER PIPELINE ===========================
+    logic r_render_pipeline_start;
+    logic w_render_pipeline_ready;
+    logic w_render_pipeline_finished;
+
+    // MVP Matrix
+    logic w_mvp_matrix_read_en;
+    logic signed [INPUT_DATAWIDTH-1:0] r_mvp_matrix_data[4][4];
+    logic r_mvp_dv;
+
+    // Vertex Data
+    logic w_model_buff_vertex_read_en;
+    logic signed [INPUT_DATAWIDTH-1:0] r_vertex_data[3];
+    logic r_vertex_dv;
+    logic r_vertex_last;
+
+    // Index Data
+    logic w_model_buff_index_read_en;
+    logic [ADDRWIDTH-1:0] r_index_data[3];
+    logic r_index_dv;
+    logic r_index_last;
+
+    // Framebuffer
+    logic [ADDRWIDTH-1:0] w_fb_addr_write;
+    logic w_fb_write_en;
+
+    logic [OUTPUT_DATAWIDTH-1:0] w_fb_depth_data;
+    logic [COLORWIDTH-1:0] w_fb_color_data;
+
+    // External state stuff for render pipeline
+    logic [MAX_NUM_OBJECTS_PER_FRAME-1:0] r_render_pipeline_num_objects_rendered;
+
+    render_pipeline #(
+        .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
+        .INPUT_FRACBITS(INPUT_FRACBITS),
+        .OUTPUT_DATAWIDTH(OUTPUT_DATAWIDTH),
+        .COLORWIDTH(COLORWIDTH),
+
+        .MAX_TRIANGLE_COUNT(MAX_TRIANGLE_COUNT),
+        .MAX_VERTEX_COUNT(MAX_VERTEX_COUNT),
+
+        .SCREEN_WIDTH(SCREEN_WIDTH),
+        .SCREEN_HEIGHT(SCREEN_HEIGHT),
+
+        .ADDRWIDTH(ADDRWIDTH),
+
+        .ZFAR(ZFAR),
+        .ZNEAR(ZNEAR)
+    ) render_pipeline_inst (
+        .clk(clk),
+        .rstn(rstn),
+
+        .render_pipeline_start(r_render_pipeline_start),
+        .render_pipeline_ready(w_render_pipeline_ready),
+        .render_pipeline_finished(w_render_pipeline_finished),
+
+        .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
+        .i_mvp_matrix(r_mvp_matrix_data),
+        .i_mvp_dv(r_mvp_dv),
+
+        .o_model_buff_vertex_read_en(w_model_buff_vertex_read_en),
+        .i_vertex(r_vertex_data),
+        .i_vertex_dv(r_vertex_dv),
+        .i_vertex_last(r_vertex_last),
+
+        .o_model_buff_index_read_en(w_model_buff_index_read_en),
+        .i_index_data(r_index_data),
+        .i_index_dv(r_index_dv),
+        .i_index_last(r_index_last),
+
+        .o_fb_addr_write(w_fb_addr_write),
+        .o_fb_write_en(w_fb_write_en),
+
+        .o_fb_depth_data(w_fb_depth_data),
+        .o_fb_color_data(w_fb_color_data)
     );
-    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
 
-    // display sync signals and coordinates
-    localparam CORDW = 16;  // signed coordinate width (bits)
-    logic signed [CORDW-1:0] sx, sy;
-    logic hsync, vsync;
-    logic de, frame;
-    projectf_display_480p #(.CORDW(CORDW)) display_inst (
-        .clk_pix,
-        .rst_pix,
-        .sx,
-        .sy,
-        .hsync,
-        .vsync,
-        .de,
-        .frame,
-        .line()
-    );
+    // =========================== DISPLAY ===========================
 
-    // color parameters
-    localparam CHANW = 4;        // color channel width (bits)
-    localparam COLRW = 3*CHANW;  // color width: three channels (bits)
-    localparam BG_COLR = 'h137;  // background color
+    // =========================== STATE ===========================
+    typedef enum logic [1:0] {
+        IDLE,
+        AWAIT_MCU_DATA,
+        CLEAR_FB,
+        RENDER,
+        DONE
+    } state_t;
+    state_t current_state = IDLE, next_state;
 
-    // framebuffer (FB)
-    localparam FB_WIDTH  = 160;  // framebuffer width in pixels
-    localparam FB_HEIGHT = 120;  // framebuffer width in pixels
-    // localparam FB_PIXELS = FB_WIDTH * FB_HEIGHT;  // total pixels in buffer
-    // localparam FB_ADDRW  = $clog2(FB_PIXELS);  // address width
-    // localparam FB_DATAW  = 4;  // color bits per pixel
-    // localparam FB_IMAGE  = "image.mem";  // bitmap file
-
-    // pixel read address and color
-    // logic [FB_ADDRW-1:0] fb_addr_read;
-    // logic [FB_ADDRW-1:0] fb_addr_write;
-    // logic [FB_DATAW-1:0] fb_colr_read;
-    // logic fb_write_enable;
-    //
-    // localparam signed X0 = 3;
-    // localparam signed Y0 = 4;
-    // localparam signed Z0 = 4;
-    // localparam signed X1 = 40;
-    // localparam signed Y1 = 90;
-    // localparam signed Z1 = 4;
-    // localparam signed X2 = 111;
-    // localparam signed Y2 = 20;
-    // localparam signed Z2 = 1000;
-    //
-    // localparam signed TILE_MIN_X = 0;
-    // localparam signed TILE_MIN_Y = 0;
-    // localparam signed TILE_MAX_X = 160;
-    // localparam signed TILE_MAX_Y = 120;
-    //
-    // logic [11:0] depth_data_in;
-    //
-    // rasterizer #(
-    //     .VERTEX_WIDTH(CORDW),
-    //     .FB_ADDR_WIDTH(FB_ADDRW),
-    //     .FB_WIDTH(FB_WIDTH),
-    //     .TILE_MIN_X(TILE_MIN_X),
-    //     .TILE_MIN_Y(TILE_MIN_Y),
-    //     .TILE_MAX_X(TILE_MAX_X),
-    //     .TILE_MAX_Y(TILE_MAX_Y)
-    // ) rasterizer_inst (
-    //     .clk(clk_100m),
-    //     .rst(!rstn),
-    //
-    //     .x0(X0),
-    //     .y0(Y0),
-    //     .z0(Z0),
-    //     .x1(X1),
-    //     .y1(Y1),
-    //     .z1(Z1),
-    //     .x2(X2),
-    //     .y2(Y2),
-    //     .z2(Z2),
-    //
-    //     .fb_addr(fb_addr_write),
-    //     .fb_write_enable(fb_write_enable),
-    //     .depth_data(depth_data_in),
-    //     .done()
-    // );
-    //
-    // // framebuffer memory
-    // buffer #(
-    //     .FB_WIDTH(FB_WIDTH),
-    //     .FB_HEIGHT(FB_HEIGHT),
-    //     .DATA_WIDTH(FB_DATAW),
-    //     .FILE(FB_IMAGE)
-    // ) fb_inst (
-    //     .clk_write(clk_100m),
-    //     .clk_read(clk_pix),
-    //     .write_enable(fb_write_enable),
-    //     .clear(),
-    //     .clear_value(),
-    //     .addr_write(fb_addr_write),
-    //     .addr_read(fb_addr_read),
-    //     .data_in(),
-    //     .data_out(fb_colr_read)
-    // );
-    //
-    // localparam DB_CLEAR_VALUE = 4095;
-    // localparam DB_DATA_WIDTH = 12;
-    //
-    // logic [FB_ADDRW-1:0] db_addr_read;
-    //logic [FB_ADDRW-1:0] db_addr_write;
-    // logic [11:0] db_data_out;
-    //logic db_write_enable = 1'b0;
-
-    // depth buffer memory
-    // buffer #(
-    //     .FB_WIDTH(FB_WIDTH),
-    //     .FB_HEIGHT(FB_HEIGHT),
-    //     .DATA_WIDTH(DB_DATA_WIDTH)
-    // ) db_inst (
-    //     .clk_write(clk_100m),
-    //     .clk_read(clk_pix),
-    //     .write_enable(fb_write_enable),
-    //     .clear(),
-    //     .clear_value(DB_CLEAR_VALUE),
-    //     .addr_write(fb_addr_write),
-    //     .addr_read(db_addr_read),
-    //     .data_in(depth_data_in),
-    //     .data_out(db_data_out)
-    // );
-
-
-    // calculate framebuffer read address for display output
-    // logic read_fb;
-    // always_ff @(posedge clk_pix) begin
-    //     read_fb <= (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-    //     if (frame) begin  // reset address at start of frame
-    //         fb_addr_read <= 0;
-    //     end else if (read_fb) begin  // increment address in painting area
-    //         fb_addr_read <= fb_addr_read + 1;
-    //     end
-    // end
-    //
-    // logic read_db;
-    // always_ff @(posedge clk_pix) begin
-    //     read_db <= (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-    //     if (frame) begin  // reset address at start of frame
-    //         db_addr_read <= 0;
-    //     end else if (read_db) begin  // increment address in painting area
-    //         db_addr_read <= db_addr_read + 1;
-    //     end
-    // end
-    //
-    // localparam CLUT_SIZE = 16;
-    // localparam CLUT_COLOR_WIDTH = 12;
-    // localparam PALETE_FILE = "palette.mem";
-
-    // colour lookup table
-    // logic [COLRW-1:0] fb_pix_colr;
-    // clut #(
-    //     .SIZE(CLUT_SIZE),
-    //     .COLOR_WIDTH(CLUT_COLOR_WIDTH),
-    //     .FILE(PALETE_FILE)
-    // ) clut_inst (
-    //     .clk(clk_pix),
-    //     .addr(fb_colr_read),
-    //     .color(fb_pix_colr)
-    // );
-
-
-    // paint screen
-    logic paint_fb;
-    logic paint_db;
-    logic [CHANW-1:0] paint_r, paint_g, paint_b;  // color channels
-    always_comb begin
-        paint_fb = (sy >= 0 && sy < FB_HEIGHT && sx >= 0 && sx < FB_WIDTH);
-        paint_db = (sy >= 0 && sy < FB_HEIGHT && sx >= FB_WIDTH && sx < FB_WIDTH*2);
-        if (paint_fb) begin
-            // {paint_r, paint_g, paint_b} = fb_pix_colr;
-            {paint_r, paint_g, paint_b} = 12'b111100000000;
-        end
-        else if (paint_db) begin
-            //{paint_r, paint_g, paint_b} = {depth_data[3:0], 8'b00000000};
-            // {paint_r, paint_g, paint_b} = db_data_out;
-            {paint_r, paint_g, paint_b} = 12'b000011110000;
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            current_state <= IDLE;
         end
         else begin
-            {paint_r, paint_g, paint_b} =  BG_COLR;
+            current_state <= next_state;
         end
     end
 
-    // display colour: paint colour but black in blanking interval
-    logic [CHANW-1:0] display_r, display_g, display_b;
-    always_comb {display_r, display_g, display_b} = (de) ? {paint_r, paint_g, paint_b} : 0;
+    always_comb begin
+        next_state = current_state;
 
-    // VGA Pmod output
-    always_ff @(posedge clk_pix) begin
-        vga_hsync <= hsync;
-        vga_vsync <= vsync;
-        vga_r <= display_r;
-        vga_g <= display_g;
-        vga_b <= display_b;
+        case (current_state)
+            IDLE: begin
+                if (w_render_pipeline_ready) begin // TODO: add more ready signals
+                    next_state = AWAIT_MCU_DATA;
+                end
+            end
+
+            AWAIT_MCU_DATA: begin
+                if () begin                 // TODO: Add MCU data output valid signal
+                    next_state = CLEAR_FB;
+                end
+            end
+
+            CLEAR_FB: begin
+                if (w_render_pipeline_ready) begin  // TODO: Add clear done signal
+                    next_state = RENDER;
+                end
+            end
+
+            RENDER: begin
+                if (w_render_pipeline_finished) begin
+                    if (r_render_pipeline_num_objects_rendered == w_mcu_num_objects) begin
+                        next_state = DONE;
+                    end
+                end
+            end
+
+            DONE: begin
+                next_state = IDLE;
+            end
+
+            default: begin
+                next_state = IDLE;
+            end
+        endcase
+    end
+
+    always_ff @(posedge clk) begin
+        case (current_state)
+            IDLE: begin
+                r_render_pipeline_start <= 0;
+            end
+
+            AWAIT_MCU_DATA: begin
+                r_render_pipeline_start <= 0;
+            end
+
+            CLEAR_FB: begin
+                r_render_pipeline_start <= 0;
+            end
+
+            RENDER: begin
+                if (w_render_pipeline_finished) begin
+                    r_rendered_objects <= r_rendered_objects + 1;
+
+                    if (r_rendered_objects == w_mcu_num_objects-1) begin
+                        r_render_pipeline_start <= 0;
+                    end else begin
+                        r_render_pipeline_start <= 1;
+                    end
+                end
+            end
+
+            DONE: begin
+                r_render_pipeline_start <= 0;
+            end
+
+            default: begin
+                r_render_pipeline_start <= 0;
+            end
+        endcase
     end
 endmodule

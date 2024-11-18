@@ -429,6 +429,7 @@ module rasterizer_frontend #(
                     if (next) begin
                         foreach (bb_tl[i]) bb_tl[i] <= r_bb_tl[i];
                         foreach (bb_br[i]) bb_br[i] <= r_bb_br[i];
+
                         edge_val0 <= r_edge_val0;
                         edge_val1 <= r_edge_val1;
                         edge_val2 <= r_edge_val2;

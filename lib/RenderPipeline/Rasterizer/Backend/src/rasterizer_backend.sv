@@ -113,6 +113,7 @@ module rasterizer_backend #(
     logic [ADDRWIDTH-1:0] w_addr_start;
     logic signed [2*DATAWIDTH-1:0] w_addr_start_y;
     logic signed [DATAWIDTH-1:0]   w_addr_start_x;
+    logic signed [2*DATAWIDTH:0] w_addr_start_x_y;
     always_comb begin
         w_addr_start_y = bb_tl[1] * SCREEN_WIDTH;
         if (bb_tl[0] == 0) begin
@@ -120,7 +121,8 @@ module rasterizer_backend #(
         end else begin
             w_addr_start_x = bb_tl[0] - 1;
         end
-        w_addr_start = $unsigned({w_addr_start_y[2*DATAWIDTH-1], w_addr_start_y[ADDRWIDTH-2:0]} + {{(ADDRWIDTH-DATAWIDTH){w_addr_start_x[DATAWIDTH-1]}}, w_addr_start_x});
+        w_addr_start_x_y = ({{(DATAWIDTH){1'b0}}, w_addr_start_x} + w_addr_start_y);
+        w_addr_start = w_addr_start_x_y[ADDRWIDTH-1:0];
     end
 
     // Compute
