@@ -159,7 +159,7 @@ module rasterizer_frontend #(
     logic signed [3*DATAWIDTH:0] z_dx;
     logic signed [3*DATAWIDTH:0] z_dy;
 
-    logic w_should_be_culled = '0;
+    logic w_should_be_culled;
     always_comb begin
         w_should_be_culled = $signed(r_area) <= $signed({(2*DATAWIDTH){1'b0}}) || ~r_bb_valid;
     end
