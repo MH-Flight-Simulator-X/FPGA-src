@@ -12,6 +12,7 @@ module top #(
     input  logic sim_rst,
     input  logic rasterizer_dv,
     input  logic display_clear,
+    input  logic triangleA,
     output logic [ADDRWIDTH-1:0] sdl_sx,  // horizontal SDL position
     output logic [ADDRWIDTH-1:0] sdl_sy,  // vertical SDL position
     output logic sdl_de,              // data enable (low in blanking interval)
@@ -39,27 +40,48 @@ module top #(
     logic fb_write_enable;
 
     // TODO: FIX
-    localparam signed X0 = 1;
-    localparam signed Y0 = 1;
-    localparam signed Z0 = 12'b100000000000; // 0.5
+    localparam signed AX0 = 30;
+    localparam signed AY0 = 30;
+    localparam signed AZ0 = 12'b100000000000; // 0.5
 
-    localparam signed X1 = 30;
-    localparam signed Y1 = 45;
-    localparam signed Z1 = 12'b100000000000; // 0.5
+    localparam signed AX1 = 140;
+    localparam signed AY1 = 100;
+    localparam signed AZ1 = 12'b000110011001; // 0.1
 
-    localparam signed X2 = 60;
-    localparam signed Y2 = 30;
-    localparam signed Z2 = 12'b000110011001; // 0.1
+    localparam signed AX2 = 160;
+    localparam signed AY2 = 0;
+    localparam signed AZ2 = 12'b100000000000; // 0.5
+
+    localparam signed BX0 = 30;
+    localparam signed BY0 = 30;
+    localparam signed BZ0 = 12'b100000000000; // 0.5
+
+    localparam signed BX1 = 30;
+    localparam signed BY1 = 120;
+    localparam signed BZ1 = 12'b100000000000; // 0.5
+
+    localparam signed BX2 = 140;
+    localparam signed BY2 = 100;
+    localparam signed BZ2 = 12'b100000000000; // 0.5
 
     logic signed [DATAWIDTH-1:0] v0[3];
     logic signed [DATAWIDTH-1:0] v1[3];
     logic signed [DATAWIDTH-1:0] v2[3];
 
-    initial begin
-        v0[0] = X0; v0[1] = Y0; v0[2] = Z0;
-        v1[0] = X1; v1[1] = Y1; v1[2] = Z1;
-        v2[0] = X2; v2[1] = Y2; v2[2] = Z2;
+
+    always_comb begin
+        if (triangleA) begin
+            v0[0] = AX0; v0[1] = AY0; v0[2] = AZ0;
+            v1[0] = AX1; v1[1] = AY1; v1[2] = AZ1;
+            v2[0] = AX2; v2[1] = AY2; v2[2] = AZ2;  
+        end
+        else begin
+            v0[0] = BX0; v0[1] = BY0; v0[2] = BZ0;
+            v1[0] = BX1; v1[1] = BY1; v1[2] = BZ1;
+            v2[0] = BX2; v2[1] = BY2; v2[2] = BZ2; 
+        end 
     end
+
 
     logic unsigned [DATAWIDTH-1:0] w_depth_data;
     logic unsigned [COLOR_LOOKUP_WIDTH-1:0] w_color_data;
@@ -78,7 +100,7 @@ module top #(
         .i_v0(v0),
         .i_v1(v1),
         .i_v2(v2),
-        .i_triangle_dv(1),
+        .i_triangle_dv(rasterizer_dv),
         .i_triangle_last(1),
 
         .o_fb_addr_write(buffer_addr_write),

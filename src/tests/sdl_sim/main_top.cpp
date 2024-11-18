@@ -12,6 +12,7 @@
 const int H_RES = 640;
 const int V_RES = 480;
 
+
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
 
@@ -113,6 +114,7 @@ int main(int argc, char* argv[]) {
         top->eval(); 
 
         if (top->clk_100m == 1) {
+            top->rasterizer_dv = 0;
             // update pixel if not in blanking interval
             if (top->sdl_de) {
                 Pixel* p = &screenbuffer[top->sdl_sy*H_RES + top->sdl_sx];
@@ -159,6 +161,15 @@ int main(int argc, char* argv[]) {
                         }
                         else {
                             top->rasterizer_dv = 0;
+                        }
+
+                        if (code == SDL_SCANCODE_A) {
+                            printf("A\n");
+                            top->triangleA = 1;
+                        }
+                        else if (code == SDL_SCANCODE_S) {
+                            printf("S\n");
+                            top->triangleA = 0;
                         }
                     }
                 }

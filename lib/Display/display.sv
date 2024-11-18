@@ -3,6 +3,7 @@
 module display#(
     parameter unsigned DISPLAY_WIDTH = 160,
     parameter unsigned DISPLAY_HEIGHT = 120,
+    parameter unsigned SCALE = 4,
     parameter unsigned DISPLAY_COORD_WIDTH = 16,
     parameter unsigned FB_DATA_WIDTH = 4,
     parameter unsigned DB_DATA_WIDTH = 12,
@@ -91,6 +92,7 @@ module display#(
     logic [DB_DATA_WIDTH-1:0] db_data;
     logic db_ready;
     localparam DB_CLEAR_VALUE = {DB_DATA_WIDTH{1'b1}};
+
     buffer #(
         .WIDTH(DB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH)
@@ -110,25 +112,52 @@ module display#(
     logic [BUFFER_ADDR_WIDTH-1:0] fb_addr_read;
     logic [BUFFER_ADDR_WIDTH-1:0] db_addr_read;
 
-    // calculate framebuffer read address for display output
     logic pixel_in_fb;
-    logic pixel_in_db;
+
+    logic unsigned [DISPLAY_COORD_WIDTH-1:0] x_scale_counter, y_scale_counter;
+    logic unsigned [DISPLAY_COORD_WIDTH-1:0] fb_x, fb_y;
 
     always_ff @(posedge clk_pix) begin 
         // Check if pixel is inside buffer drawing area
-        pixel_in_fb <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= 0 && screen_x < DISPLAY_WIDTH);
-        pixel_in_db <= (screen_y >= 0 && screen_y < DISPLAY_HEIGHT && screen_x >= DISPLAY_WIDTH && screen_x < DISPLAY_WIDTH*2);
+        pixel_in_fb <= (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE && 
+                        0 <= screen_x && screen_x < DISPLAY_WIDTH * SCALE);
 
         if (frame) begin
-            // reset addresses at start of frame
+            // Reset counters at start of frame
+            x_scale_counter <= 0;
+            y_scale_counter <= 0;
+            fb_x <= 0;
+            fb_y <= 0;
             fb_addr_read <= 0;
-            db_addr_read <= 0;
         end
         else if (pixel_in_fb) begin
-            fb_addr_read <= fb_addr_read + 1;
-        end
-        else if (pixel_in_db) begin
-            db_addr_read <= db_addr_read + 1;
+            // Update horizontal scaling counter
+            if (x_scale_counter < SCALE - 1) begin
+                x_scale_counter <= x_scale_counter + 1;
+            end
+            else begin
+                x_scale_counter <= 0;
+                // Move to next framebuffer pixel horizontally
+                if (fb_x < DISPLAY_WIDTH - 1) begin
+                    fb_x <= fb_x + 1;
+                end
+                else begin
+                    fb_x <= 0;
+                    // Update vertical scaling counter
+                    if (y_scale_counter < SCALE - 1) begin
+                        y_scale_counter <= y_scale_counter + 1;
+                    end
+                    else begin
+                        y_scale_counter <= 0;
+                        // Move to next framebuffer line vertically
+                        if (fb_y < DISPLAY_HEIGHT - 1) begin
+                            fb_y <= fb_y + 1;
+                        end
+                    end
+                end
+            end
+
+            fb_addr_read <= fb_y * DISPLAY_WIDTH + fb_x;
         end
     end
 
@@ -143,9 +172,6 @@ module display#(
         end
         else if (pixel_in_fb) begin
             {o_red, o_green, o_blue} = clut_data;
-        end
-        else if (pixel_in_db) begin
-            {o_red, o_green, o_blue} = {db_data[11:8], 8'b00000000};
         end
         else begin
             {o_red, o_green, o_blue} = BG_COLOR;
