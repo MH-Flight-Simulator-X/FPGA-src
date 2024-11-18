@@ -162,6 +162,11 @@ module primitive_assembler #(
                         foreach (o_v2[i]) o_v2[i] <= i_v2[i];
                         o_dv <= '1;
                         o_last <= r_triangle_last;
+                        // $display("PA out:");
+                        // $display("\tv0: %d %d %d", i_v0[0], i_v0[1], i_v0[2]);
+                        // $display("\tv1: %d %d %d", i_v1[0], i_v1[1], i_v1[2]);
+                        // $display("\tv2: %d %d %d", i_v2[0], i_v2[1], i_v2[2]);
+                        // $display("\n");
                     end else begin
                         o_dv <= '0;
                         o_last <= '0;

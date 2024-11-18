@@ -162,6 +162,9 @@ def main(filename):
             area = edge_function(coords[0], coords[1], coords[2])
             if (area <= 0):
                 continue
+
+            print(f"i = {i}")
+            print(f"{v0, v1, v2}")
             total_area += area
 
             depths = [z for (x, y, z) in triangle]
@@ -174,8 +177,8 @@ def main(filename):
 
             pygame.draw.polygon(screen, final_color, coords)
 
-        print("Total area: ", total_area)
-        print("Average area: ", total_area / len(triangles))
+        # print("Total area: ", total_area)
+        # print("Average area: ", total_area / len(triangles))
 
         # Update the display
         pygame.display.flip()

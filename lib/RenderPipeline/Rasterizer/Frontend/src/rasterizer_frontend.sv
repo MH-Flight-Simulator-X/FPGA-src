@@ -192,7 +192,7 @@ module rasterizer_frontend #(
 
             COMPUTE_EDGE_0: begin
                 if ($signed(r_area) <= $signed({(2*DATAWIDTH){1'b0}}) || ~r_bb_valid) begin
-                    $display("Invalid triangle. Back-face culling");
+                    // $display("Invalid triangle. Back-face culling");
                     next_state = IDLE;
                 end else if (w_area_division_ready) begin
                     next_state = COMPUTE_EDGE_1;
@@ -270,10 +270,17 @@ module rasterizer_frontend #(
                         foreach (r_v1[i]) r_v1[i] <= i_v1[i];
                         foreach (r_v2[i]) r_v2[i] <= i_v2[i];
 
+                        // $display("Triangle: (%d, %d), (%d, %d), (%d, %d)",
+                        //     i_v0[0], i_v0[1],
+                        //     i_v1[0], i_v1[1],
+                        //     i_v2[0], i_v2[1]
+                        // );
+
                         // Add values to register in order to compute area
                         r_edge_function_v1 <= '{i_v0[0], i_v0[1]};
                         r_edge_function_v2 <= '{i_v1[0], i_v1[1]};
                         r_edge_function_p  <= '{i_v2[0], i_v2[1]};
+
                     end else begin
                         foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
                         foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;
@@ -409,6 +416,10 @@ module rasterizer_frontend #(
                     foreach (edge_delta2[i]) edge_delta2[i] <= r_edge_delta2[i];
 
                     o_dv <= '1;
+
+                    // if (next) begin
+                    //     $display("Ready for next triangle");
+                    // end
                 end
 
                 default: begin

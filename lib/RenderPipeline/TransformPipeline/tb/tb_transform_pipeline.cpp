@@ -243,8 +243,8 @@ int main(int argc, char** argv) {
 
     std::vector<glm::vec3> vertex_buffer = read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = read_index_data("model.face");
-    glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -1.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
-    glm::mat4 mvp2 = generate_mvp(glm::vec3(0.0f, 1.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
+    glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
+    // glm::mat4 mvp2 = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
 
     // Reset
     for (int i = 0; i < RESET_CLKS; i++) {
@@ -303,13 +303,16 @@ int main(int argc, char** argv) {
             if (dut->o_mvp_matrix_read_en) {
                 // printf("Assigning matrix\n");
 
-                if (num_rendered == 0) {
-                    assign_mvp_data(dut, mvp);
-                } else {
-                    assign_mvp_data(dut, mvp2);
-                }
-
+                assign_mvp_data(dut, mvp);
                 dut->i_mvp_dv = 1;
+
+                // if (num_rendered == 0) {
+                //     assign_mvp_data(dut, mvp);
+                // } else {
+                //     assign_mvp_data(dut, mvp2);
+                // }
+                //
+                // dut->i_mvp_dv = 1;
             }
 
             if (shouldReset)
@@ -341,6 +344,7 @@ int main(int argc, char** argv) {
 
                 // Store triangle data
                 Triangle_t tri = {glm::ivec2(v0[0], v0[1]), v0_z, glm::ivec2(v1[0], v1[1]), v1_z, glm::ivec2(v2[0], v2[1]), v2_z};
+                printf("Triangle %d: (%d, %d, %f), (%d, %d, %f), (%d, %d, %f)\n", num_triangles_rec, v0[0], v0[1], v0_z, v1[0], v1[1], v1_z, v2[0], v2[1], v2_z);
                 output_triangles.push_back(tri);
             }
 
@@ -377,7 +381,7 @@ int main(int argc, char** argv) {
                 printf("Transform pipeline done\n");
                 shouldReset = true;
                 num_rendered++;
-                if (num_rendered >= 2)
+                if (num_rendered >= 1)
                     break;
             }
         }

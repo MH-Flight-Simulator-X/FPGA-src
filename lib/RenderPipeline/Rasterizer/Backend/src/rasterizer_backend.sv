@@ -83,9 +83,8 @@ module rasterizer_backend #(
             IDLE: begin
                 if (i_dv) begin
                     next_state = RASTERIZE;
-                end else begin
-                    ready = 1'b1;
                 end
+                ready = 1'b1;
             end
 
             RASTERIZE: begin
@@ -103,6 +102,20 @@ module rasterizer_backend #(
                 next_state = IDLE;
             end
         endcase
+    end
+
+    // Calculate start address
+    logic [ADDRWIDTH-1:0] w_addr_start;
+    logic [2*DATAWIDTH-1:0] w_addr_start_y;
+    logic [DATAWIDTH-1:0]   w_addr_start_x;
+    always_comb begin
+        w_addr_start_y = r_bb_tl[1] * SCREEN_WIDTH;
+        if (r_bb_tl[0] == 0) begin
+            w_addr_start_x = 0;
+        end else begin
+            w_addr_start_x = r_bb_tl[0] - 1;
+        end
+        w_addr_start = w_addr_start_y[ADDRWIDTH-1:0] + {{(ADDRWIDTH-DATAWIDTH){1'b0}}, w_addr_start_x};
     end
 
     // Compute
@@ -130,8 +143,7 @@ module rasterizer_backend #(
                 r_z <= z;
                 r_z_row_start <= z;
 
-                r_addr <= {{(ADDRWIDTH-DATAWIDTH){1'b0}},
-                           $signed(bb_tl[1] * SCREEN_WIDTH) + $signed(bb_tl[0] - {{(DATAWIDTH-1){1'b0}}, 1'b1})};
+                r_addr <= w_addr_start;
                 r_addr_delta_y <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, SCREEN_WIDTH - (bb_br[0] - bb_tl[0])};
             end
 

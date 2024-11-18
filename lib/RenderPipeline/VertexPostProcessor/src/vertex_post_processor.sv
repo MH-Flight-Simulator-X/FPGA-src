@@ -178,34 +178,6 @@ module vertex_post_processor #(
         end
     end
 
-    // Set output data and signals
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
-            foreach (o_vertex_pixel[i]) o_vertex_pixel[i] <= '0;
-            done <= '0;
-            invalid <= '0;
-        end else begin
-            case (current_state)
-                VPP_SCREEN_SPACE_TRANSFORM: begin
-                    o_vertex_pixel[0] <= {w_ss_x_inter[2 * IV_DATAWIDTH - 1], w_ss_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
-                    o_vertex_pixel[1] <= {w_ss_y_inter[2 * IV_DATAWIDTH - 1], w_ss_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
-                    o_vertex_pixel[2] <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-OV_DATAWIDTH];
-                    done <= '1;
-                end
-
-                VPP_ERROR_STATE: begin
-                    done <= '1;
-                    invalid <= '1;
-                end
-
-                default: begin
-                    done <= '0;
-                    invalid <= '0;
-                end
-            endcase
-        end
-    end
-
     // State logic
     always_ff @(posedge clk) begin
         if (~rstn) begin
@@ -229,7 +201,6 @@ module vertex_post_processor #(
             end
 
             VPP_CLIP: begin
-                $display("r_clip_z = %x\t r_clip_w = %x", r_clip_z, r_clip_w);
                 if (z_invalid) begin
                     next_state = VPP_ERROR_STATE;
                 end else begin
@@ -258,5 +229,33 @@ module vertex_post_processor #(
             default:
                 next_state = VPP_IDLE;
         endcase
+    end
+
+    // Set output data and signals
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            foreach (o_vertex_pixel[i]) o_vertex_pixel[i] <= '0;
+            done <= '0;
+            invalid <= '0;
+        end else begin
+            case (current_state)
+                VPP_SCREEN_SPACE_TRANSFORM: begin
+                    o_vertex_pixel[0] <= {w_ss_x_inter[2 * IV_DATAWIDTH - 1], w_ss_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
+                    o_vertex_pixel[1] <= {w_ss_y_inter[2 * IV_DATAWIDTH - 1], w_ss_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
+                    o_vertex_pixel[2] <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-OV_DATAWIDTH];
+                    done <= '1;
+                end
+
+                VPP_ERROR_STATE: begin
+                    done <= '1;
+                    invalid <= '1;
+                end
+
+                default: begin
+                    done <= '0;
+                    invalid <= '0;
+                end
+            endcase
+        end
     end
 endmodule

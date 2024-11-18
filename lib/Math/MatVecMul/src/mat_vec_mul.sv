@@ -154,14 +154,6 @@ module mat_vec_mul #(
 
                 o_dv <= i_dv_r[3];
             end
-
-            if (o_dv & i_enable) begin
-                $display("y[0] = %b", y[0]);
-                $display("y[1] = %b", y[1]);
-                $display("y[2] = %b", y[2]);
-                $display("y[3] = %b", y[3]);
-                $display("\n");
-            end
         end
     end
 endmodule

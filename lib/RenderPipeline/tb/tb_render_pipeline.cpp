@@ -26,33 +26,31 @@ typedef struct Pixel {
 } Pixel;
 
 // 16 color palette
-Pixel color_lookup[16] = {
-    (Pixel){0xFF, 0x00, 0x00, 0x00},
-    (Pixel){0xFF, 0x00, 0x00, 0xFF},
-    (Pixel){0xFF, 0x00, 0xFF, 0x00},
-    (Pixel){0xFF, 0x00, 0xFF, 0xFF},
-    (Pixel){0xFF, 0xFF, 0x00, 0x00},
-    (Pixel){0xFF, 0xFF, 0x00, 0xFF},
-    (Pixel){0xFF, 0xFF, 0xFF, 0x00},
-    (Pixel){0xFF, 0xFF, 0xFF, 0xFF},
-    (Pixel){0xFF, 0x00, 0x00, 0x00},
-    (Pixel){0xFF, 0x00, 0x00, 0xFF},
-    (Pixel){0xFF, 0x00, 0xFF, 0x00},
-    (Pixel){0xFF, 0x00, 0xFF, 0xFF},
-    (Pixel){0xFF, 0xFF, 0x00, 0x00},
-    (Pixel){0xFF, 0xFF, 0x00, 0xFF},
-    (Pixel){0xFF, 0xFF, 0xFF, 0x00},
-    (Pixel){0xFF, 0xFF, 0xFF, 0xFF}
+Pixel color_palette[10] = {
+    {0xFF, 255, 182, 193},  // Light Pink
+    {0xFF, 255, 222, 173},  // Navajo White
+    {0xFF, 176, 224, 230},  // Powder Blue
+    {0xFF, 255, 239, 213},  // Papaya Whip
+    {0xFF, 240, 230, 140},  // Khaki
+    {0xFF, 221, 160, 221},  // Plum
+    {0xFF, 250, 250, 210},  // Light Goldenrod Yellow
+    {0xFF, 152, 251, 152},  // Pale Green
+    {0xFF, 245, 222, 179},  // Wheat
+    {0xFF, 216, 191, 216}   // Thistle
 };
 
 vluint64_t clk_100m_cnt = 0;
 
-glm::mat4 generate_mvp() {
+glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot) {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -5.0f));
-    model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+    model = glm::translate(model, pos);
+    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
+
+    float scale = 2.0f;
+    model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     glm::mat4 view = glm::lookAt(
         glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
@@ -74,98 +72,73 @@ void assign_mvp_data(Vrender_pipeline* dut, glm::mat4 mvp) {
         for (int j = 0; j < 4; j++) {
             int32_t fixed_point = FixedPoint<int32_t>::fromFloat(mvp[j][i], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
             dut->i_mvp_matrix[i][j] = fixed_point;
-            printf("(%d, %d): %b\n", i, j, dut->i_mvp_matrix[i][j]);
         }
     }
 };
 
-void assign_vertex_data(Vrender_pipeline* dut, std::vector<glm::vec3>& vertex_data, bool new_frame = false) {
-    static int vertex_data_addr = 0;
-    if (new_frame)
-        vertex_data_addr = 0;
-    
-    // if (dut->o_model_buff_vertex_read_en) {
-    //     if (vertex_data_addr >= vertex_data.size()) {
-    //         return;
-    //     } else if (vertex_data_addr == vertex_data.size() - 1) {
-    //         dut->i_vertex_last = 1;
-    //     }
-    //
-    //     dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-    //     dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-    //     dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-    //     dut->i_vertex_dv = 1;
-    //     vertex_data_addr++;
-    // } else {
-    //     dut->i_index_data[0] = 0;
-    //     dut->i_index_data[1] = 0;
-    //     dut->i_index_data[2] = 0;
-    //     dut->i_vertex_dv = 0;
-    // }
-    
-    std::vector<glm::vec3> verts = {
-        {-1, 0, 0.5},
-        { 1, 0, 0.5},
-        { 0, 1, 0.5}
-    };
-
-    static int a = 0;
-    if (a == 0) {
-        a++;
-        for (int i = 0; i < 3; i++) {
-            glm::vec4 v = glm::vec4(verts[i], 1.0f);
-            glm::vec4 p = glm::mat4(1.0f) * v;
-            printf("Vertex %d: (%f, %f, %f) -> (%f, %f, %f)\n", i, v.x, v.y, v.z, p.x, p.y, p.z);
-        }
+void assign_vertex_data(Vrender_pipeline* dut, std::vector<glm::vec3>& vertex_data, bool reset = false) {
+    static vluint64_t vertex_read_addr = 0;
+    if (reset) {
+        vertex_read_addr = 0;
+        printf("Resetting vertex read address\n");
     }
 
+    if (vertex_read_addr >= vertex_data.size()) {
+        dut->i_vertex_last = 0;
+        dut->i_vertex[0] = 0;
+        dut->i_vertex[1] = 0;
+        dut->i_vertex[2] = 0;
+        dut->i_vertex_dv = 0;
+        return;
+    }
+    
     if (dut->o_model_buff_vertex_read_en) {
-        if (vertex_data_addr < 3) {
-            dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-            dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-            dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-            dut->i_vertex_last = vertex_data_addr == 2;
-            dut->i_vertex_dv = 1;
-            vertex_data_addr++;
+        if (vertex_read_addr == vertex_data.size() - 1) {
+            dut->i_vertex_last = 1;
+            printf("Last vertex!\n");
         } else {
-            dut->i_vertex[0] = 0;
-            dut->i_vertex[1] = 0;
-            dut->i_vertex[2] = 0;
-            dut->i_vertex_dv = 0;
             dut->i_vertex_last = 0;
         }
+
+        dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+        dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+        dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+        dut->i_vertex_dv = 1;
+
+        vertex_read_addr++;
+    } else {
+        dut->i_vertex_last = 0;
+        dut->i_vertex[0] = 0;
+        dut->i_vertex[1] = 0;
+        dut->i_vertex[2] = 0;
+        dut->i_vertex_dv = 0;
     }
 };
 
-void assign_input_index(Vrender_pipeline* dut, std::vector<glm::ivec3>& index_data, bool new_frame = false) {
-    static int index_data_addr = 0;
-    if (new_frame)
-        index_data_addr = 0;
+void assign_index_data(Vrender_pipeline* dut, std::vector<glm::ivec3>& index_data, bool reset = false) {
+    static vluint64_t index_read_addr = 0;
+    if (reset)
+        index_read_addr = 0;
 
     if (dut->o_model_buff_index_read_en) {
-        // if (index_data_addr >= index_data.size()) {
-        //     return;
-        // } else if (index_data_addr == index_data.size() - 1) {
-        //     dut->i_index_last = 1;
-        // }
+        if (index_read_addr == index_data.size() - 1) {
+            dut->i_index_last = 1;
+        } else {
+            dut->i_index_last = 0;
+        }
 
-        printf("Hi\n");
-        dut->i_index_data[0] = 0;
-        dut->i_index_data[1] = 1;
-        dut->i_index_data[2] = 2;
-        dut->i_index_last = 1;
-        dut->i_vertex_dv = 1;
-        // dut->i_index_data[0] = index_data[index_data_addr].x;
-        // dut->i_index_data[1] = index_data[index_data_addr].y;
-        // dut->i_index_data[2] = index_data[index_data_addr].z;
-        // dut->i_index_dv = 1;
-        // index_data_addr++;
+        dut->i_index_data[0] = index_data.at(index_read_addr).x;
+        dut->i_index_data[1] = index_data.at(index_read_addr).y;
+        dut->i_index_data[2] = index_data.at(index_read_addr).z;
+        dut->i_index_dv = 1;
+
+        index_read_addr++;
     } else {
+        dut->i_index_last = 0;
         dut->i_index_data[0] = 0;
         dut->i_index_data[1] = 0;
         dut->i_index_data[2] = 0;
         dut->i_index_dv = 0;
-        dut->i_vertex_last = 0;
     }
 }
 
@@ -214,6 +187,7 @@ int main(int argc, char* argv[]) {
 
     // initialize Verilog module
     Vrender_pipeline* dut = new Vrender_pipeline;
+    vluint64_t posedge_cnt = 0;
 
     // initialize frame rate
     uint64_t start_ticks = SDL_GetPerformanceCounter();
@@ -246,6 +220,7 @@ int main(int argc, char* argv[]) {
     dut->rstn = 1;
 
     // Main loop
+    vluint64_t clk_frame_start = posedge_cnt;
     while (true) {
         SDL_Event e;
         if (SDL_PollEvent(&e)) {
@@ -260,11 +235,12 @@ int main(int argc, char* argv[]) {
         dut->eval();
 
         if (dut->clk) {
+            posedge_cnt++;
             dut->i_mvp_dv = 0;
             dut->i_vertex_dv = 0;
             dut->i_vertex_last = 0;
 
-            bool new_frame = false;
+            static bool new_frame = false;
             if (dut->ready) {
                 dut->start = 1;
                 new_frame = true;
@@ -272,25 +248,19 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                // glm::mat4 mvp = generate_mvp();
-                glm::mat4 mvp = glm::mat4(1.0f);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -0.75f, -1.0f), glm::vec3(15.0f, -10.0f, 0.0f));
+                //
+                // glm::mat4 mvp = glm::mat4(1.0f);
                 assign_mvp_data(dut, mvp);                
                 dut->i_mvp_dv = 1;
             }
 
-            // printf("Transform pipeline state: %d\n", dut->render_pipeline__DOT__transform_pipeline_inst__DOT__current_state);
-            // printf("Rasterizer ready: %d\n", dut->render_pipeline__DOT__w_rasterizer_ready);
-            // printf("Rasterizer backend ready: %d\n", dut->render_pipeline__DOT__rasterizer_inst__DOT__w_rasterizer_backend_ready);
-            
-            if (dut->render_pipeline__DOT__rasterizer_inst__DOT__w_rasterizer_backend_done) {
-                printf("Backend DONE!\n");
-                break;
-            }
-
-            // printf("Write en: %d\n", dut->o_fb_write_en);
+            // if (dut->render_pipeline__DOT__rasterizer_inst__DOT__w_rasterizer_backend_done) {
+            //     printf("Backend DONE!\n");
+            // }
 
             assign_vertex_data(dut, vertex_buffer, new_frame);
-            assign_input_index(dut, index_buffer, new_frame);
+            assign_index_data(dut, index_buffer, new_frame);
 
             if (dut->o_fb_write_en) {
                 if (dut->o_fb_addr_write >= H_RES * V_RES)
@@ -298,19 +268,30 @@ int main(int argc, char* argv[]) {
 
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
-                p->b = 0xFF;
-                p->g = 0xFF;
-                p->r = 0xFF;
+                p->b = color_palette[dut->o_fb_color_data % 10].b;
+                p->g = color_palette[dut->o_fb_color_data % 10].g;
+                p->r = color_palette[dut->o_fb_color_data % 10].r;
             }
 
             if (dut->finished) {
                 printf("Finished!\n");
-                // Render to display
                 SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
                 SDL_RenderClear(sdl_renderer);
                 SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
+
+                vluint64_t clk_frame_end = posedge_cnt;
+                float time_per_frame = (clk_frame_end - clk_frame_start) * 1e-8;
+                float frame_rate = 1.0 / time_per_frame;
+                printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
+                printf("Time per frame: %fs\n", time_per_frame);
+                printf("Frame rate: %f\n", frame_rate);
+                clk_frame_start = clk_frame_end;
+
+                new_frame = true;
+            } else {
+                new_frame = false;
             }
         }
     }
