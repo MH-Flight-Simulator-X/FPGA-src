@@ -41,8 +41,12 @@ Pixel color_palette[10] = {
 
 vluint64_t clk_100m_cnt = 0;
 
+glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 camera_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+float camera_speed = 0.75f;
+float rotation_speed = glm::pi<float>() / 4.0f;
+
 glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
-    // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
     model = glm::rotate(model, glm::radians(rot.x), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -52,16 +56,17 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     float scale = 2.0f;
     model = glm::scale(model, glm::vec3(scale, scale, scale));
 
-    glm::mat4 view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
-        glm::vec3(0.0f, 0.0f, 0.0f), // Look at point
-        glm::vec3(0.0f, 1.0f, 0.0f)  // Up vector
-    );
+    // Adjust the camera view based on current position and rotation
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::rotate(view, glm::radians(camera_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)); // Pitch
+    view = glm::rotate(view, glm::radians(camera_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)); // Yaw
+    view = glm::translate(view, -camera_position); // Camera position
 
     float fov = glm::radians(45.0f);
     float aspectRatio = (float)H_RES / V_RES;
     float farPlane = 100.0f;
-    glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, farPlane);
+
     glm::mat4 mvp = projection * view * model;
 
     return mvp;
@@ -155,27 +160,48 @@ int main(int argc, char* argv[]) {
     }
 
     Pixel screenbuffer[H_RES*V_RES];
+    float zbuffer[H_RES*V_RES];
+
+    for (int i = 0; i < H_RES*V_RES; i++) {
+        screenbuffer[i].a = 0xFF;
+        screenbuffer[i].b = 0x00;
+        screenbuffer[i].g = 0x00;
+        screenbuffer[i].r = 0x00;
+        zbuffer[i] = 1.0f;
+    }
 
     SDL_Window*   sdl_window   = NULL;
     SDL_Renderer* sdl_renderer = NULL;
     SDL_Texture*  sdl_texture  = NULL;
 
-    sdl_window = SDL_CreateWindow("MH-Flight-Simulator", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, H_RES, V_RES, SDL_WINDOW_SHOWN);
+    sdl_window = SDL_CreateWindow(
+        "MH-Flight-Simulator", 
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED, 
+        H_RES * 4,  // Double the width
+        V_RES * 4,  // Double the height
+        SDL_WINDOW_SHOWN
+    );
     if (!sdl_window) {
         printf("Window creation failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    sdl_renderer = SDL_CreateRenderer(sdl_window, -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!sdl_renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888,
-        SDL_TEXTUREACCESS_TARGET, H_RES, V_RES);
+    SDL_RenderSetLogicalSize(sdl_renderer, H_RES, V_RES);
+
+    sdl_texture = SDL_CreateTexture(
+        sdl_renderer, 
+        SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_STREAMING, 
+        H_RES, 
+        V_RES
+    );
     if (!sdl_texture) {
         printf("Texture creation failed: %s\n", SDL_GetError());
         return 1;
@@ -228,8 +254,45 @@ int main(int argc, char* argv[]) {
             if (e.type == SDL_QUIT) {
                 break;
             }
+            else if (e.type == SDL_KEYDOWN) {
+                glm::vec3 forward = glm::vec3(
+                    -sin(glm::radians(camera_rotation.y)),
+                    0.0f,
+                    -cos(glm::radians(camera_rotation.y))
+                );
+                forward = glm::normalize(forward);
+                glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+                if (keyb_state[SDL_SCANCODE_W]) {
+                    camera_position += forward * camera_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_S]) {
+                    camera_position -= forward * camera_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_A]) {
+                    camera_position -= right * camera_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_D]) {
+                    camera_position += right * camera_speed;
+                }
+
+                // Rotate camera
+                if (keyb_state[SDL_SCANCODE_LEFT]) {
+                    camera_rotation.y -= rotation_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_RIGHT]) {
+                    camera_rotation.y += rotation_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_UP]) {
+                    camera_rotation.x -= rotation_speed;
+                }
+                if (keyb_state[SDL_SCANCODE_DOWN]) {
+                    camera_rotation.x += rotation_speed;
+                }
+            }
         }
         if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
+
 
         // Main sim
         dut->clk ^= 1;
@@ -249,7 +312,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -1.5f), glm::vec3(0.0f, -25.0f, 0.0f), 1.0f);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
@@ -264,18 +327,18 @@ int main(int argc, char* argv[]) {
                 if (dut->o_fb_addr_write >= H_RES * V_RES)
                     continue;
 
+                float z = FixedPoint<int32_t>(dut->o_fb_depth_data, 12, 12, false).toFloat();
+                if (z < zbuffer[dut->o_fb_addr_write]) {
+                    zbuffer[dut->o_fb_addr_write] = z;
+                } else {
+                    continue;
+                }
+
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
-
-                if (dut->o_fb_color_data == 0) {
-                    p->b = 0x00;
-                    p->g = 0x00;
-                    p->r = 0xFF;
-                } else {
-                    p->b = color_palette[dut->o_fb_color_data % 10].b;
-                    p->g = color_palette[dut->o_fb_color_data % 10].g;
-                    p->r = color_palette[dut->o_fb_color_data % 10].r;
-                }
+                p->b = color_palette[dut->o_fb_color_data % 10].b;
+                p->g = color_palette[dut->o_fb_color_data % 10].g;
+                p->r = color_palette[dut->o_fb_color_data % 10].r;
             }
 
             if (dut->finished) {
@@ -286,24 +349,21 @@ int main(int argc, char* argv[]) {
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
 
-                if (frame_count == 2) {
-                    break;
-                }
-
                 // Clear screen buffer
                 for (int i = 0; i < H_RES*V_RES; i++) {
                     screenbuffer[i].a = 0xFF;
                     screenbuffer[i].b = 0x00;
                     screenbuffer[i].g = 0x00;
                     screenbuffer[i].r = 0x00;
+                    zbuffer[i] = 1.0f;
                 }
 
                 vluint64_t clk_frame_end = posedge_cnt;
                 float time_per_frame = (clk_frame_end - clk_frame_start) * 1e-8;
                 float frame_rate = 1.0 / time_per_frame;
-                // printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
-                // printf("Time per frame: %fs\n", time_per_frame);
-                // printf("Frame rate: %f\n", frame_rate);
+                printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
+                printf("Time per frame: %fs\n", time_per_frame);
+                printf("Frame rate: %f\n", frame_rate);
                 clk_frame_start = clk_frame_end;
 
                 new_frame = true;

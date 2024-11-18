@@ -1,7 +1,7 @@
 # Makefile for Verilator and SDL Simulation
 
 # Verilator options
-VFLAGS = -O3 --x-assign fast --x-initial fast --noassert
+VFLAGS = -O3 --x-assign fast --x-initial fast --assert
 
 # SDL flags
 SDL_CFLAGS = $(shell sdl2-config --cflags)
