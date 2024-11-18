@@ -99,8 +99,8 @@ int main(int argc, char* argv[]) {
     uint64_t start_ticks = SDL_GetPerformanceCounter();
     uint64_t frame_count = 0;
 
-    // main loop
-    while (true) {
+    bool running = true;
+    while (running) {
         // update main clock
         top->clk_100m ^= 1;
         clk_100m_cnt++;
@@ -130,23 +130,38 @@ int main(int argc, char* argv[]) {
 
             // update texture once per frame (in blanking)
             if (top->frame) { 
-                // check for quit event
-                SDL_Event e;
-                if (SDL_PollEvent(&e)) {
-                    if (e.type == SDL_KEYDOWN) {
-                        printf("Hi\n");
-                    }
-                }
-
-                if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
-
                 SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
                 SDL_RenderClear(sdl_renderer);
                 SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
                 SDL_RenderPresent(sdl_renderer);
                 frame_count++;
 
-                printf("New frame\n");
+                SDL_Event e;
+                while (SDL_PollEvent(&e)) {
+                    if (e.type == SDL_QUIT) {
+                        running = false;
+                    }
+                    if (e.type == SDL_KEYDOWN) {
+                        auto code = e.key.keysym.scancode;
+                        if (code == SDL_SCANCODE_Q) {
+                            running = false;
+                        }
+                        
+                        if (code == SDL_SCANCODE_D) {
+                            top->display_clear = 1;
+                        }
+                        else {
+                            top->display_clear = 0;
+                        }
+
+                        if (code == SDL_SCANCODE_R) {
+                            top->rasterizer_dv = 1;
+                        }
+                        else {
+                            top->rasterizer_dv = 0;
+                        }
+                    }
+                }
             }
         }
     }
