@@ -44,7 +44,7 @@ $(EXEC): $(OBJ_DIR)/V$(TOP_MODULE).mk
 	make -C $(OBJ_DIR) -f V$(TOP_MODULE).mk
 
 # Rule to generate the object files and Verilator C++ model
-$(OBJ_DIR)/V$(TOP_MODULE).mk: $(VERILOG_FILE) $(CPP_FILE)
+$(OBJ_DIR)/V$(TOP_MODULE).mk: $(VERILOG_FILE) $(VERILOG_SOURCES) $(CPP_FILE)
 	verilator $(VFLAGS) -I$(SRC_DIR) -cc $(VERILOG_FILE) $(VERILOG_SOURCES) --exe $(CPP_FILE) -o $(EXEC) \
 		-CFLAGS "$(SDL_CFLAGS)" -LDFLAGS "$(SDL_LDFLAGS)"
 

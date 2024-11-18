@@ -74,6 +74,7 @@ void assign_mvp_data(Vrender_pipeline* dut, glm::mat4 mvp) {
         for (int j = 0; j < 4; j++) {
             int32_t fixed_point = FixedPoint<int32_t>::fromFloat(mvp[j][i], INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
             dut->i_mvp_matrix[i][j] = fixed_point;
+            printf("(%d, %d): %b\n", i, j, dut->i_mvp_matrix[i][j]);
         }
     }
 };
@@ -82,26 +83,58 @@ void assign_vertex_data(Vrender_pipeline* dut, std::vector<glm::vec3>& vertex_da
     static int vertex_data_addr = 0;
     if (new_frame)
         vertex_data_addr = 0;
+    
+    // if (dut->o_model_buff_vertex_read_en) {
+    //     if (vertex_data_addr >= vertex_data.size()) {
+    //         return;
+    //     } else if (vertex_data_addr == vertex_data.size() - 1) {
+    //         dut->i_vertex_last = 1;
+    //     }
+    //
+    //     dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+    //     dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+    //     dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+    //     dut->i_vertex_dv = 1;
+    //     vertex_data_addr++;
+    // } else {
+    //     dut->i_index_data[0] = 0;
+    //     dut->i_index_data[1] = 0;
+    //     dut->i_index_data[2] = 0;
+    //     dut->i_vertex_dv = 0;
+    // }
+    
+    std::vector<glm::vec3> verts = {
+        {-1, 0, 0.5},
+        { 1, 0, 0.5},
+        { 0, 1, 0.5}
+    };
 
-    if (dut->o_model_buff_vertex_read_en) {
-        if (vertex_data_addr >= vertex_data.size()) {
-            return;
-        } else if (vertex_data_addr == vertex_data.size() - 1) {
-            dut->i_vertex_last = 1;
+    static int a = 0;
+    if (a == 0) {
+        a++;
+        for (int i = 0; i < 3; i++) {
+            glm::vec4 v = glm::vec4(verts[i], 1.0f);
+            glm::vec4 p = glm::mat4(1.0f) * v;
+            printf("Vertex %d: (%f, %f, %f) -> (%f, %f, %f)\n", i, v.x, v.y, v.z, p.x, p.y, p.z);
         }
-
-        dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data[vertex_data_addr].z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex_dv = 1;
-        vertex_data_addr++;
-    } else {
-        dut->i_index_data[0] = 0;
-        dut->i_index_data[1] = 0;
-        dut->i_index_data[2] = 0;
-        dut->i_vertex_dv = 0;
     }
 
+    if (dut->o_model_buff_vertex_read_en) {
+        if (vertex_data_addr < 3) {
+            dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+            dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+            dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(verts[vertex_data_addr].z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
+            dut->i_vertex_last = vertex_data_addr == 2;
+            dut->i_vertex_dv = 1;
+            vertex_data_addr++;
+        } else {
+            dut->i_vertex[0] = 0;
+            dut->i_vertex[1] = 0;
+            dut->i_vertex[2] = 0;
+            dut->i_vertex_dv = 0;
+            dut->i_vertex_last = 0;
+        }
+    }
 };
 
 void assign_input_index(Vrender_pipeline* dut, std::vector<glm::ivec3>& index_data, bool new_frame = false) {
@@ -110,22 +143,29 @@ void assign_input_index(Vrender_pipeline* dut, std::vector<glm::ivec3>& index_da
         index_data_addr = 0;
 
     if (dut->o_model_buff_index_read_en) {
-        if (index_data_addr >= index_data.size()) {
-            return;
-        } else if (index_data_addr == index_data.size() - 1) {
-            dut->i_index_last = 1;
-        }
+        // if (index_data_addr >= index_data.size()) {
+        //     return;
+        // } else if (index_data_addr == index_data.size() - 1) {
+        //     dut->i_index_last = 1;
+        // }
 
-        dut->i_index_data[0] = index_data[index_data_addr].x;
-        dut->i_index_data[1] = index_data[index_data_addr].y;
-        dut->i_index_data[2] = index_data[index_data_addr].z;
-        dut->i_index_dv = 1;
-        index_data_addr++;
+        printf("Hi\n");
+        dut->i_index_data[0] = 0;
+        dut->i_index_data[1] = 1;
+        dut->i_index_data[2] = 2;
+        dut->i_index_last = 1;
+        dut->i_vertex_dv = 1;
+        // dut->i_index_data[0] = index_data[index_data_addr].x;
+        // dut->i_index_data[1] = index_data[index_data_addr].y;
+        // dut->i_index_data[2] = index_data[index_data_addr].z;
+        // dut->i_index_dv = 1;
+        // index_data_addr++;
     } else {
         dut->i_index_data[0] = 0;
         dut->i_index_data[1] = 0;
         dut->i_index_data[2] = 0;
         dut->i_index_dv = 0;
+        dut->i_vertex_last = 0;
     }
 }
 
@@ -232,7 +272,8 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp();
+                // glm::mat4 mvp = generate_mvp();
+                glm::mat4 mvp = glm::mat4(1.0f);
                 assign_mvp_data(dut, mvp);                
                 dut->i_mvp_dv = 1;
             }
@@ -246,7 +287,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            printf("Write en: %d\n", dut->o_fb_write_en);
+            // printf("Write en: %d\n", dut->o_fb_write_en);
 
             assign_vertex_data(dut, vertex_buffer, new_frame);
             assign_input_index(dut, index_buffer, new_frame);
@@ -257,9 +298,9 @@ int main(int argc, char* argv[]) {
 
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
-                p->b = color_lookup[dut->o_fb_color_data].b;
-                p->g = color_lookup[dut->o_fb_color_data].g;
-                p->r = color_lookup[dut->o_fb_color_data].r;
+                p->b = 0xFF;
+                p->g = 0xFF;
+                p->r = 0xFF;
             }
 
             if (dut->finished) {

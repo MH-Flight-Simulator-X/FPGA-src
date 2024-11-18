@@ -229,6 +229,7 @@ module vertex_post_processor #(
             end
 
             VPP_CLIP: begin
+                $display("r_clip_z = %x\t r_clip_w = %x", r_clip_z, r_clip_w);
                 if (z_invalid) begin
                     next_state = VPP_ERROR_STATE;
                 end else begin

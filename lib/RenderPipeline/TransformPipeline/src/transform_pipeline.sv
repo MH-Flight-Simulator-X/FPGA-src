@@ -350,6 +350,7 @@ module transform_pipeline #(
                     end
 
                     if (w_vpp_done & !r_vpp_finished) begin
+                        $display("Hi\n");
                         if (!w_vpp_o_vertex_invalid) begin
                             // Increment the gbuff addr
                             r_gbuff_addr_write <= r_vertexes_processed;
@@ -360,7 +361,7 @@ module transform_pipeline #(
                             r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_pixel[2]};
                         end else begin
                             r_gbuff_write_en <= '0;
-                            $display("invalid");
+                            $display("Invalid vertexinvalid");
                         end
 
                         // If this was the last vertex, latch vpp finished signal
@@ -377,6 +378,7 @@ module transform_pipeline #(
                     // Start running primitive assembler as vpp is finished
                     r_gbuff_write_en <= '0;   // Will only be doing read operations on buffer
 
+                    $display("PA: %d %d %d", w_pa_o_ready, w_pa_finished, transform_pipeline_next);
                     if (w_pa_o_ready & !w_pa_finished & transform_pipeline_next) begin
                         r_pa_start <= 1;
                     end else begin
