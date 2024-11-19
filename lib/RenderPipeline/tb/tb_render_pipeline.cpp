@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <verilated.h>
-#include <SDL2/SDL.h>
+#ifdef __APPLE__
+    #include <SDL.h>
+#else
+    #include <SDL2/SDL.h>
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 

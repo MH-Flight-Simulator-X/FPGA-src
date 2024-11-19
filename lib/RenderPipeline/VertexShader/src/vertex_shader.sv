@@ -38,7 +38,7 @@ module vertex_shader #(
     localparam logic signed [DATAWIDTH-1:0] FixedPointOne = 1 << FRACBITS;
 
     // Vertex Shader State
-    vertex_shader_state_t current_state = VERTEX_SHADER_IDLE, next_state = VERTEX_SHADER_IDLE;
+    vertex_shader_state_t current_state = VERTEX_SHADER_IDLE, next_state;
 
     // Store the mvp matrix
     logic signed [DATAWIDTH-1:0] r_mvp_mat[4][4];

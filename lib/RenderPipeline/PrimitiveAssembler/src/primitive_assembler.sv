@@ -61,7 +61,7 @@ module primitive_assembler #(
     logic r_triangle_last = '0;
 
     // State
-    pa_state_t current_state = PA_IDLE, next_state = PA_IDLE;
+    pa_state_t current_state = PA_IDLE, next_state;
     always_ff @(posedge clk) begin
         if (~rstn) begin
             current_state <= PA_IDLE;
