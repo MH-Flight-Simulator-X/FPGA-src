@@ -137,12 +137,5 @@ module rasterizer #(
     );
 
     assign finished = w_rasterizer_frontend_finished_with_cull || w_rasterizer_backend_finished;
-    //
-    // always_ff @(posedge clk) begin
-    //     if (finished) begin
-    //         $display("Finished with cull = \t%d", w_rasterizer_frontend_finished_with_cull);
-    //         $display("Backend finished = \t%d", w_rasterizer_backend_finished);
-    //     end
-    // end
 
 endmodule

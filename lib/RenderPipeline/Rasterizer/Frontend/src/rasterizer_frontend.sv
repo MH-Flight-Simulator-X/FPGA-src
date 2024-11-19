@@ -131,11 +131,11 @@ module rasterizer_frontend #(
     logic [2*DATAWIDTH-1:0] w_area_reciprocal;
     logic w_area_reciprocal_dv;
 
-    logic [DATAWIDTH-1:0] r_area_reciprocal;
+    logic [2*DATAWIDTH-1:0] r_area_reciprocal;
 
     fast_inverse #(
         .DATAWIDTH(2 * DATAWIDTH),
-        .NUM_ITERATIONS(4)
+        .NUM_ITERATIONS(8)
     ) fast_inverse_inst (
         .clk (clk),
         .rstn(rstn),
@@ -379,7 +379,7 @@ module rasterizer_frontend #(
 
                 REGISTER_AREA_RECIPROCAL: begin
                     if (w_area_reciprocal_dv) begin
-                        r_area_reciprocal <= w_area_reciprocal[2*DATAWIDTH-1:DATAWIDTH];
+                        r_area_reciprocal <= w_area_reciprocal;
                     end
                     foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
                     foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;

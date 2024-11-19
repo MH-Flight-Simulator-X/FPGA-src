@@ -40,11 +40,11 @@ module top #(
 
     localparam signed AX0 = 30;
     localparam signed AY0 = 30;
-    localparam signed AZ0 = 12'b010000000000; // 0.5
+    localparam unsigned AZ0 = 12'b110000000000; // 0.5
 
     localparam signed AX1 = 140;
     localparam signed AY1 = 100;
-    localparam signed AZ1 = 12'b010000000000; // 0.5
+    localparam unsigned AZ1 = 12'b010000000000; // 0.5
 
     localparam signed AX2 = 160;
     localparam signed AY2 = 0;
@@ -52,15 +52,15 @@ module top #(
 
     localparam signed BX0 = 30;
     localparam signed BY0 = 30;
-    localparam signed BZ0 = 12'b000000000001; // 0.25
+    localparam unsigned BZ0 = 12'b000000000001; // 0.25
 
     localparam signed BX1 = 30;
     localparam signed BY1 = 120;
-    localparam signed BZ1 = 12'b000000000001; // 0.25
+    localparam unsigned BZ1 = 12'b000000000001; // 0.25
 
     localparam signed BX2 = 140;
     localparam signed BY2 = 50;
-    localparam signed BZ2 = 12'b000000000001; // 0.25
+    localparam unsigned BZ2 = 12'b000000000001; // 0.25
 
     logic signed [DATAWIDTH-1:0] v0[3];
     logic signed [DATAWIDTH-1:0] v1[3];
@@ -101,7 +101,7 @@ module top #(
         .i_v1(v1),
         .i_v2(v2),
         .i_triangle_dv(rasterizer_dv),
-        .i_triangle_last(1),
+        .i_triangle_last(0),
 
         .o_fb_addr_write(buffer_addr_write),
         .o_fb_write_en(fb_write_enable),

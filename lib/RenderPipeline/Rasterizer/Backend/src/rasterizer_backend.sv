@@ -132,7 +132,6 @@ module rasterizer_backend #(
                 finished <= 1'b0;
 
                 if (i_dv) begin
-                    // $display("id = %d", id);
                     r_bb_tl[0] <= bb_tl[0]; r_bb_tl[1] <= bb_tl[1];
                     r_bb_br[0] <= bb_br[0]; r_bb_br[1] <= bb_br[1];
 
@@ -205,7 +204,6 @@ module rasterizer_backend #(
             end
 
             DONE: begin
-                // $display("Finished with id: %d", id);
                 if (r_i_last) begin
                     finished <= 1'b1;
                 end else begin
