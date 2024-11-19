@@ -137,12 +137,25 @@ module render_pipeline #(
         .finished(w_rasterizer_finished)
     );
 
+    // Latch finish
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            finished <= 1'b0;
+        end else begin
+            // $display("Start: %d, Ready: %d, Finished: %d", start, transform_pipeline_ready, w_rasterizer_finished);
+            if (w_rasterizer_finished) begin
+                finished <= 1'b1;
+            end else if (start) begin
+                finished <= 1'b0;
+            end
+        end
+    end
+
     // Assign internal signals
     assign transform_pipeline_start = start;
     assign transform_pipeline_next = w_rasterizer_ready;
 
     // Assign external signals
     assign ready = transform_pipeline_ready;
-    assign finished = w_rasterizer_finished;
 
 endmodule

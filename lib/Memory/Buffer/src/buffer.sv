@@ -27,6 +27,39 @@ module buffer #(
     } state_t;
     state_t state = IDLE;
 
+    logic [ADDR_WIDTH-1:0] clear_counter;
+
+    logic [ADDR_WIDTH-1:0] bram_addr_write;
+    logic [WIDTH-1:0] bram_data_write;
+    logic bram_write_en;
+
+    always_comb begin
+        ready = 1'b1;
+        case (state)
+            IDLE: begin
+                bram_addr_write = addr_write;
+                bram_data_write = data_in;
+                bram_write_en = write_enable;
+            end
+
+            CLEARING: begin
+                bram_addr_write = clear_counter;
+                bram_data_write = clear_value;
+                bram_write_en = 1;
+
+                if (clear_counter != ADDR_WIDTH'(DEPTH - 1)) begin
+                    ready = 1'b0;
+                end
+            end
+
+            default: begin
+                bram_addr_write = '0;
+                bram_data_write = '0;
+                bram_write_en = '0;
+            end
+        endcase
+    end
+
     bram_dp #(
         .WIDTH(WIDTH),
         .DEPTH(DEPTH),
@@ -34,23 +67,19 @@ module buffer #(
     ) bram_dp_inst (
         .clk_write(clk_write),
         .clk_read(clk_read),
-        .write_enable(write_enable || (state == CLEARING)),
-        .addr_write((state == CLEARING) ? clear_counter : addr_write),
+        .write_enable(bram_write_en),
+        .addr_write(bram_addr_write),
         .addr_read(addr_read),
-        .data_in((state == CLEARING) ? clear_value : data_in),
+        .data_in(bram_data_write),
         .data_out(data_out)
     );
-
-    logic [ADDR_WIDTH-1:0] clear_counter;
 
     // State Machine for controlling the clear logic
     always_ff @(posedge clk_write) begin
         case (state)
             IDLE: begin
-                ready <= 1'b1;
                 if (clear) begin
                     state <= CLEARING;
-                    ready <= 1'b0;
                     clear_counter <= 0;
                 end
             end
@@ -59,7 +88,7 @@ module buffer #(
                     clear_counter <= clear_counter + 1;
                 end else begin
                     state <= IDLE;
-                    ready <= 1'b1;
+                    $display("Buffer cleared");
                 end
             end
 

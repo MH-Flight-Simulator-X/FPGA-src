@@ -71,6 +71,7 @@ module transform_pipeline #(
             current_state <= IDLE;
         end else begin
             current_state <= next_state;
+            // $display("Current state: %s", current_state.name());
         end
     end
 

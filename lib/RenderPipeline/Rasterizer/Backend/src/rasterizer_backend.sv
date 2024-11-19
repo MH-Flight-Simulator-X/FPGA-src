@@ -217,6 +217,6 @@ module rasterizer_backend #(
     end
 
     assign depth_data = $unsigned(r_z[DATAWIDTH-1:0]);
-    assign color_data = id[COLORWIDTH-1:0];
+    assign color_data = (id[COLORWIDTH-1:0] == '0) ? 1 : id[COLORWIDTH-1:0];
 
 endmodule
