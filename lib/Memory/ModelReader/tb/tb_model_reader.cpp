@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
     dut->trace(m_trace, 5);
     m_trace->open("waveform.vcd");
         
-    dut->next_face = 1;
-    dut->next_vertex = 1;
+    dut->index_read_en = 1;
+    dut->vertex_read_en = 1;
     dut->model_index = 1;
 
     while (sim_time < MAX_SIM_TIME) { 
@@ -40,17 +40,14 @@ int main(int argc, char** argv) {
             dut->rstn = 1;
         }
 
-        if (16 < sim_time && sim_time < 20) {
-            dut->next_vertex = 0;
-            dut->next_face = 0;
+        if (17 < sim_time && sim_time < 22) {
+            dut->vertex_read_en = 0;
+            dut->index_read_en = 0;
         }
         else {
-            dut->next_vertex = 1;
-            dut->next_face = 1;
+            dut->vertex_read_en = 1;
+            dut->index_read_en = 1;
         }
-
-        
-
 
         m_trace->dump(sim_time);
         sim_time++;
@@ -62,3 +59,4 @@ int main(int argc, char** argv) {
 
     exit(EXIT_SUCCESS);
 }
+
