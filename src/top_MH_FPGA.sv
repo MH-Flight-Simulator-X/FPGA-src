@@ -32,6 +32,9 @@ module top_MH_FPGA (
     parameter real ZFAR = 100.0;
     parameter real ZNEAR = 0.1;
 
+    parameter string PALETTE_FILE = "palette.mem";
+    parameter string FB_IMAGE_FILE  =  "image.mem";
+
     // =========================== CLOCKS ===========================
     logic rstn;
     logic clk_100m;
@@ -164,11 +167,12 @@ module top_MH_FPGA (
         .CLUT_DEPTH($clog2(COLORWIDTH)),
         .CHANNEL_WIDTH(4),
         .FB_CLEAR_VALUE(0),
-        .PALETTE_FILE("palette.mem"),
-        .FB_IMAGE_FILE("image.mem")
+        .PALETTE_FILE(PALETTE_FILE),
+        .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
         .clk(clk),
         .clk_pix(clk_pix),
+        .rst(~rstn),
 
         .ready(w_display_ready),
         .clear(r_display_clear),

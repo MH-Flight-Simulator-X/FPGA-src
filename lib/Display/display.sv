@@ -16,6 +16,7 @@ module display#(
     ) (
     input logic clk,
     input logic clk_pix,
+    input logic rst,
 
     output logic ready,
     input logic clear,
@@ -45,7 +46,7 @@ module display#(
     logic frame;
     display_signals_480p #(.CORDW(DISPLAY_COORD_WIDTH)) display_signal_inst (
         .clk_pix(clk_pix),
-        .rst_pix(1'b0),
+        .rst_pix(rst),
         .sx(screen_x),
         .sy(screen_y),
         .hsync(hsync),

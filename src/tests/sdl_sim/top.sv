@@ -134,6 +134,7 @@ module top #(
     ) display_inst (
         .clk(clk_100m),
         .clk_pix(clk_pix),
+        .rst(sim_rst),
 
         .i_pixel_write_addr(i_pixel_write_addr),
         .i_pixel_write_valid(fb_write_enable),

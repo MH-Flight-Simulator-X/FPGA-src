@@ -8,8 +8,8 @@ SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LDFLAGS = $(shell sdl2-config --libs)
 
 # Design and output file names
-TOP_MODULE = render_pipeline
-EXEC = render_pipeline
+TOP_MODULE = top_MH_FPGA
+EXEC = top_MH_FPGA
 
 # Directories
 SRC_DIR = ../src
@@ -18,24 +18,32 @@ OBJ_DIR = obj_dir
 
 VERILOG_SOURCES = \
 	$(LIB_DIR)/Math/MatVecMul/src/mat_vec_mul.sv \
-	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader.sv \
+	$(LIB_DIR)/Math/FastInverse/src/fast_inverse.sv \
 	$(LIB_DIR)/Math/FixedPointDivide/src/fixed_point_divide.sv \
-	$(LIB_DIR)/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv \
+
 	$(LIB_DIR)/Memory/BRAM_SP/src/bram_sp.sv \
+	$(LIB_DIR)/Memory/BRAM_DP/src/bram_dp.sv \
+	$(LIB_DIR)/Memory/Buffer/src/buffer.sv \
+	$(LIB_DIR)/Memory/ROM/src/rom.sv \
 	$(LIB_DIR)/Memory/G-Buffer/src/g_buffer.sv \
+
+	$(LIB_DIR)/Display/DisplaySignals/projectf_display_480p.sv \
+	$(LIB_DIR)/Display/display.sv \
+
+	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader.sv \
+	$(LIB_DIR)/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv \
 	$(LIB_DIR)/RenderPipeline/PrimitiveAssembler/src/primitive_assembler.sv \
 	$(LIB_DIR)/RenderPipeline/TransformPipeline/src/transform_pipeline.sv \
 	$(LIB_DIR)/RenderPipeline/Rasterizer/BoundingBox/src/bounding_box.sv \
-	$(LIB_DIR)/Math/FastInverse/src/fast_inverse.sv \
 	$(LIB_DIR)/RenderPipeline/Rasterizer/Frontend/src/rasterizer_frontend.sv \
 	$(LIB_DIR)/RenderPipeline/Rasterizer/Backend/src/rasterizer_backend.sv \
 	$(LIB_DIR)/RenderPipeline/Rasterizer/src/rasterizer.sv
 
 # Verilog file (Top module)
-VERILOG_FILE = $(SRC_DIR)/render_pipeline.sv
+VERILOG_FILE = $(SRC_DIR)/top_MH_FPGA.sv
 
 # C++ source file (Main simulation driver)
-CPP_FILE = tb_render_pipeline.cpp
+CPP_FILE = tb_top_MH_FPGA.cpp
 
 # Make target: all
 all: $(EXEC)
