@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 
+/* verilator lint_off PINCONNECTEMPTY */
 module model_reader #(
     parameter integer MODEL_INDEX_WIDTH = 4,
     parameter integer HEADER_ADDR_WIDTH = 4,
