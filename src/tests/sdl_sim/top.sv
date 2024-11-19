@@ -40,27 +40,27 @@ module top #(
 
     localparam signed AX0 = 30;
     localparam signed AY0 = 30;
-    localparam signed AZ0 = 12'b100000000000; // 0.5
+    localparam signed AZ0 = 12'b010000000000; // 0.5
 
     localparam signed AX1 = 140;
     localparam signed AY1 = 100;
-    localparam signed AZ1 = 12'b100000000000; // 0.5
+    localparam signed AZ1 = 12'b010000000000; // 0.5
 
     localparam signed AX2 = 160;
     localparam signed AY2 = 0;
-    localparam signed AZ2 = 12'b100000000000; // 0.5
+    localparam signed AZ2 = 12'b010000000000; // 0.5
 
     localparam signed BX0 = 30;
     localparam signed BY0 = 30;
-    localparam signed BZ0 = 12'b010000000000; // 0.25
+    localparam signed BZ0 = 12'b000000000001; // 0.25
 
     localparam signed BX1 = 30;
     localparam signed BY1 = 120;
-    localparam signed BZ1 = 12'b010000000000; // 0.25
+    localparam signed BZ1 = 12'b000000000001; // 0.25
 
     localparam signed BX2 = 140;
     localparam signed BY2 = 50;
-    localparam signed BZ2 = 12'b010000000000; // 0.25
+    localparam signed BZ2 = 12'b000000000001; // 0.25
 
     logic signed [DATAWIDTH-1:0] v0[3];
     logic signed [DATAWIDTH-1:0] v1[3];
