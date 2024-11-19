@@ -3,42 +3,43 @@
 module model_reader #(
     parameter integer MODEL_INDEX_WIDTH = 4,
     parameter integer HEADER_ADDR_WIDTH = 4,
-    parameter integer FACE_ADDR_WIDTH = 12,
+    parameter integer index_addr_WIDTH = 12,
     parameter integer VERTEX_ADDR_WIDTH = 12,
     parameter integer COORD_WIDTH = 24,
     parameter integer VERTEX_DATA_WIDTH = COORD_WIDTH * 3,
-    parameter integer FACE_DATA_WIDTH = FACE_ADDR_WIDTH * 3,
-    parameter integer HEADER_DATA_WIDTH = FACE_ADDR_WIDTH + VERTEX_ADDR_WIDTH,
+    parameter integer INDEX_DATA_WIDTH = index_addr_WIDTH * 3,
+    parameter integer HEADER_DATA_WIDTH = index_addr_WIDTH + VERTEX_ADDR_WIDTH,
     parameter string  HEADERS_FILE = "../../ModelReader/src/headers.mem",
     parameter string  FACES_FILE = "../../ModelReader/src/faces.mem",
     parameter string  VERTICES_FILE = "../../ModelReader/src/vertices.mem"
 )(
     input  logic                             clk,
     input  logic                             rstn,
+    output logic                             ready,
 
     input  logic [MODEL_INDEX_WIDTH-1:0]     model_index,
 
-    input  logic                             next_face,
-    input  logic                             next_vertex,
+    input  logic                             index_read_en,
+    input  logic                             vertex_read_en,
 
-    output logic [FACE_DATA_WIDTH-1:0]       face_data,
+    output logic [INDEX_DATA_WIDTH-1:0]      index_data,
     output logic [VERTEX_DATA_WIDTH-1:0]     vertex_data,
 
-    output logic                             face_buffer_done,
-    output logic                             vertex_buffer_done,
-
-    output logic                             data_valid
+    output logic                             index_o_dv,
+    output logic                             vertex_o_dv,
+    output logic                             index_buffer_last,
+    output logic                             vertex_buffer_last
 );
 
 logic  [HEADER_ADDR_WIDTH-1:0] header_addr;
 logic [HEADER_DATA_WIDTH-1:0]  header_data;
 
 
-logic  [FACE_ADDR_WIDTH-1:0]   face_addr;
+logic  [index_addr_WIDTH-1:0]   index_addr;
 logic  [VERTEX_ADDR_WIDTH-1:0] vertex_addr;
 
 // Start and end indices for faces and vertices
-logic [FACE_ADDR_WIDTH-1:0]    face_end_index;
+logic [index_addr_WIDTH-1:0]    index_end_index;
 logic [VERTEX_ADDR_WIDTH-1:0]  vertex_end_index;
 
 // State machine states
@@ -58,19 +59,23 @@ rom #(
     .FILE(HEADERS_FILE)
 ) headers_rom (
     .clk(clk),
+    .read_en(1),
     .addr(header_addr),
-    .data(header_data)
+    .data(header_data),
+    .dv()
 );
 
 // Faces ROM
 rom #(
-    .WIDTH(FACE_DATA_WIDTH),
-    .DEPTH(1 << FACE_ADDR_WIDTH),  // TODO set to actual size
+    .WIDTH(INDEX_DATA_WIDTH),
+    .DEPTH(1 << index_addr_WIDTH),  // TODO set to actual size
     .FILE(FACES_FILE)
 ) faces_rom (
     .clk(clk),
-    .addr(face_addr),
-    .data(face_data)
+    .read_en(index_read_en),
+    .addr(index_addr),
+    .data(index_data),
+    .dv(index_o_dv)
 );
 
 // Vertices ROM
@@ -80,8 +85,10 @@ rom #(
     .FILE(VERTICES_FILE)
 ) vertices_rom (
     .clk(clk),
+    .read_en(vertex_read_en),
     .addr(vertex_addr),
-    .data(vertex_data)
+    .data(vertex_data),
+    .dv(vertex_o_dv)
 );
 
 
@@ -96,9 +103,9 @@ end
 
 // State transitions
 always_comb begin
-    data_valid = 1'b0;
-    face_buffer_done = 1'b0;
-    vertex_buffer_done = 1'b0;
+    ready = 1'b0;
+    index_buffer_last = 1'b0;
+    vertex_buffer_last = 1'b0;
 
     case (current_state)
         IDLE: begin
@@ -119,9 +126,9 @@ always_comb begin
 
         READY: begin
             next_state = READY;
-            data_valid = 1'b1;
-            if (face_addr == face_end_index - 1) face_buffer_done = 1'b1;
-            if (vertex_addr == vertex_end_index - 1) vertex_buffer_done = 1'b1;
+            ready = 1'b1;
+            if (index_addr == index_end_index - 1) index_buffer_last = 1'b1;
+            if (vertex_addr == vertex_end_index - 1) vertex_buffer_last = 1'b1;
         end
 
         default: begin
@@ -139,7 +146,7 @@ always_ff @(posedge clk) begin
 
         READ_HEADER_0: begin
             // Read start indices from header
-            face_addr <= header_data[HEADER_DATA_WIDTH-1:VERTEX_ADDR_WIDTH];
+            index_addr <= header_data[HEADER_DATA_WIDTH-1:VERTEX_ADDR_WIDTH];
             vertex_addr <= header_data[VERTEX_ADDR_WIDTH-1:0];
             
             // Increment header addr to read end indices
@@ -152,18 +159,18 @@ always_ff @(posedge clk) begin
 
         READ_HEADER_1: begin
             // Read end indices from header
-            face_end_index <= header_data[HEADER_DATA_WIDTH-1:VERTEX_ADDR_WIDTH];
+            index_end_index <= header_data[HEADER_DATA_WIDTH-1:VERTEX_ADDR_WIDTH];
             vertex_end_index <= header_data[VERTEX_ADDR_WIDTH-1:0];
         end
 
         READY: begin
             // Handle face data
-            if (next_face && !face_buffer_done) begin
-                face_addr <= (face_addr == face_end_index - 1) ? face_addr : face_addr + 1;
+            if (index_read_en && !index_buffer_last) begin
+                index_addr <= (index_addr == index_end_index - 1) ? index_addr : index_addr + 1;
             end
 
             // Handle vertex data
-            if (next_vertex && !vertex_buffer_done) begin
+            if (vertex_read_en && !vertex_buffer_last) begin
                 vertex_addr <= (vertex_addr == vertex_end_index - 1) ? vertex_addr : vertex_addr + 1;
             end
         end

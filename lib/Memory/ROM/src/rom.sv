@@ -23,9 +23,9 @@ module rom#(
     always_ff @(posedge clk) begin
         data <= memory[addr];
         if (read_en) begin
-            o_dv <= 1'b1;
+            dv <= 1'b1;
         end else begin
-            o_dv <= 1'b0;
+            dv <= 1'b0;
         end
     end
 
