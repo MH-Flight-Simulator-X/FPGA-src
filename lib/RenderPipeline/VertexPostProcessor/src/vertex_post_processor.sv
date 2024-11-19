@@ -46,7 +46,7 @@ module vertex_post_processor #(
     localparam unsigned OutPixIndEnd = OV_DATAWIDTH + 2 * IV_FRACBITS - 2;
 
     // State
-    vertex_post_processor_state_t current_state = VPP_IDLE, next_state = VPP_IDLE;
+    vertex_post_processor_state_t current_state = VPP_IDLE, next_state;
 
     // Register input vertex data
     logic signed [IV_DATAWIDTH-1:0] r_clip_x;

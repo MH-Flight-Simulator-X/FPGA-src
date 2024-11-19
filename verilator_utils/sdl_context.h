@@ -1,7 +1,11 @@
 // Static class to manage SDL context
 #pragma once
 
-#include <SDL2/SDL.h>
+#ifdef __APPLE__
+    #include <SDL.h>
+#else
+    #include <SDL2/SDL.h>
+#endif
 #include <vector>
 
 class SDLContext {
