@@ -13,7 +13,7 @@
 
 // screen dimensions
 const int H_RES = 320;
-const int V_RES = 320;
+const int V_RES = 240;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
