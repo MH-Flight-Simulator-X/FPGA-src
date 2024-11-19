@@ -1,5 +1,6 @@
 // Class to manage SDL context
 #pragma once
+#include <cstdlib>
 
 #ifdef __APPLE__
     #include <SDL.h>
@@ -21,6 +22,7 @@ public:
     SDL_Window* window;
     SDL_Renderer* renderer;
     SDL_Texture* texture;
+    const Uint8 *keyb_state;
 
     int H_RES = 320;
     int V_RES = 240;
@@ -65,6 +67,8 @@ public:
             return;
         }
 
+        keyb_state = SDL_GetKeyboardState(NULL);
+
         screenbuffer.resize(H_RES * V_RES);
         zbuffer.resize(H_RES * V_RES);
     }
@@ -76,8 +80,32 @@ public:
         SDL_Quit();
     }
 
-    void update() {
-        SDL_UpdateTexture(texture, NULL, screenbuffer.data(), screenbuffer.size() * sizeof(uint8_t));
+    int update() {
+        SDL_Event e;
+        if (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                return 1;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (keyb_state[SDL_SCANCODE_Q]) {
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    void clear_screen() {
+        for (int i = 0; i < H_RES * V_RES; i++) {
+            screenbuffer[i].a = 0xFF;
+            screenbuffer[i].b = 0x00;
+            screenbuffer[i].g = 0x00;
+            screenbuffer[i].r = 0x00;
+            zbuffer[i] = 1.0f;
+        }
+    }
+
+    void update_screen() {
+        SDL_UpdateTexture(texture, NULL, screenbuffer.data(), H_RES * sizeof(Pixel));
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
@@ -89,9 +117,9 @@ public:
         }
 
         int index = y * H_RES + x;
-        screenbuffer[index].a = a;
-        screenbuffer[index].b = b;
-        screenbuffer[index].g = g;
-        screenbuffer[index].r = r;
+        screenbuffer.at(index).a = a;
+        screenbuffer.at(index).b = b;
+        screenbuffer.at(index).g = g;
+        screenbuffer.at(index).r = r;
     }
 };

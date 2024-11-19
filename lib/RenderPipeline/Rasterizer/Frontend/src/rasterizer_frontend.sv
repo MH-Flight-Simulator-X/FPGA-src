@@ -253,7 +253,7 @@ module rasterizer_frontend #(
             foreach (r_v1[i]) r_v1[i] <= '0;
             foreach (r_v2[i]) r_v2[i] <= '0;
 
-            r_id <= '0;
+            r_id <= 1;
             r_i_triangle_last <= '0;
             finished_with_cull <= '0;
 
@@ -339,7 +339,7 @@ module rasterizer_frontend #(
                     if (w_should_be_culled & r_i_triangle_last & next) begin
                         finished_with_cull <= '1;
                         r_i_triangle_last <= '0;
-                        // r_id <= '0;
+                        r_id <= 1;
                     end else begin
                         finished_with_cull <= '0;
                     end
@@ -448,7 +448,7 @@ module rasterizer_frontend #(
 
                         if (r_i_triangle_last) begin
                             r_i_triangle_last <= '0;
-                            r_id <= '0;
+                            r_id <= 1;
                         end else begin
                             r_id <= r_id + 1;
                         end

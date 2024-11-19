@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
         clk_100m_cnt++;
 
         // pixel clock runs at 25MHz, so it should run 4 times as slow as main clock
-        if (clk_100m_cnt%4) {
+        if (clk_100m_cnt%4 == 0) {
             top->clk_pix ^= 1;
         }
 

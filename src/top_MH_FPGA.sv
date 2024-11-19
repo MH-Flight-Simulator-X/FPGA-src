@@ -1,9 +1,55 @@
+/*
+    __  _____  __    _________       __    __     _____ _                 __      __                _  __
+   /  |/  / / / /   / ____/ (_)___ _/ /_  / /_   / ___/(_)___ ___  __  __/ /___ _/ /_____  _____   | |/ /
+  / /|_/ / /_/ /   / /_  / / / __ `/ __ \/ __/   \__ \/ / __ `__ \/ / / / / __ `/ __/ __ \/ ___/   |   /
+ / /  / / __  /   / __/ / / / /_/ / / / / /_    ___/ / / / / / / / /_/ / / /_/ / /_/ /_/ / /      /   |
+/_/  /_/_/ /_/   /_/   /_/_/\__, /_/ /_/\__/   /____/_/_/ /_/ /_/\__,_/_/\__,_/\__/\____/_/      /_/|_|
+                           /____/
+*/
+
 `default_nettype none
 `timescale 1ns / 1ps
 
 module top_MH_FPGA (
-    input  wire logic clk,          // 100 MHz clock
-    output      logic led,          // If clk100m is locked
+    input  logic clk,
+    input  logic clk_pix,
+    input  logic rstn,
+
+    input  logic start,
+    output logic ready,
+    output logic finished,
+
+    // Transform matrix from MVP Matrix FIFO
+    output logic o_mvp_matrix_read_en,
+    input  logic signed [INPUT_DATAWIDTH-1:0] i_mvp_matrix[4][4],
+    input  logic i_mvp_dv,
+
+    // Read vertex data from Model Buffer -- Effectively accessed as SAM
+    output logic o_model_buff_vertex_read_en,
+    input  logic signed [INPUT_DATAWIDTH-1:0] i_vertex[3],
+    input  logic i_vertex_dv,
+    input  logic i_vertex_last,
+
+    // Read index data from Model Buffer -- Also SAM access pattern
+    output logic o_model_buff_index_read_en,
+    input  logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_index_data[3],
+    input  logic i_index_dv,
+    input  logic i_index_last,
+
+    // Rasterizer Output
+    output logic [ADDRWIDTH-1:0] o_fb_addr_write,
+    output logic o_fb_write_en,
+
+    output logic [OUTPUT_DATAWIDTH-1:0] o_fb_depth_data,
+    output logic [COLORWIDTH-1:0] o_fb_color_data,
+
+    output logic frame,
+    output logic display_ready,
+    output logic display_en,
+    output [ADDRWIDTH-1:0] sx,
+    output [ADDRWIDTH-1:0] sy,
+
+    input logic clear,
 
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
@@ -20,12 +66,11 @@ module top_MH_FPGA (
 
     parameter unsigned MAX_TRIANGLE_COUNT = 32768;
     parameter unsigned MAX_VERTEX_COUNT   = 32768;
-    parameter unsigned MAX_INDEX_COUNT    = 32768;
     parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
-    parameter unsigned SCREEN_WIDTH  = 160;
-    parameter unsigned SCREEN_HEIGHT = 120;
+    parameter unsigned SCREEN_WIDTH  = 320;
+    parameter unsigned SCREEN_HEIGHT = 240;
 
     parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT);
 
@@ -36,68 +81,58 @@ module top_MH_FPGA (
     parameter string FB_IMAGE_FILE  =  "image.mem";
 
     // =========================== CLOCKS ===========================
-    logic rstn;
-    logic clk_100m;
-    logic clk_100m_locked;
-
-    clock_100Mhz clock_100m_inst (
-        .clk_20m(clk),
-        .rst(0),
-        .clk_100m(clk_100m),
-        .clk_100m_5x(),
-        .clk_100m_locked(clk_100m_locked)
-    );
-    always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
-    assign led = clk_100m_locked;
-
-    // generate pixel clock
-    logic clk_pix;
-    logic clk_pix_locked;
-    logic rst_pix;
-    clock_480p clock_pix_inst (
-       .clk(clk_100m),
-       .rst(~rstn),  // reset button is active low
-       .clk_pix(clk_pix),
-       .clk_pix_5x(),  // not used for VGA output
-       .clk_pix_locked(clk_pix_locked)
-    );
-    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
+    // logic rstn;
+    // logic clk_100m;
+    // logic clk_100m_locked;
+    //
+    // clock_100Mhz clock_100m_inst (
+    //     .clk_20m(clk),
+    //     .rst(0),
+    //     .clk_100m(clk_100m),
+    //     .clk_100m_5x(),
+    //     .clk_100m_locked(clk_100m_locked)
+    // );
+    // always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
+    // assign led = clk_100m_locked;
+    //
+    // // generate pixel clock
+    // logic clk_pix;
+    // logic clk_pix_locked;
+    // logic rst_pix;
+    // clock_480p clock_pix_inst (
+    //    .clk(clk_100m),
+    //    .rst(~rstn),  // reset button is active low
+    //    .clk_pix(clk_pix),
+    //    .clk_pix_5x(),  // not used for VGA output
+    //    .clk_pix_locked(clk_pix_locked)
+    // );
+    // always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
 
     // =========================== FPGA-MCU-COM ===========================
     logic [MAX_NUM_OBJECTS_PER_FRAME-1:0] w_mcu_num_objects;
-    logic [INPUT_DATAWIDTH-1:0] w_mvp_matrix_data[4][4];
-    logic w_mvp_dv;
-
-    // =========================== MODEL DATA ===========================
-    logic [INPUT_DATAWIDTH-1:0] w_vertex_data[3];
-    logic w_vertex_dv;
-
-    logic [ADDRWIDTH-1:0] w_index_data[3];
-    logic w_index_dv;
 
     // =========================== RENDER PIPELINE ===========================
     logic r_render_pipeline_start;
     logic w_render_pipeline_ready;
     logic w_render_pipeline_finished;
 
-    // MVP Matrix
     logic w_mvp_matrix_read_en;
-    logic signed [INPUT_DATAWIDTH-1:0] r_mvp_matrix_data[4][4];
+    logic signed [INPUT_DATAWIDTH-1:0] r_mvp_matrix[4][4];
     logic r_mvp_dv;
 
-    // Vertex Data
+    // Read vertex data from Model Buffer -- Effectively accessed as SAM
     logic w_model_buff_vertex_read_en;
-    logic signed [INPUT_DATAWIDTH-1:0] r_vertex_data[3];
+    logic signed [INPUT_DATAWIDTH-1:0] r_vertex[3];
     logic r_vertex_dv;
     logic r_vertex_last;
 
-    // Index Data
+    // Read index data from Model Buffer -- Also SAM access pattern
     logic w_model_buff_index_read_en;
-    logic [ADDRWIDTH-1:0] r_index_data[3];
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_index_data[3];
     logic r_index_dv;
     logic r_index_last;
 
-    // Framebuffer
+    // Rasterizer Output
     logic [ADDRWIDTH-1:0] w_fb_addr_write;
     logic w_fb_write_en;
 
@@ -127,16 +162,16 @@ module top_MH_FPGA (
         .clk(clk),
         .rstn(rstn),
 
-        .render_pipeline_start(r_render_pipeline_start),
-        .render_pipeline_ready(w_render_pipeline_ready),
-        .render_pipeline_finished(w_render_pipeline_finished),
+        .start(r_render_pipeline_start),
+        .ready(w_render_pipeline_ready),
+        .finished(w_render_pipeline_finished),
 
         .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
-        .i_mvp_matrix(r_mvp_matrix_data),
+        .i_mvp_matrix(r_mvp_matrix),
         .i_mvp_dv(r_mvp_dv),
 
         .o_model_buff_vertex_read_en(w_model_buff_vertex_read_en),
-        .i_vertex(r_vertex_data),
+        .i_vertex(r_vertex),
         .i_vertex_dv(r_vertex_dv),
         .i_vertex_last(r_vertex_last),
 
@@ -152,6 +187,36 @@ module top_MH_FPGA (
         .o_fb_color_data(w_fb_color_data)
     );
 
+    assign r_render_pipeline_start = start;
+    assign ready = w_render_pipeline_ready;
+    assign finished = w_render_pipeline_finished;
+
+    assign o_mvp_matrix_read_en = w_mvp_matrix_read_en;
+    assign r_mvp_matrix[0][0] = i_mvp_matrix[0][0]; assign r_mvp_matrix[0][1] = i_mvp_matrix[0][1]; assign r_mvp_matrix[0][2] = i_mvp_matrix[0][2]; assign r_mvp_matrix[0][3] = i_mvp_matrix[0][3];
+    assign r_mvp_matrix[1][0] = i_mvp_matrix[1][0]; assign r_mvp_matrix[1][1] = i_mvp_matrix[1][1]; assign r_mvp_matrix[1][2] = i_mvp_matrix[1][2]; assign r_mvp_matrix[1][3] = i_mvp_matrix[1][3];
+    assign r_mvp_matrix[2][0] = i_mvp_matrix[2][0]; assign r_mvp_matrix[2][1] = i_mvp_matrix[2][1]; assign r_mvp_matrix[2][2] = i_mvp_matrix[2][2]; assign r_mvp_matrix[2][3] = i_mvp_matrix[2][3];
+    assign r_mvp_matrix[3][0] = i_mvp_matrix[3][0]; assign r_mvp_matrix[3][1] = i_mvp_matrix[3][1]; assign r_mvp_matrix[3][2] = i_mvp_matrix[3][2]; assign r_mvp_matrix[3][3] = i_mvp_matrix[3][3];
+    assign r_mvp_dv = i_mvp_dv;
+
+    // Read vertex data from Model Buffer -- Effectively accessed as SAM
+    assign o_model_buff_vertex_read_en = w_model_buff_vertex_read_en;
+    assign r_vertex[0] = i_vertex[0]; assign r_vertex[1] = i_vertex[1]; assign r_vertex[2] = i_vertex[2];
+    assign r_vertex_dv = i_vertex_dv;
+    assign r_vertex_last = i_vertex_last;
+
+    // Read index data from Model Buffer -- Also SAM access pattern
+    assign o_model_buff_index_read_en = w_model_buff_index_read_en;
+    assign r_index_data[0] = i_index_data[0]; assign r_index_data[1] = i_index_data[1]; assign r_index_data[2] = i_index_data[2];
+    assign r_index_dv = i_index_dv;
+    assign r_index_last = i_index_last;
+
+    // Rasterizer Output
+    assign o_fb_addr_write = w_fb_addr_write;
+    assign o_fb_write_en = w_fb_write_en;
+
+    assign o_fb_depth_data = w_fb_depth_data;
+    assign o_fb_color_data = w_fb_color_data;
+
     // =========================== DISPLAY ===========================
     logic w_display_ready;
     logic r_display_clear;
@@ -159,12 +224,12 @@ module top_MH_FPGA (
     display #(
         .DISPLAY_WIDTH(SCREEN_WIDTH),
         .DISPLAY_HEIGHT(SCREEN_HEIGHT),
-        .SCALE(4),
+        .SCALE(2),
         .DISPLAY_COORD_WIDTH(ADDRWIDTH),
         .FB_DATA_WIDTH(COLORWIDTH),
         .DB_DATA_WIDTH(OUTPUT_DATAWIDTH),
         .CLUT_WIDTH(12),
-        .CLUT_DEPTH($clog2(COLORWIDTH)),
+        .CLUT_DEPTH(1 << COLORWIDTH),
         .CHANNEL_WIDTH(4),
         .FB_CLEAR_VALUE(0),
         .PALETTE_FILE(PALETTE_FILE),
@@ -174,8 +239,8 @@ module top_MH_FPGA (
         .clk_pix(clk_pix),
         .rst(~rstn),
 
-        .ready(w_display_ready),
-        .clear(r_display_clear),
+        .ready(display_ready),
+        .clear(clear),
 
         .i_pixel_write_addr(w_fb_addr_write),
         .i_pixel_write_valid(w_fb_write_en),
@@ -189,6 +254,11 @@ module top_MH_FPGA (
         .hsync(vga_hsync),
         .vsync(vga_vsync)
     );
+
+    assign frame = display_inst.frame;
+    assign display_en = display_inst.de;
+    assign sx = display_inst.screen_x;
+    assign sy = display_inst.screen_y;
 
     // =========================== STATE ===========================
     // typedef enum logic [1:0] {
