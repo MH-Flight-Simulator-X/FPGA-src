@@ -8,8 +8,10 @@ module rom#(
     parameter string FILE = "data.mem"
     ) (
     input logic clk,
+    input logic read_en,
     input logic [$clog2(DEPTH)-1:0] addr,
-    output logic [WIDTH-1:0] data
+    output logic [WIDTH-1:0] data,
+    output logic dv
     );
 
     logic [WIDTH-1:0] memory [DEPTH];
@@ -20,6 +22,11 @@ module rom#(
 
     always_ff @(posedge clk) begin
         data <= memory[addr];
+        if (read_en) begin
+            o_dv <= 1'b1;
+        end else begin
+            o_dv <= 1'b0;
+        end
     end
 
 endmodule

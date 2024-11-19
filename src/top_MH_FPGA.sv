@@ -20,7 +20,7 @@ module top_MH_FPGA (
     parameter unsigned MAX_TRIANGLE_COUNT = 32768;
     parameter unsigned MAX_VERTEX_COUNT   = 32768;
     parameter unsigned MAX_INDEX_COUNT    = 32768;
-    parameter unsigned MAX_MODEL_COUNT    = 32768;
+    parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
     parameter unsigned SCREEN_WIDTH  = 160;
