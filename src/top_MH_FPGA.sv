@@ -4,6 +4,7 @@
 module top_MH_FPGA (
     input  wire logic clk,          // 100 MHz clock
     output      logic led,          // If clk100m is locked
+
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
     output      logic [3:0] vga_r,  // 4-bit VGA red
@@ -46,10 +47,30 @@ module top_MH_FPGA (
     always_ff @(posedge clk_100m) rstn <= !clk_100m_locked;
     assign led = clk_100m_locked;
 
+    // generate pixel clock
+    logic clk_pix;
+    logic clk_pix_locked;
+    logic rst_pix;
+    clock_480p clock_pix_inst (
+       .clk(clk_100m),
+       .rst(~rstn),  // reset button is active low
+       .clk_pix(clk_pix),
+       .clk_pix_5x(),  // not used for VGA output
+       .clk_pix_locked(clk_pix_locked)
+    );
+    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
+
     // =========================== FPGA-MCU-COM ===========================
     logic [MAX_NUM_OBJECTS_PER_FRAME-1:0] w_mcu_num_objects;
+    logic [INPUT_DATAWIDTH-1:0] w_mvp_matrix_data[4][4];
+    logic w_mvp_dv;
 
     // =========================== MODEL DATA ===========================
+    logic [INPUT_DATAWIDTH-1:0] w_vertex_data[3];
+    logic w_vertex_dv;
+
+    logic [ADDRWIDTH-1:0] w_index_data[3];
+    logic w_index_dv;
 
     // =========================== RENDER PIPELINE ===========================
     logic r_render_pipeline_start;
@@ -129,99 +150,134 @@ module top_MH_FPGA (
     );
 
     // =========================== DISPLAY ===========================
+    logic w_display_ready;
+    logic r_display_clear;
+
+    display #(
+        .DISPLAY_WIDTH(SCREEN_WIDTH),
+        .DISPLAY_HEIGHT(SCREEN_HEIGHT),
+        .SCALE(4),
+        .DISPLAY_COORD_WIDTH(ADDRWIDTH),
+        .FB_DATA_WIDTH(COLORWIDTH),
+        .DB_DATA_WIDTH(OUTPUT_DATAWIDTH),
+        .CLUT_WIDTH(12),
+        .CLUT_DEPTH($clog2(COLORWIDTH)),
+        .CHANNEL_WIDTH(4),
+        .FB_CLEAR_VALUE(0),
+        .PALETTE_FILE("palette.mem"),
+        .FB_IMAGE_FILE("image.mem")
+    ) display_inst (
+        .clk(clk),
+        .clk_pix(clk_pix),
+
+        .ready(w_display_ready),
+        .clear(r_display_clear),
+
+        .i_pixel_write_addr(w_fb_addr_write),
+        .i_pixel_write_valid(w_fb_write_en),
+        .i_fb_data(w_fb_color_data),
+        .i_db_data(w_fb_depth_data),
+
+        .o_red(vga_r),
+        .o_green(vga_g),
+        .o_blue(vga_b),
+
+        .hsync(vga_hsync),
+        .vsync(vga_vsync)
+    );
 
     // =========================== STATE ===========================
-    typedef enum logic [1:0] {
-        IDLE,
-        AWAIT_MCU_DATA,
-        CLEAR_FB,
-        RENDER,
-        DONE
-    } state_t;
-    state_t current_state = IDLE, next_state;
-
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
-            current_state <= IDLE;
-        end
-        else begin
-            current_state <= next_state;
-        end
-    end
-
-    always_comb begin
-        next_state = current_state;
-
-        case (current_state)
-            IDLE: begin
-                if (w_render_pipeline_ready) begin // TODO: add more ready signals
-                    next_state = AWAIT_MCU_DATA;
-                end
-            end
-
-            AWAIT_MCU_DATA: begin
-                if () begin                 // TODO: Add MCU data output valid signal
-                    next_state = CLEAR_FB;
-                end
-            end
-
-            CLEAR_FB: begin
-                if (w_render_pipeline_ready) begin  // TODO: Add clear done signal
-                    next_state = RENDER;
-                end
-            end
-
-            RENDER: begin
-                if (w_render_pipeline_finished) begin
-                    if (r_render_pipeline_num_objects_rendered == w_mcu_num_objects) begin
-                        next_state = DONE;
-                    end
-                end
-            end
-
-            DONE: begin
-                next_state = IDLE;
-            end
-
-            default: begin
-                next_state = IDLE;
-            end
-        endcase
-    end
-
-    always_ff @(posedge clk) begin
-        case (current_state)
-            IDLE: begin
-                r_render_pipeline_start <= 0;
-            end
-
-            AWAIT_MCU_DATA: begin
-                r_render_pipeline_start <= 0;
-            end
-
-            CLEAR_FB: begin
-                r_render_pipeline_start <= 0;
-            end
-
-            RENDER: begin
-                if (w_render_pipeline_finished) begin
-                    r_rendered_objects <= r_rendered_objects + 1;
-
-                    if (r_rendered_objects == w_mcu_num_objects-1) begin
-                        r_render_pipeline_start <= 0;
-                    end else begin
-                        r_render_pipeline_start <= 1;
-                    end
-                end
-            end
-
-            DONE: begin
-                r_render_pipeline_start <= 0;
-            end
-
-            default: begin
-                r_render_pipeline_start <= 0;
-            end
-        endcase
-    end
+    // typedef enum logic [1:0] {
+    //     IDLE,
+    //     AWAIT_MCU_DATA,
+    //     CLEAR_FB,
+    //     RENDER,
+    //     DONE
+    // } state_t;
+    // state_t current_state = IDLE, next_state;
+    //
+    // always_ff @(posedge clk) begin
+    //     if (~rstn) begin
+    //         current_state <= IDLE;
+    //     end
+    //     else begin
+    //         current_state <= next_state;
+    //     end
+    // end
+    //
+    // always_comb begin
+    //     next_state = current_state;
+    //
+    //     case (current_state)
+    //         IDLE: begin
+    //             if (w_render_pipeline_ready) begin // TODO: add more ready signals
+    //                 next_state = AWAIT_MCU_DATA;
+    //             end
+    //         end
+    //
+    //         AWAIT_MCU_DATA: begin
+    //             if () begin                 // TODO: Add MCU data output valid signal
+    //                 next_state = CLEAR_FB;
+    //             end
+    //         end
+    //
+    //         CLEAR_FB: begin
+    //             if (w_render_pipeline_ready) begin  // TODO: Add clear done signal
+    //                 next_state = RENDER;
+    //             end
+    //         end
+    //
+    //         RENDER: begin
+    //             if (w_render_pipeline_finished) begin
+    //                 if (r_render_pipeline_num_objects_rendered == w_mcu_num_objects) begin
+    //                     next_state = DONE;
+    //                 end
+    //             end
+    //         end
+    //
+    //         DONE: begin
+    //             next_state = IDLE;
+    //         end
+    //
+    //         default: begin
+    //             next_state = IDLE;
+    //         end
+    //     endcase
+    // end
+    //
+    // always_ff @(posedge clk) begin
+    //     case (current_state)
+    //         IDLE: begin
+    //             r_render_pipeline_start <= 0;
+    //         end
+    //
+    //         AWAIT_MCU_DATA: begin
+    //             r_render_pipeline_start <= 0;
+    //         end
+    //
+    //         CLEAR_FB: begin
+    //             r_render_pipeline_start <= 0;
+    //         end
+    //
+    //         RENDER: begin
+    //             if (w_render_pipeline_finished) begin
+    //                 r_rendered_objects <= r_rendered_objects + 1;
+    //
+    //                 if (r_rendered_objects == w_mcu_num_objects-1) begin
+    //                     r_render_pipeline_start <= 0;
+    //                 end else begin
+    //                     r_render_pipeline_start <= 1;
+    //                 end
+    //             end
+    //         end
+    //
+    //         DONE: begin
+    //             r_render_pipeline_start <= 0;
+    //         end
+    //
+    //         default: begin
+    //             r_render_pipeline_start <= 0;
+    //         end
+    //     endcase
+    // end
 endmodule

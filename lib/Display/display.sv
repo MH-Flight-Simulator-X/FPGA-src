@@ -17,23 +17,21 @@ module display#(
     input logic clk,
     input logic clk_pix,
 
-    input logic unsigned [BUFFER_ADDR_WIDTH-1:0] buffer_addr_write,
-
-    input logic unsigned [FB_DATA_WIDTH-1:0] i_fb_data,
-    input logic unsigned [DB_DATA_WIDTH-1:0] i_db_data,
-
-    input logic addr_inside_triangle,
-
+    output logic ready,
     input logic clear,
 
+    input logic unsigned [BUFFER_ADDR_WIDTH-1:0] i_pixel_write_addr,
+    input logic unsigned [FB_DATA_WIDTH-1:0] i_fb_data,
+    input logic unsigned [DB_DATA_WIDTH-1:0] i_db_data,
+    input logic i_pixel_write_valid,
+
+    // VGA signals
     output logic unsigned [CHANNEL_WIDTH-1:0] o_red,
     output logic unsigned [CHANNEL_WIDTH-1:0] o_green,
     output logic unsigned [CHANNEL_WIDTH-1:0] o_blue,
 
     output logic hsync,
-    output logic vsync,
-
-    output logic ready
+    output logic vsync
     );
 
     localparam unsigned COLOR_WIDTH = CHANNEL_WIDTH*3;
@@ -65,8 +63,10 @@ module display#(
         .FILE(PALETTE_FILE)
     ) clut (
         .clk(clk_pix),
+        .read_en(),
         .addr(fb_data),
-        .data(clut_data)
+        .data(clut_data),
+        .dv()
     );
 
     // Framebuffer memory
@@ -108,7 +108,7 @@ module display#(
         .ready(db_ready),
         .clear_value(DB_CLEAR_VALUE),
         .addr_write(delayed_buffer_addr_write),
-        .addr_read(buffer_addr_write),
+        .addr_read(i_pixel_write_addr),
         .data_in(delayed_i_db_data),
         .data_out(db_data)
     );
@@ -129,20 +129,20 @@ module display#(
     // Depth test and write logic
     always_ff @(posedge clk) begin
         delayed_i_db_data <= i_db_data;
-        delayed_buffer_addr_write <= buffer_addr_write;
-        delayed_addr_inside_triangle <= addr_inside_triangle;
+        delayed_buffer_addr_write <= i_pixel_write_addr;
+        delayed_addr_inside_triangle <= i_pixel_write_valid;
 
-        if (addr_inside_triangle && (delayed_i_db_data < db_data)) begin
+        if (i_pixel_write_valid && (delayed_i_db_data < db_data)) begin
             buffer_write_enable <= 1;
         end
         else begin
-            buffer_write_enable <= 0;  
+            buffer_write_enable <= 0;
         end
     end
 
     always_ff @(posedge clk_pix) begin 
         // Check if pixel is inside buffer drawing area
-        pixel_in_fb <= (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE && 
+        pixel_in_fb <= (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE &&
                         0 <= screen_x && screen_x < DISPLAY_WIDTH * SCALE);
 
         if (frame) begin
