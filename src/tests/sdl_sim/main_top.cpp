@@ -124,12 +124,6 @@ int main(int argc, char* argv[]) {
                 p->r = top->sdl_r;
             }
 
-            // int top_done = top->done;
-            // if (top_done) {
-            //     printf("Simulation done\n");
-            //     break;
-            // }
-
             // update texture once per frame (in blanking)
             if (top->frame) { 
                 SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));

@@ -35,7 +35,7 @@ module top #(
     localparam string FB_IMAGE_FILE  = "../../image.mem";
 
     // pixel read address and color
-    logic [FB_ADDR_WIDTH-1:0] buffer_addr_write;
+    logic [FB_ADDR_WIDTH-1:0] i_pixel_write_addr;
     logic fb_write_enable;
 
     localparam signed AX0 = 30;
@@ -103,7 +103,7 @@ module top #(
         .i_triangle_dv(rasterizer_dv),
         .i_triangle_last(0),
 
-        .o_fb_addr_write(buffer_addr_write),
+        .o_fb_addr_write(i_pixel_write_addr),
         .o_fb_write_en(fb_write_enable),
         .o_fb_depth_data(w_depth_data),
         // .o_fb_color_data(w_color_data),
@@ -135,8 +135,8 @@ module top #(
         .clk(clk_100m),
         .clk_pix(clk_pix),
 
-        .buffer_addr_write(buffer_addr_write),
-        .addr_inside_triangle(fb_write_enable),
+        .i_pixel_write_addr(i_pixel_write_addr),
+        .i_pixel_write_valid(fb_write_enable),
 
         .i_fb_data(w_color_data),
         .i_db_data(w_depth_data),
