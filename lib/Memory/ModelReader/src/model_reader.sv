@@ -3,12 +3,12 @@
 module model_reader #(
     parameter integer MODEL_INDEX_WIDTH = 4,
     parameter integer HEADER_ADDR_WIDTH = 4,
-    parameter integer index_addr_WIDTH = 12,
+    parameter integer INDEX_ADDR_WIDTH = 12,
     parameter integer VERTEX_ADDR_WIDTH = 12,
     parameter integer COORD_WIDTH = 24,
     parameter integer VERTEX_DATA_WIDTH = COORD_WIDTH * 3,
-    parameter integer INDEX_DATA_WIDTH = index_addr_WIDTH * 3,
-    parameter integer HEADER_DATA_WIDTH = index_addr_WIDTH + VERTEX_ADDR_WIDTH,
+    parameter integer INDEX_DATA_WIDTH = INDEX_ADDR_WIDTH * 3,
+    parameter integer HEADER_DATA_WIDTH = INDEX_ADDR_WIDTH + VERTEX_ADDR_WIDTH,
     parameter string  HEADERS_FILE = "../../ModelReader/src/headers.mem",
     parameter string  FACES_FILE = "../../ModelReader/src/faces.mem",
     parameter string  VERTICES_FILE = "../../ModelReader/src/vertices.mem"
@@ -35,11 +35,11 @@ logic  [HEADER_ADDR_WIDTH-1:0] header_addr;
 logic [HEADER_DATA_WIDTH-1:0]  header_data;
 
 
-logic  [index_addr_WIDTH-1:0]   index_addr;
+logic  [INDEX_ADDR_WIDTH-1:0]   index_addr;
 logic  [VERTEX_ADDR_WIDTH-1:0] vertex_addr;
 
 // Start and end indices for faces and vertices
-logic [index_addr_WIDTH-1:0]    index_end_index;
+logic [INDEX_ADDR_WIDTH-1:0]    index_end_index;
 logic [VERTEX_ADDR_WIDTH-1:0]  vertex_end_index;
 
 // State machine states
@@ -68,7 +68,7 @@ rom #(
 // Faces ROM
 rom #(
     .WIDTH(INDEX_DATA_WIDTH),
-    .DEPTH(1 << index_addr_WIDTH),  // TODO set to actual size
+    .DEPTH(1 << INDEX_ADDR_WIDTH),  // TODO set to actual size
     .FILE(FACES_FILE)
 ) faces_rom (
     .clk(clk),
