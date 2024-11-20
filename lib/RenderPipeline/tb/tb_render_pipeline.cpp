@@ -316,7 +316,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -1.0f, -1.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
@@ -331,12 +331,12 @@ int main(int argc, char* argv[]) {
                 if (dut->o_fb_addr_write >= H_RES * V_RES)
                     continue;
 
-                float z = FixedPoint<int32_t>(dut->o_fb_depth_data, 12, 12, false).toFloat();
-                if (z < zbuffer[dut->o_fb_addr_write]) {
-                    zbuffer[dut->o_fb_addr_write] = z;
-                } else {
-                    continue;
-                }
+                // float z = FixedPoint<int32_t>(dut->o_fb_depth_data, 12, 12, false).toFloat();
+                // if (z < zbuffer[dut->o_fb_addr_write]) {
+                //     zbuffer[dut->o_fb_addr_write] = z;
+                // } else {
+                //     continue;
+                // }
 
                 Pixel* p = &screenbuffer[dut->o_fb_addr_write];
                 p->a = 0xFF;
