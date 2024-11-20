@@ -16,8 +16,8 @@
 #define INPUT_VERTEX_FRACBITS 13
 
 // screen dimensions
-const int H_RES = 640;
-const int V_RES = 480;
+const int H_RES = 320;
+const int V_RES = 240;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
@@ -57,7 +57,7 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     model = glm::rotate(model, glm::radians(rot.y * t), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    float scale = 3.0f;
+    float scale = 4.0f;
     model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     // Adjust the camera view based on current position and rotation
@@ -182,8 +182,8 @@ int main(int argc, char* argv[]) {
         "MH-Flight-Simulator", 
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED, 
-        H_RES * 2,  // Double the width
-        V_RES * 2,  // Double the height
+        H_RES * 4,  // Double the width
+        V_RES * 4,  // Double the height
         SDL_WINDOW_SHOWN
     );
     if (!sdl_window) {
@@ -316,7 +316,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -0.5f), glm::vec3(15.0f, -15.0f, -25.0f), 1.0f);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
