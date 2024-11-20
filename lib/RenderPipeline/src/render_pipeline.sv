@@ -9,8 +9,8 @@ module render_pipeline #(
     parameter unsigned MAX_TRIANGLE_COUNT = 32768,
     parameter unsigned MAX_VERTEX_COUNT   = 32768,
 
-    parameter unsigned SCREEN_WIDTH  = 320,
-    parameter unsigned SCREEN_HEIGHT = 240,
+    parameter unsigned SCREEN_WIDTH  = 640,
+    parameter unsigned SCREEN_HEIGHT = 480,
 
     parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT),
 
