@@ -22,11 +22,6 @@ VERILOG_SOURCES = \
 	$(LIB_DIR)/Math/FixedPointDivide/src/fixed_point_divide.sv \
 	$(LIB_DIR)/Memory/BRAM_SP/src/bram_sp.sv \
 	$(LIB_DIR)/Memory/G-Buffer/src/g_buffer.sv \
-	$(LIB_DIR)/Memory/BRAM_DP/src/bram_dp.sv \
-	$(LIB_DIR)/Memory/Buffer/src/buffer.sv \
-	$(LIB_DIR)/Memory/ROM/src/rom.sv \
-	$(LIB_DIR)/Display/DisplaySignals/projectf_display_480p.sv \
-	$(LIB_DIR)/Display/display.sv \
 	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader.sv \
 	$(LIB_DIR)/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv \
 	$(LIB_DIR)/RenderPipeline/PrimitiveAssembler/src/primitive_assembler.sv \
@@ -38,6 +33,11 @@ VERILOG_SOURCES = \
 	$(LIB_DIR)/RenderPipeline/src/render_pipeline.sv
 
 # INCLUDE FOR DISPLAY
+# $(LIB_DIR)/Memory/BRAM_DP/src/bram_dp.sv \
+# $(LIB_DIR)/Memory/Buffer/src/buffer.sv \
+# $(LIB_DIR)/Memory/ROM/src/rom.sv \
+# $(LIB_DIR)/Display/DisplaySignals/projectf_display_480p.sv \
+# $(LIB_DIR)/Display/display.sv \
 
 # Verilog file (Top module)
 VERILOG_FILE = $(SRC_DIR)/top_MH_FPGA.sv

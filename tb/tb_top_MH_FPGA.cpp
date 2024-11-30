@@ -18,8 +18,8 @@
 // screen dimensions
 const int H_RES = 640;
 const int V_RES = 480;
-const int H_SCREEN_RES = 160;
-const int V_SCREEN_RES = 120;
+const int H_SCREEN_RES = 320;
+const int V_SCREEN_RES = 240;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
@@ -94,62 +94,53 @@ void assign_vertex_data(Vtop_MH_FPGA* dut, std::vector<glm::vec3>& vertex_data, 
         vertex_read_addr = 0;
     }
 
+    dut->i_vertex_last = 0;
+    dut->i_vertex[0] = 0;
+    dut->i_vertex[1] = 0;
+    dut->i_vertex[2] = 0;
+    dut->i_vertex_dv = 0;
+
     if (vertex_read_addr >= vertex_data.size()) {
-        dut->i_vertex_last = 0;
-        dut->i_vertex[0] = 0;
-        dut->i_vertex[1] = 0;
-        dut->i_vertex[2] = 0;
-        dut->i_vertex_dv = 0;
         return;
     }
     
     if (dut->o_model_buff_vertex_read_en) {
-        if (vertex_read_addr == vertex_data.size() - 1) {
-            dut->i_vertex_last = 1;
-        } else {
-            dut->i_vertex_last = 0;
-        }
-
         dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex_dv = 1;
+        dut->i_vertex_last = vertex_read_addr == vertex_data.size() - 1;
+
+        if (dut->i_vertex_last)
+            printf("Vertex last\n");
 
         vertex_read_addr++;
-    } else {
-        dut->i_vertex_last = 0;
-        dut->i_vertex[0] = 0;
-        dut->i_vertex[1] = 0;
-        dut->i_vertex[2] = 0;
-        dut->i_vertex_dv = 0;
     }
 };
 
 void assign_index_data(Vtop_MH_FPGA* dut, std::vector<glm::ivec3>& index_data, bool reset = false) {
     static vluint64_t index_read_addr = 0;
-    if (reset)
+    if (reset) {
         index_read_addr = 0;
+    }
+
+    dut->i_index_last = 0;
+    dut->i_index_data[0] = 0;
+    dut->i_index_data[1] = 0;
+    dut->i_index_data[2] = 0;
+    dut->i_index_dv = 0;
 
     if (dut->o_model_buff_index_read_en) {
-        if (index_read_addr == index_data.size() - 1) {
-            dut->i_index_last = 1;
-            printf("Last index\n");
-        } else {
-            dut->i_index_last = 0;
-        }
-
         dut->i_index_data[0] = index_data.at(index_read_addr).x;
         dut->i_index_data[1] = index_data.at(index_read_addr).y;
         dut->i_index_data[2] = index_data.at(index_read_addr).z;
         dut->i_index_dv = 1;
+        dut->i_index_last = index_read_addr == index_data.size() - 1;
+
+        if (dut->i_index_last)
+            printf("Index last\n");
 
         index_read_addr++;
-    } else {
-        dut->i_index_last = 0;
-        dut->i_index_data[0] = 0;
-        dut->i_index_data[1] = 0;
-        dut->i_index_data[2] = 0;
-        dut->i_index_dv = 0;
     }
 }
 
@@ -159,6 +150,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<glm::vec3> vertex_buffer = SimDataFileHandler::read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = SimDataFileHandler::read_index_data("model.face");
+    printf("Initialized vertex and index buffers\nVertex buffer size: %ld\t Index buffer size: %ld\n", 
+            vertex_buffer.size(), index_buffer.size());
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("SDL init failed.\n");
@@ -199,12 +192,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    SDL_RenderSetLogicalSize(sdl_renderer, H_SCREEN_RES, V_SCREEN_RES);
+
     sdl_texture = SDL_CreateTexture(
         sdl_renderer, 
         SDL_PIXELFORMAT_RGBA8888,
         SDL_TEXTUREACCESS_STREAMING, 
-        H_RES, 
-        V_RES
+        H_SCREEN_RES, 
+        V_SCREEN_RES
     );
     if (!sdl_texture) {
         printf("Texture creation failed: %s\n", SDL_GetError());
@@ -294,83 +289,57 @@ int main(int argc, char* argv[]) {
             dut->i_vertex_dv = 0;
             dut->i_vertex_last = 0;
 
-            if (dut->ready && dut->display_ready) {
-                printf("Render pipeline new frame\n");
+            static bool new_frame = false;
+            if (dut->ready) {
                 dut->start = 1;
-            } else {
-                dut->start = 0;
-            }
-
-            static int frame_last = 0;
-            static bool should_reset_buffers = false;
-            if (frame_last && !dut->frame) {
-                should_reset_buffers = true;
-            }
-            frame_last = dut->frame;
-
-            if (should_reset_buffers && dut->display_ready) {
                 new_frame = true;
-                should_reset_buffers = false;
-                printf("Reset\n");
-            } else {
-                new_frame = false;
+                printf("Render pipeline new frame\n");
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                printf("Assigning MVP matrix\n");
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -4.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 assign_mvp_data(dut, mvp);                
                 t = t + 1.0f;
             }
 
             assign_vertex_data(dut, vertex_buffer, new_frame);
             assign_index_data(dut, index_buffer, new_frame);
-        }
 
-        static int pix_clk_last = 0;
-        // if (dut->clk_pix && !pix_clk_last) {
-        if (dut->clk_pix && !pix_clk_last) {
-            if (dut->display_ready) {
+            if (dut->o_fb_write_en) {
+                if (dut->o_fb_addr_write >= H_RES * V_RES)
+                    continue;
+            
+                int addr = dut->o_fb_addr_write / H_SCREEN_RES * H_RES + dut->o_fb_addr_write % H_SCREEN_RES;
+                Pixel* p = &screenbuffer[addr];
+                p->a = 0xFF;
+                p->b = color_palette[dut->o_fb_color_data % 10].b;
+                p->g = color_palette[dut->o_fb_color_data % 10].g;
+                p->r = color_palette[dut->o_fb_color_data % 10].r;
+            }
 
-                if (dut->display_en) {
-                    if (dut->sx < 0 || dut->sx >= H_RES || dut->sy < 0 || dut->sy >= V_RES) {
-                        continue;
-                    }
+            if (dut->finished) {
+                printf("Finished!\n");
+                SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
+                SDL_RenderClear(sdl_renderer);
+                SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+                SDL_RenderPresent(sdl_renderer);
+                frame_count++;
                 
-                    Pixel* p = &screenbuffer[dut->sy*H_RES + dut->sx];
-                    p->a = 0xFF;
-                    p->b = (dut->vga_b << 4) + dut->vga_b;
-                    p->g = (dut->vga_g << 4) + dut->vga_g;
-                    p->r = (dut->vga_r << 4) + dut->vga_r;
+                // Clear screen buffer
+                for (int i = 0; i < H_RES*V_RES; i++) {
+                    screenbuffer[i].a = 0xFF;
+                    screenbuffer[i].b = 0x00;
+                    screenbuffer[i].g = 0x00;
+                    screenbuffer[i].r = 0x00;
+                    zbuffer[i] = 1.0f;
                 }
-                
-                static bool frame_last = false;
-                if (dut->frame && !frame_last) {
-                    printf("Display new frame\n");
-                    SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
-                    SDL_RenderClear(sdl_renderer);
-                    SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-                    SDL_RenderPresent(sdl_renderer);
 
-
-                    vluint64_t time_diff = posedge_cnt - frame_start;
-                    printf("Clks per frame: %lu\n", time_diff);
-
-                    float frame_time = (float)time_diff * 10e-9;
-                    float frame_rate = 1.0f / frame_time;
-                    printf("Frame rate: %.2f\n", frame_rate);
-                    printf("Frame time: %.2f\n", frame_time);
-                    printf("\n");
-                    frame_start = posedge_cnt;
-                    frame_count++;
-                    dut->clear = 1;
-                } else {
-                    dut->clear = 0;
-                }
-                frame_last = dut->frame;
+                new_frame = true;
+            } else {
+                new_frame = false;
             }
         }
-        pix_clk_last = dut->clk_pix;
-
 
         sim_time++;
     }
