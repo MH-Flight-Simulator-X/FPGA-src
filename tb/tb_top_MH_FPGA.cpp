@@ -10,7 +10,9 @@
 
 #include "../verilator_utils/fixed_point.h"
 #include "../verilator_utils/file_data.h"
+#include "../verilator_utils/sdl_context.h"
 #include "obj_dir/Vtop_MH_FPGA.h"
+
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
@@ -24,12 +26,12 @@ const int V_SCREEN_RES = 240;
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
 
-typedef struct Pixel {
-    uint8_t a;
-    uint8_t b;
-    uint8_t g;
-    uint8_t r;
-} Pixel;
+// typedef struct Pixel {
+//     uint8_t a;
+//     uint8_t b;
+//     uint8_t g;
+//     uint8_t r;
+// } Pixel;
 
 // 16 color palette
 Pixel color_palette[10] = {
@@ -153,62 +155,7 @@ int main(int argc, char* argv[]) {
     printf("Initialized vertex and index buffers\nVertex buffer size: %ld\t Index buffer size: %ld\n", 
             vertex_buffer.size(), index_buffer.size());
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL init failed.\n");
-        return 1;
-    }
-
-    Pixel screenbuffer[H_RES*V_RES];
-    float zbuffer[H_RES*V_RES];
-
-    for (int i = 0; i < H_RES*V_RES; i++) {
-        screenbuffer[i].a = 0xFF;
-        screenbuffer[i].b = 0x00;
-        screenbuffer[i].g = 0x00;
-        screenbuffer[i].r = 0x00;
-        zbuffer[i] = 1.0f;
-    }
-
-    SDL_Window*   sdl_window   = NULL;
-    SDL_Renderer* sdl_renderer = NULL;
-    SDL_Texture*  sdl_texture  = NULL;
-
-    sdl_window = SDL_CreateWindow(
-        "MH-Flight-Simulator", 
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, 
-        H_RES,  // Double the width
-        V_RES,  // Double the height
-        SDL_WINDOW_SHOWN
-    );
-    if (!sdl_window) {
-        printf("Window creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!sdl_renderer) {
-        printf("Renderer creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    SDL_RenderSetLogicalSize(sdl_renderer, H_SCREEN_RES, V_SCREEN_RES);
-
-    sdl_texture = SDL_CreateTexture(
-        sdl_renderer, 
-        SDL_PIXELFORMAT_RGBA8888,
-        SDL_TEXTUREACCESS_STREAMING, 
-        H_SCREEN_RES, 
-        V_SCREEN_RES
-    );
-    if (!sdl_texture) {
-        printf("Texture creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // reference SDL keyboard state array: https://wiki.libsdl.org/SDL_GetKeyboardState
-    const Uint8 *keyb_state = SDL_GetKeyboardState(NULL);
-    printf("Simulation running. Press 'Q' in simulation window to quit.\n\n");
+    SDLContext view(H_RES, V_RES, H_SCREEN_RES, V_SCREEN_RES);
 
     // initialize Verilog module
     Vtop_MH_FPGA* dut = new Vtop_MH_FPGA;
@@ -238,7 +185,6 @@ int main(int argc, char* argv[]) {
         dut->i_vertex_dv = 0;
         dut->i_index_dv = 0;
         dut->i_vertex_last = 0;
-        // dut->clear = 1;
 
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -273,14 +219,8 @@ int main(int argc, char* argv[]) {
         }
         dut->eval();
 
-        SDL_Event e;
-        if (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                break;
-            }
-            else if (e.type == SDL_KEYDOWN) {
-                if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
-            }
+        if (view.update()) {
+            break;
         }
 
         if (dut->clk) {
@@ -307,35 +247,15 @@ int main(int argc, char* argv[]) {
             assign_index_data(dut, index_buffer, new_frame);
 
             if (dut->o_fb_write_en) {
-                if (dut->o_fb_addr_write >= H_RES * V_RES)
-                    continue;
-            
-                int addr = dut->o_fb_addr_write / H_SCREEN_RES * H_RES + dut->o_fb_addr_write % H_SCREEN_RES;
-                Pixel* p = &screenbuffer[addr];
-                p->a = 0xFF;
-                p->b = color_palette[dut->o_fb_color_data % 10].b;
-                p->g = color_palette[dut->o_fb_color_data % 10].g;
-                p->r = color_palette[dut->o_fb_color_data % 10].r;
+                view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
             }
 
             if (dut->finished) {
                 printf("Finished!\n");
-                SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
-                SDL_RenderClear(sdl_renderer);
-                SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-                SDL_RenderPresent(sdl_renderer);
-                frame_count++;
-                
-                // Clear screen buffer
-                for (int i = 0; i < H_RES*V_RES; i++) {
-                    screenbuffer[i].a = 0xFF;
-                    screenbuffer[i].b = 0x00;
-                    screenbuffer[i].g = 0x00;
-                    screenbuffer[i].r = 0x00;
-                    zbuffer[i] = 1.0f;
-                }
-
+                view.update_screen();
+                view.clear_screen();
                 new_frame = true;
+                frame_count++;
             } else {
                 new_frame = false;
             }
@@ -350,12 +270,7 @@ int main(int argc, char* argv[]) {
     double fps = (double)frame_count/duration;
     printf("Frames per second: %.1f\n", fps);
 
-    SDL_DestroyTexture(sdl_texture);
-    SDL_DestroyRenderer(sdl_renderer);
-    SDL_DestroyWindow(sdl_window);
-    SDL_Quit();
-
-    dut->final();  // simulation done
+    dut->final();
     delete dut;
     return 0;
 }

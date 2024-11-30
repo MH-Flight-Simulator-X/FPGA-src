@@ -1,6 +1,7 @@
 // Class to manage SDL context
 #pragma once
 #include <cstdlib>
+#include <stdexcept>
 
 #ifdef __APPLE__
     #include <SDL.h>
@@ -9,14 +10,15 @@
 #endif
 #include <vector>
 
+typedef struct Pixel {
+    uint8_t a;
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
+} Pixel;
+
 class SDLContext {
 private:
-    typedef struct Pixel {
-        uint8_t a;
-        uint8_t b;
-        uint8_t g;
-        uint8_t r;
-    } Pixel;
 
 public:
     SDL_Window* window;
@@ -26,45 +28,54 @@ public:
 
     int H_RES = 320;
     int V_RES = 240;
+    int H_SCREEN_RES = 320;
+    int V_SCREEN_RES = 240;
     std::vector<Pixel> screenbuffer;
     std::vector<float> zbuffer;
 
-    SDLContext(int H_RES, int V_RES) {
+    SDLContext(int H_RES, int V_RES, int H_SCREEN_RES = 320, int V_SCREEN_RES = 240) {
         this->H_RES = H_RES;
         this->V_RES = V_RES;
+        this->H_SCREEN_RES = H_SCREEN_RES;
+        this->V_SCREEN_RES = V_SCREEN_RES;
 
         SDL_Init(SDL_INIT_VIDEO);
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            std::string error_msg = "SDL init failed.";
+            throw std::runtime_error(error_msg);
+        }
+
         window = SDL_CreateWindow(
-                "MH-Flight-Simulator", 
-                SDL_WINDOWPOS_CENTERED,
-                SDL_WINDOWPOS_CENTERED, 
-                H_RES * 4,  // Double the width
-                V_RES * 4,  // Double the height
-                SDL_WINDOW_SHOWN
-                );
+            "MH-Flight-Simulator", 
+            SDL_WINDOWPOS_CENTERED,
+            SDL_WINDOWPOS_CENTERED, 
+            this->H_RES,
+            this->V_RES,
+            SDL_WINDOW_SHOWN
+        );
         if (!window) {
-            printf("Window creation failed: %s\n", SDL_GetError());
-            return;
+            std::string error_msg = "Could not initialize SDL window object:" +  std::string(SDL_GetError());
+            throw std::runtime_error(error_msg);
         }
 
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         if (!renderer) {
-            printf("Renderer creation failed: %s\n", SDL_GetError());
-            return;
+            std::string error_msg = "Renderer creation failed" +  std::string(SDL_GetError());
+            throw std::runtime_error(error_msg);
         }
 
-        SDL_RenderSetLogicalSize(renderer, H_RES, V_RES);
+        SDL_RenderSetLogicalSize(renderer, H_SCREEN_RES, V_SCREEN_RES);
 
         texture = SDL_CreateTexture(
                 renderer, 
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_STREAMING, 
-                H_RES, 
-                V_RES
+                H_SCREEN_RES, 
+                V_SCREEN_RES
                 );
         if (!texture) {
-            printf("Texture creation failed: %s\n", SDL_GetError());
-            return;
+            std::string error_msg = "Texture creation failed:" +  std::string(SDL_GetError());
+            throw std::runtime_error(error_msg);
         }
 
         keyb_state = SDL_GetKeyboardState(NULL);
@@ -111,15 +122,15 @@ public:
         SDL_RenderPresent(renderer);
     }
 
-    void set_pixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        if (x < 0 || x >= H_RES || y < 0 || y >= V_RES) {
+    void set_pixel(int addr, Pixel color) {
+        if (addr >= this->H_SCREEN_RES * this->V_SCREEN_RES)
             return;
-        }
-
-        int index = y * H_RES + x;
-        screenbuffer.at(index).a = a;
-        screenbuffer.at(index).b = b;
-        screenbuffer.at(index).g = g;
-        screenbuffer.at(index).r = r;
+    
+        int addr_fb = addr / this->H_SCREEN_RES * this->H_RES + addr % H_SCREEN_RES;
+        Pixel* p = &screenbuffer.at(addr_fb);
+        p->a = 0xFF;
+        p->b = color.b;
+        p->g = color.g;
+        p->r = color.r;
     }
 };
