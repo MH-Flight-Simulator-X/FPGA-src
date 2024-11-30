@@ -26,27 +26,6 @@ const int V_SCREEN_RES = 240;
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
 
-// typedef struct Pixel {
-//     uint8_t a;
-//     uint8_t b;
-//     uint8_t g;
-//     uint8_t r;
-// } Pixel;
-
-// 16 color palette
-Pixel color_palette[10] = {
-    {0xFF, 255, 182, 193},  // Light Pink
-    {0xFF, 255, 222, 173},  // Navajo White
-    {0xFF, 176, 224, 230},  // Powder Blue
-    {0xFF, 255, 239, 213},  // Papaya Whip
-    {0xFF, 240, 230, 140},  // Khaki
-    {0xFF, 221, 160, 221},  // Plum
-    {0xFF, 250, 250, 210},  // Light Goldenrod Yellow
-    {0xFF, 152, 251, 152},  // Pale Green
-    {0xFF, 245, 222, 179},  // Wheat
-    {0xFF, 216, 191, 216}   // Thistle
-};
-
 vluint64_t clk_100m_cnt = 0;
 
 glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 3.0f);
