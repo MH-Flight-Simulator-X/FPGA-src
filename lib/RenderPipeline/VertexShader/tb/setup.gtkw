@@ -1,0 +1,56 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sun Dec  1 12:11:08 2024
+[*]
+[dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/VertexShader/tb/waveform.vcd"
+[dumpfile_mtime] "Sun Dec  1 12:05:58 2024"
+[dumpfile_size] 15535
+[savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/VertexShader/tb/setup.gtkw"
+[timestart] 0
+[size] 1245 1536
+[pos] 1194 -51
+*-3.237864 19 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[sst_width] 48
+[signals_width] 311
+[sst_expanded] 0
+[sst_vpaned_height] 470
+@28
+TOP.vertex_shader_new.clk
+TOP.vertex_shader_new.current_state[1:0]
+TOP.vertex_shader_new.i_ready
+TOP.vertex_shader_new.o_ready
+TOP.vertex_shader_new.o_vertex_ready
+TOP.vertex_shader_new.i_mvp_valid
+TOP.vertex_shader_new.i_vertex_valid
+@22
+TOP.vertex_shader_new.i_mvp(0)(0)[23:0]
+TOP.vertex_shader_new.i_mvp(0)(1)[23:0]
+TOP.vertex_shader_new.i_mvp(0)(2)[23:0]
+TOP.vertex_shader_new.i_mvp(0)(3)[23:0]
+TOP.vertex_shader_new.i_mvp(1)(0)[23:0]
+TOP.vertex_shader_new.i_mvp(1)(1)[23:0]
+TOP.vertex_shader_new.i_mvp(1)(2)[23:0]
+TOP.vertex_shader_new.i_mvp(1)(3)[23:0]
+TOP.vertex_shader_new.i_mvp(2)(0)[23:0]
+TOP.vertex_shader_new.i_mvp(2)(1)[23:0]
+TOP.vertex_shader_new.i_mvp(2)(2)[23:0]
+TOP.vertex_shader_new.i_mvp(2)(3)[23:0]
+TOP.vertex_shader_new.i_mvp(3)(0)[23:0]
+TOP.vertex_shader_new.i_mvp(3)(1)[23:0]
+TOP.vertex_shader_new.i_mvp(3)(2)[23:0]
+TOP.vertex_shader_new.i_mvp(3)(3)[23:0]
+TOP.vertex_shader_new.i_vertex(0)[23:0]
+TOP.vertex_shader_new.i_vertex(1)[23:0]
+TOP.vertex_shader_new.i_vertex(2)[23:0]
+TOP.vertex_shader_new.o_vertex(0)[23:0]
+TOP.vertex_shader_new.o_vertex(1)[23:0]
+TOP.vertex_shader_new.o_vertex(2)[23:0]
+TOP.vertex_shader_new.o_vertex(3)[23:0]
+@28
+TOP.vertex_shader_new.o_vertex_valid
+TOP.vertex_shader_new.w_matvec_mul_ready
+@29
+TOP.vertex_shader_new.w_transformed_vertex_valid
+[pattern_trace] 1
+[pattern_trace] 0

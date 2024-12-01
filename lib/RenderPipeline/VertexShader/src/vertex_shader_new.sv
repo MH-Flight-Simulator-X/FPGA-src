@@ -17,6 +17,7 @@ module vertex_shader_new #(
 
     input logic signed [DATAWIDTH-1:0] i_vertex[3],
     input logic i_vertex_valid,
+    input logic i_vertex_last,
 
     output logic signed [DATAWIDTH-1:0] o_vertex[4],
     output logic o_vertex_valid,
@@ -30,7 +31,6 @@ module vertex_shader_new #(
 
     // Input and output signals for MATVEC-MUL
     logic signed [DATAWIDTH-1:0] r_vertex[4];
-    logic r_vertex_dv = 1'b0;
     logic r_vertex_last = 1'b0;
 
     // Output data is held until new data is placed on input
@@ -41,7 +41,22 @@ module vertex_shader_new #(
     logic matvec_mul_start = '0;
     logic w_matvec_mul_ready;
 
-    // TODO: Add instantiation of new MATVEC-MUL
+    mat_vec_mul_new #(
+        .DATAWIDTH(DATAWIDTH),
+        .FRACBITS(FRACBITS)
+    ) mat_vec_mul_inst (
+        .clk(clk),
+        .rstn(rstn),
+
+        .start(matvec_mul_start),
+        .i_ready(i_ready),
+        .o_ready(w_matvec_mul_ready),
+
+        .A(r_mvp_mat),
+        .x(r_vertex),
+        .y(w_transformed_vertex),
+        .o_valid(w_transformed_vertex_valid)
+    );
 
     // State
     typedef enum logic [1:0] {
@@ -62,28 +77,18 @@ module vertex_shader_new #(
 
     always_comb begin
         next_state = current_state;
-
-        o_ready = 1'b0;
-        o_vertex_ready = 1'b0;
         o_finished = 1'b0;
-        matvec_mul_start = 1'b0;
 
         case (current_state)
             IDLE: begin
                 if (i_mvp_valid) begin
                     next_state = COMPUTE_VERTEX;
                 end
-                o_ready = 1'b1;
             end
 
             COMPUTE_VERTEX: begin
-                if (w_matvec_mul_ready) begin
-                    o_vertex_ready = 1'b1;
-                end
-
-                if (r_vertex_valid && w_matvec_mul_ready) begin
+                if (i_vertex_valid && w_matvec_mul_ready) begin
                     next_state = COMPUTE_VERTEX_DONE;
-                    matvec_mul_start = 1'b1;
                 end
             end
 
@@ -112,19 +117,28 @@ module vertex_shader_new #(
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
+            o_ready <= 1'b0;
+            o_vertex_ready <= 1'b0;
             foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= '0;
-            r_mvp_valid <= 1'b0;
 
             // Input and output signals for MATVEC-MUL
             foreach (r_vertex[i]) r_vertex[i] <= '0;
-            r_vertex_dv <= 1'b0;
             r_vertex_last <= 1'b0;
+
+            foreach (o_vertex[i]) o_vertex[i] <= '0;
+            o_vertex_valid <= 1'b0;
         end else begin
             case (current_state)
                 IDLE: begin
                     if (i_mvp_valid) begin
                         foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= i_mvp[i][j];
+                        o_ready <= 1'b0;
+                    end else begin
+                        o_ready <= 1'b1;
                     end
+
+                    foreach (o_vertex[i]) o_vertex[i] <= '0;
+                    o_vertex_valid <= 1'b0;
                 end
 
                 COMPUTE_VERTEX: begin
@@ -132,16 +146,37 @@ module vertex_shader_new #(
                     r_vertex[1] <= i_vertex[1];
                     r_vertex[2] <= i_vertex[2];
                     r_vertex[3] <= FixedPointOne;
-                    r_vertex_dv <= i_vertex_valid;
+                    r_vertex_last <= i_vertex_last;
 
                     foreach (o_vertex[i]) o_vertex[i] <= '0;
                     o_vertex_valid <= 1'b0;
+
+                    if (w_matvec_mul_ready) begin
+                        if (i_vertex_valid) begin
+                            o_vertex_ready <= 1'b0;
+                            matvec_mul_start <= 1'b1;
+                        end else begin
+                            o_vertex_ready <= 1'b1;
+                        end
+                    end else begin
+                        o_vertex_ready <= 1'b0;
+                    end
                 end
 
                 COMPUTE_VERTEX_DONE: begin
+                    matvec_mul_start <= 1'b0;
+                    o_vertex_ready <= 1'b0;
+
                     if (w_transformed_vertex_valid) begin
                         foreach (o_vertex[i]) o_vertex[i] <= w_transformed_vertex[i];
                         o_vertex_valid <= 1'b1;
+                    end
+                end
+
+                FINISHED: begin
+                    if (i_ready) begin
+                        foreach (o_vertex[i]) o_vertex[i] <= '0;
+                        o_vertex_valid <= 1'b0;
                     end
                 end
 

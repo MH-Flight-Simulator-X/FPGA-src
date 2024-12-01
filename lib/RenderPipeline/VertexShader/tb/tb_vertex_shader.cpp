@@ -3,17 +3,17 @@
 #include <verilated_vcd_c.h>
 #include "../../../../verilator_utils/fixed_point.h"
 
-#include "obj_dir/Vvertex_shader.h"
+#include "obj_dir/Vvertex_shader_new.h"
 
-#define FIXED_POINT_WIDTH 18
-#define FIXED_POINT_FRAC_WIDTH 12
+#define FIXED_POINT_WIDTH 24
+#define FIXED_POINT_FRAC_WIDTH 13
 
 #define RESET_CLKS 8
 
 float mvp[4][4] = {
     {-1.0f, 0.0f, 0.0f, 0.0f},
-    {0.0f, -1.0f, 0.0f, 0.0f},
-    {0.0f, 0.0f, -1.0f, 0.0f},
+    {0.0f, -2.0f, 0.0f, 0.0f},
+    {0.0f, 0.0f, -2.0f, 0.0f},
     {0.0f, 0.0f, 0.0f, -1.0f}
 };
 
@@ -22,7 +22,7 @@ float (*vertex_data)[3];
 void print_matrix(float mat[4][4]);
 void print_vector(float vec[4]);
 
-#define MAX_SIM_TIME 120
+#define MAX_SIM_TIME 320
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 
@@ -30,7 +30,8 @@ void populate_vertex_data(float (*vd_ptr)[3], size_t size) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < 3; j++) {
             constexpr float max_val = (float)(1 << (FIXED_POINT_WIDTH - FIXED_POINT_FRAC_WIDTH - 1))/2 - 1;
-            constexpr float min_val = -(float)(1 << (FIXED_POINT_WIDTH - FIXED_POINT_FRAC_WIDTH - 1))/2;
+            // constexpr float min_val = -(float)(1 << (FIXED_POINT_WIDTH - FIXED_POINT_FRAC_WIDTH - 1))/2;
+            constexpr float min_val = 0;
 
             float r = (float)rand() / (float)RAND_MAX;
             vd_ptr[i][j] = min_val + r * (max_val - min_val);
@@ -38,15 +39,15 @@ void populate_vertex_data(float (*vd_ptr)[3], size_t size) {
     } 
 }
 
-void assign_mvp_data(Vvertex_shader* dut, float mvp[4][4]) {
+void assign_mvp_data(Vvertex_shader_new* dut, float mvp[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            dut->i_mvp_mat[i][j] = FixedPoint<int32_t>::fromFloat(mvp[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
+            dut->i_mvp[i][j] = FixedPoint<int32_t>::fromFloat(mvp[i][j], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
         }
     }
 };
 
-void assign_vertex_data(Vvertex_shader* dut, float vertex[3]) {
+void assign_vertex_data(Vvertex_shader_new* dut, float vertex[3]) {
     for (int i = 0; i < 3; i++) {
         dut->i_vertex[i] = FixedPoint<int32_t>::fromFloat(vertex[i], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).get();
     }
@@ -56,7 +57,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
 
     Verilated::commandArgs(argc, argv);
-    Vvertex_shader* dut = new Vvertex_shader;
+    Vvertex_shader_new* dut = new Vvertex_shader_new;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC* m_trace = new VerilatedVcdC;
@@ -81,12 +82,12 @@ int main(int argc, char** argv) {
         dut->eval();
 
         dut->rstn = 0;
-        dut->i_mvp_dv = 0;
-        dut->i_vertex_dv = 0;
+        dut->i_mvp_valid = 0;
+        dut->i_vertex_valid = 0;
 
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                dut->i_mvp_mat[i][j] = 0; 
+                dut->i_mvp[i][j] = 0; 
             }
         }
         for (int i = 0; i < 3; i++) {
@@ -107,21 +108,21 @@ int main(int argc, char** argv) {
 
         if (dut->clk == 1) {
             posedge_cnt++;
-            dut->i_vertex_dv = 0;
-            dut->i_mvp_dv = 0;
+            dut->i_vertex_valid = 0;
+            dut->i_mvp_valid = 0;
             dut->i_vertex_last = 0;
 
             // Assign mvp matrix
-            if (posedge_cnt == 2) {
+            if (posedge_cnt >= 2 && dut->o_ready) {
                 assign_mvp_data(dut, mvp);
-                dut->i_mvp_dv = 1;
+                dut->i_mvp_valid = 1;
             }
 
             // Assign vertex data
-            if (dut->o_ready) {
+            if (dut->o_vertex_ready && random() % 2 == 0) {
                 if (current_vertex_index < vertex_data_size) {
                     assign_vertex_data(dut, vertex_data[current_vertex_index]);
-                    dut->i_vertex_dv = 1;
+                    dut->i_vertex_valid = 1;
                     if (current_vertex_index == vertex_data_size - 1) {
                         dut->i_vertex_last = 1;
                     }
@@ -129,7 +130,7 @@ int main(int argc, char** argv) {
                 } 
             }
 
-            if (dut->o_vertex_dv) {
+            if (dut->o_vertex_valid) {
                 static int vertex_cnt = 0;
                 printf("Vertex %d: %f, %f, %f, %f\n", vertex_cnt++, 
                     FixedPoint<int32_t>(dut->o_vertex[0], FIXED_POINT_FRAC_WIDTH, FIXED_POINT_WIDTH).toFloat(),

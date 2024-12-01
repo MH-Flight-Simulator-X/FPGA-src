@@ -1,6 +1,7 @@
 SRC_DIR = ../src
-MODULE=vertex_shader
-MatVecMul_FILE=../../../Math/MatVecMul/src/mat_vec_mul.sv
+MODULE=vertex_shader_new
+TB=vertex_shader
+MatVecMul_FILE=../../../Math/MatVecMul/src/mat_vec_mul_new.sv
 
 .PHONY:sim
 sim: waveform.vcd
@@ -27,12 +28,12 @@ waveform.vcd: ./obj_dir/V$(MODULE)
 	@echo "### BUILDING SIM ###"
 	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
 
-.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(MatVecMul_FILE) tb_$(MODULE).cpp
+.stamp.verilate: $(SRC_DIR)/$(MODULE).sv $(MatVecMul_FILE) tb_$(TB).cpp
 	@echo
 	@echo "### VERILATING ###"
 	verilator -Wall --trace --x-assign unique --x-initial unique \
 		-cc $(SRC_DIR)/$(MODULE).sv $(MatVecMul_FILE) \
-		--exe tb_$(MODULE).cpp
+		--exe tb_$(TB).cpp
 	@touch .stamp.verilate
 
 .PHONY:lint
