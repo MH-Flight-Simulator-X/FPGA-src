@@ -16,8 +16,8 @@ SRC_DIR = ../src
 OBJ_DIR = obj_dir
 
 VERILOG_SOURCES = \
-	../../Math/MatVecMul/src/mat_vec_mul.sv \
-	../VertexShader/src/vertex_shader.sv \
+	../../Math/MatVecMul/src/mat_vec_mul_new.sv \
+	../VertexShader/src/vertex_shader_new.sv \
 	../../Math/FixedPointDivide/src/fixed_point_divide.sv \
 	../VertexPostProcessor/src/vertex_post_processor.sv \
 	../../Memory/BRAM_SP/src/bram_sp.sv \

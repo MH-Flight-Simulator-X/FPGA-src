@@ -113,6 +113,7 @@ void assign_vertex_data(Vrender_pipeline* dut, std::vector<glm::vec3>& vertex_da
         dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex_dv = 1;
+        printf("Reading vertex: %ld\n", vertex_read_addr);
 
         vertex_read_addr++;
     } else {

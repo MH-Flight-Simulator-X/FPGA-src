@@ -79,7 +79,7 @@ module transform_pipeline #(
         next_state = current_state;
         transform_pipeline_ready = 1'b0;
         transform_pipeline_done = 1'b0;
-        o_mvp_matrix_read_en = 1'b0;
+        // o_mvp_matrix_read_en = 1'b0;
 
         case (current_state)
             IDLE: begin
@@ -94,7 +94,7 @@ module transform_pipeline #(
                 if (i_mvp_dv) begin
                     next_state = VERTEX_SHADER;
                 end else begin
-                    o_mvp_matrix_read_en = 1'b1;
+                    // o_mvp_matrix_read_en = 1'b1;
                 end
             end
 
@@ -124,13 +124,35 @@ module transform_pipeline #(
     // ====== MODULE INSTANTIATION ======
     // Vertex Shader
     logic w_vs_ready;
+    logic w_vs_vertex_ready;
     logic w_vs_finished;
-    logic r_vs_enable;
+    // logic r_vs_enable;
 
     logic signed [INPUT_DATAWIDTH-1:0] w_vs_o_vertex[4];
     logic w_vs_o_vertex_dv;
 
-    vertex_shader #(
+    // vertex_shader #(
+    //     .DATAWIDTH(INPUT_DATAWIDTH),
+    //     .FRACBITS(INPUT_FRACBITS)
+    // ) vertex_shader_inst (
+    //     .clk(clk),
+    //     .rstn(rstn),
+    //
+    //     .o_ready(w_vs_ready),
+    //     .o_finished(w_vs_finished),
+    //     .i_enable(r_vs_enable),
+    //
+    //     .i_mvp_mat(i_mvp_matrix),
+    //     .i_mvp_dv(i_mvp_dv),
+    //
+    //     .i_vertex(i_vertex),
+    //     .i_vertex_dv(i_vertex_dv),
+    //     .i_vertex_last(i_vertex_last),
+    //
+    //     .o_vertex(w_vs_o_vertex),
+    //     .o_vertex_dv(w_vs_o_vertex_dv)
+    // );
+    vertex_shader_new #(
         .DATAWIDTH(INPUT_DATAWIDTH),
         .FRACBITS(INPUT_FRACBITS)
     ) vertex_shader_inst (
@@ -138,19 +160,22 @@ module transform_pipeline #(
         .rstn(rstn),
 
         .o_ready(w_vs_ready),
-        .o_finished(w_vs_finished),
-        .i_enable(r_vs_enable),
+        .o_vertex_ready(w_vs_vertex_ready),
+        .i_ready(w_vpp_ready),
 
-        .i_mvp_mat(i_mvp_matrix),
-        .i_mvp_dv(i_mvp_dv),
+        .i_mvp(i_mvp_matrix),
+        .i_mvp_valid(i_mvp_dv),
 
         .i_vertex(i_vertex),
-        .i_vertex_dv(i_vertex_dv),
+        .i_vertex_valid(i_vertex_dv),
         .i_vertex_last(i_vertex_last),
 
         .o_vertex(w_vs_o_vertex),
-        .o_vertex_dv(w_vs_o_vertex_dv)
+        .o_vertex_valid(w_vs_o_vertex_dv),
+        .o_finished(w_vs_finished)
     );
+
+    assign o_mvp_matrix_read_en = w_vs_ready & (current_state == VERTEX_SHADER_GET_MATRIX);
 
     // Vertex Post-Processor
     logic signed [INPUT_DATAWIDTH-1:0] r_vpp_i_vertex[4];
@@ -409,6 +434,6 @@ module transform_pipeline #(
         end
     end
 
-    assign r_vs_enable = w_vpp_ready;
-    assign o_model_buff_vertex_read_en = w_vs_ready;
+    // assign r_vs_enable = w_vpp_ready;
+    assign o_model_buff_vertex_read_en = w_vs_vertex_ready;
 endmodule

@@ -77,7 +77,6 @@ module vertex_shader_new #(
 
     always_comb begin
         next_state = current_state;
-        o_finished = 1'b0;
 
         case (current_state)
             IDLE: begin
@@ -106,7 +105,6 @@ module vertex_shader_new #(
 
             FINISHED: begin
                 next_state = IDLE;
-                o_finished = 1'b1;
             end
 
             default: begin
@@ -133,6 +131,7 @@ module vertex_shader_new #(
                     if (i_mvp_valid) begin
                         foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= i_mvp[i][j];
                         o_ready <= 1'b0;
+                        $display("Got MVP matrix");
                     end else begin
                         o_ready <= 1'b1;
                     end
@@ -152,6 +151,7 @@ module vertex_shader_new #(
                     o_vertex_valid <= 1'b0;
 
                     if (w_matvec_mul_ready) begin
+                        $display("MatVecMul Ready. i_vertex_valid: %b", i_vertex_valid);
                         if (i_vertex_valid) begin
                             o_vertex_ready <= 1'b0;
                             matvec_mul_start <= 1'b1;
@@ -159,6 +159,7 @@ module vertex_shader_new #(
                             o_vertex_ready <= 1'b1;
                         end
                     end else begin
+                        $display("MatVecMul not Ready");
                         o_vertex_ready <= 1'b0;
                     end
                 end
@@ -170,6 +171,7 @@ module vertex_shader_new #(
                     if (w_transformed_vertex_valid) begin
                         foreach (o_vertex[i]) o_vertex[i] <= w_transformed_vertex[i];
                         o_vertex_valid <= 1'b1;
+                        o_finished <= r_vertex_last;
                     end
                 end
 
@@ -177,6 +179,7 @@ module vertex_shader_new #(
                     if (i_ready) begin
                         foreach (o_vertex[i]) o_vertex[i] <= '0;
                         o_vertex_valid <= 1'b0;
+                        o_finished <= '0;
                     end
                 end
 
