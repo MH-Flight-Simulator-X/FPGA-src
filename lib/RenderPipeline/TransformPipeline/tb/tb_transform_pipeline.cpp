@@ -243,8 +243,7 @@ int main(int argc, char** argv) {
 
     std::vector<glm::vec3> vertex_buffer = read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = read_index_data("model.face");
-    glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
-    // glm::mat4 mvp2 = generate_mvp(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(15.0f, -10.0f, 0.0f));
+    glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(15.0f, -25.0f, 0.0f));
 
     // Reset
     for (int i = 0; i < RESET_CLKS; i++) {
@@ -301,18 +300,8 @@ int main(int argc, char** argv) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                // printf("Assigning matrix\n");
-
                 assign_mvp_data(dut, mvp);
                 dut->i_mvp_dv = 1;
-
-                // if (num_rendered == 0) {
-                //     assign_mvp_data(dut, mvp);
-                // } else {
-                //     assign_mvp_data(dut, mvp2);
-                // }
-                //
-                // dut->i_mvp_dv = 1;
             }
 
             if (shouldReset)
@@ -362,18 +351,6 @@ int main(int argc, char** argv) {
             } else {
                 dut->transform_pipeline_next = 1;
             }
-
-            static int vs_finished_last = 0;
-            if (dut->transform_pipeline__DOT__w_vs_finished && !vs_finished_last) {
-                printf("VS Finished\n");
-            }
-            vs_finished_last = dut->transform_pipeline__DOT__w_vs_finished;
-            
-            static int vpp_finished_last = 0;
-            if (dut->transform_pipeline__DOT__r_vpp_finished && !vpp_finished_last) {
-                printf("VPP Finished\n");
-            }
-            vpp_finished_last = dut->transform_pipeline__DOT__r_vpp_finished;
 
             shouldReset = false;
             if (dut->transform_pipeline_done) {

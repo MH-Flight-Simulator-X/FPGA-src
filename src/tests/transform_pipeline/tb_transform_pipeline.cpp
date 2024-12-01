@@ -13,7 +13,7 @@
 #include "../../../verilator_utils/fixed_point.h"
 #include "../../../verilator_utils/file_data.h"
 
-#include "obj_dir/Vtb_transform_pipeline.h"
+#include "obj_dir/Vtransform_pipeline.h"
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
@@ -28,7 +28,7 @@
 glm::mat4 generate_mvp() {
     // Generate matrix and vector data using GLM
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.5f, -5.0f));
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -5.0f));
     model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
 
@@ -48,7 +48,7 @@ glm::mat4 generate_mvp() {
 }
 
 #define RESET_CLKS 8
-#define MAX_SIM_TIME 1152921504606846976
+#define MAX_SIM_TIME 8096
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 

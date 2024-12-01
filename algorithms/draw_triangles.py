@@ -5,8 +5,8 @@ import random
 
 # Define screen dimensions
 SCREEN_SCALE = 1.0
-SCREEN_WIDTH = int(320 * SCREEN_SCALE)
-SCREEN_HEIGHT = int(320 * SCREEN_SCALE)
+SCREEN_WIDTH = int(640 * SCREEN_SCALE)
+SCREEN_HEIGHT = int(480 * SCREEN_SCALE)
 BACKGROUND_COLOR = (0, 0, 0)
 
 # Some nice pastel colors

@@ -1,75 +1,29 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Mon Nov  4 12:23:57 2024
+[*] Sun Dec  1 22:20:14 2024
 [*]
 [dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/TransformPipeline/tb/waveform.vcd"
-[dumpfile_mtime] "Mon Nov  4 12:19:49 2024"
-[dumpfile_size] 163487428
+[dumpfile_mtime] "Sun Dec  1 22:16:17 2024"
+[dumpfile_size] 210578
 [savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/RenderPipeline/TransformPipeline/tb/setup.gtkw"
-[timestart] 812560
+[timestart] 132
 [size] 2490 1536
-[pos] -88 -88
-*-7.000000 813085 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -51 -51
+*-7.000000 733 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.transform_pipeline.
-[treeopen] TOP.transform_pipeline.vertex_post_processor_inst.
-[treeopen] TOP.transform_pipeline.vertex_shader_inst.
-[sst_width] 233
-[signals_width] 330
+[sst_width] 339
+[signals_width] 222
 [sst_expanded] 1
-[sst_vpaned_height] 992
+[sst_vpaned_height] 470
+@22
+TOP.transform_pipeline.vertex_post_processor_inst.o_vertex_pixel(0)[11:0]
+TOP.transform_pipeline.vertex_post_processor_inst.o_vertex_pixel(1)[11:0]
+TOP.transform_pipeline.vertex_post_processor_inst.o_vertex_pixel(2)[11:0]
 @28
-TOP.transform_pipeline.clk
-TOP.transform_pipeline.i_mvp_dv
-TOP.transform_pipeline.vertex_shader_inst.i_enable
-TOP.transform_pipeline.vertex_shader_inst.i_vertex_last
-TOP.transform_pipeline.vertex_shader_inst.o_finished
+TOP.transform_pipeline.vertex_post_processor_inst.done
+TOP.transform_pipeline.r_gbuff_write_en
 @23
-TOP.transform_pipeline.vertex_shader_inst.vertex_last_finished[4:0]
-@28
->73
-TOP.transform_pipeline.vertex_shader_inst.current_state[1:0]
-@22
->0
-TOP.transform_pipeline.vertex_shader_inst.i_vertex(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.i_vertex(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.i_vertex(2)[23:0]
-@28
-TOP.transform_pipeline.vertex_shader_inst.i_vertex_dv
-@22
-TOP.transform_pipeline.vertex_shader_inst.r_vertex(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.r_vertex(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.r_vertex(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.r_vertex(3)[23:0]
-@28
-TOP.transform_pipeline.vertex_shader_inst.r_vertex_dv
-@22
-TOP.transform_pipeline.vertex_shader_inst.o_vertex(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.o_vertex(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.o_vertex(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.o_vertex(3)[23:0]
-@28
-TOP.transform_pipeline.vertex_shader_inst.o_vertex_dv
-@22
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_0(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_0(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_0(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_0(3)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_1(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_1(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_1(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_1(3)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_2(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_2(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_2(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_2(3)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_3(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_3(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_3(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.x_r_3(3)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.y(0)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.y(1)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.y(2)[23:0]
-TOP.transform_pipeline.vertex_shader_inst.mat_vec_mul_inst.y(3)[23:0]
+TOP.transform_pipeline.r_gbuff_addr_write[13:0]
 [pattern_trace] 1
 [pattern_trace] 0

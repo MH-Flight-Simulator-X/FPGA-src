@@ -10,38 +10,18 @@
 
 #include "../../../verilator_utils/fixed_point.h"
 #include "../../../verilator_utils/file_data.h"
+#include "../../../verilator_utils/sdl_context.h"
 #include "obj_dir/Vrender_pipeline.h"
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
 
 // screen dimensions
-const int H_RES = 320;
-const int V_RES = 240;
+const int H_RES = 640;
+const int V_RES = 480;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
-
-typedef struct Pixel {
-    uint8_t a;
-    uint8_t b;
-    uint8_t g;
-    uint8_t r;
-} Pixel;
-
-// 16 color palette
-Pixel color_palette[10] = {
-    {0xFF, 255, 182, 193},  // Light Pink
-    {0xFF, 255, 222, 173},  // Navajo White
-    {0xFF, 176, 224, 230},  // Powder Blue
-    {0xFF, 255, 239, 213},  // Papaya Whip
-    {0xFF, 240, 230, 140},  // Khaki
-    {0xFF, 221, 160, 221},  // Plum
-    {0xFF, 250, 250, 210},  // Light Goldenrod Yellow
-    {0xFF, 152, 251, 152},  // Pale Green
-    {0xFF, 245, 222, 179},  // Wheat
-    {0xFF, 216, 191, 216}   // Thistle
-};
 
 vluint64_t clk_100m_cnt = 0;
 
@@ -159,62 +139,7 @@ int main(int argc, char* argv[]) {
     std::vector<glm::vec3> vertex_buffer = SimDataFileHandler::read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = SimDataFileHandler::read_index_data("model.face");
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL init failed.\n");
-        return 1;
-    }
-
-    Pixel screenbuffer[H_RES*V_RES];
-    float zbuffer[H_RES*V_RES];
-
-    for (int i = 0; i < H_RES*V_RES; i++) {
-        screenbuffer[i].a = 0xFF;
-        screenbuffer[i].b = 0x00;
-        screenbuffer[i].g = 0x00;
-        screenbuffer[i].r = 0x00;
-        zbuffer[i] = 1.0f;
-    }
-
-    SDL_Window*   sdl_window   = NULL;
-    SDL_Renderer* sdl_renderer = NULL;
-    SDL_Texture*  sdl_texture  = NULL;
-
-    sdl_window = SDL_CreateWindow(
-        "MH-Flight-Simulator", 
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, 
-        H_RES * 4,  // Double the width
-        V_RES * 4,  // Double the height
-        SDL_WINDOW_SHOWN
-    );
-    if (!sdl_window) {
-        printf("Window creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!sdl_renderer) {
-        printf("Renderer creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    SDL_RenderSetLogicalSize(sdl_renderer, H_RES, V_RES);
-
-    sdl_texture = SDL_CreateTexture(
-        sdl_renderer, 
-        SDL_PIXELFORMAT_RGBA8888,
-        SDL_TEXTUREACCESS_STREAMING, 
-        H_RES, 
-        V_RES
-    );
-    if (!sdl_texture) {
-        printf("Texture creation failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // reference SDL keyboard state array: https://wiki.libsdl.org/SDL_GetKeyboardState
-    const Uint8 *keyb_state = SDL_GetKeyboardState(NULL);
-    printf("Simulation running. Press 'Q' in simulation window to quit.\n\n");
+    SDLContext view(H_RES, V_RES, H_RES, V_RES);
 
     // initialize Verilog module
     Vrender_pipeline* dut = new Vrender_pipeline;
@@ -254,54 +179,13 @@ int main(int argc, char* argv[]) {
     float t = 0.0f;
     vluint64_t clk_frame_start = posedge_cnt;
     while (true) {
-        SDL_Event e;
-        if (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                break;
-            }
-            else if (e.type == SDL_KEYDOWN) {
-                glm::vec3 forward = glm::vec3(
-                    -sin(glm::radians(camera_rotation.y)),
-                    0.0f,
-                    -cos(glm::radians(camera_rotation.y))
-                );
-                forward = glm::normalize(forward);
-                glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-
-                if (keyb_state[SDL_SCANCODE_W]) {
-                    camera_position += forward * camera_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_S]) {
-                    camera_position -= forward * camera_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_A]) {
-                    camera_position -= right * camera_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_D]) {
-                    camera_position += right * camera_speed;
-                }
-
-                // Rotate camera
-                if (keyb_state[SDL_SCANCODE_LEFT]) {
-                    camera_rotation.y -= rotation_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_RIGHT]) {
-                    camera_rotation.y += rotation_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_UP]) {
-                    camera_rotation.x -= rotation_speed;
-                }
-                if (keyb_state[SDL_SCANCODE_DOWN]) {
-                    camera_rotation.x += rotation_speed;
-                }
-            }
-        }
-        if (keyb_state[SDL_SCANCODE_Q]) break;  // quit if user presses 'Q'
-
-
         // Main sim
         dut->clk ^= 1;
         dut->eval();
+
+        if (view.update()) {
+            break;
+        }
 
         if (dut->clk) {
             posedge_cnt++;
@@ -317,7 +201,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -0.5f), glm::vec3(15.0f, -15.0f, -25.0f), 1.0f);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -10.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
@@ -329,49 +213,15 @@ int main(int argc, char* argv[]) {
             assign_index_data(dut, index_buffer, new_frame);
 
             if (dut->o_fb_write_en) {
-                if (dut->o_fb_addr_write >= H_RES * V_RES)
-                    continue;
-
-                // float z = FixedPoint<int32_t>(dut->o_fb_depth_data, 12, 12, false).toFloat();
-                // if (z < zbuffer[dut->o_fb_addr_write]) {
-                //     zbuffer[dut->o_fb_addr_write] = z;
-                // } else {
-                //     continue;
-                // }
-
-                Pixel* p = &screenbuffer[dut->o_fb_addr_write];
-                p->a = 0xFF;
-                p->b = color_palette[dut->o_fb_color_data % 10].b;
-                p->g = color_palette[dut->o_fb_color_data % 10].g;
-                p->r = color_palette[dut->o_fb_color_data % 10].r;
+                view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
             }
 
             if (dut->finished) {
                 printf("Finished!\n");
-                SDL_UpdateTexture(sdl_texture, NULL, screenbuffer, H_RES*sizeof(Pixel));
-                SDL_RenderClear(sdl_renderer);
-                SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-                SDL_RenderPresent(sdl_renderer);
-                frame_count++;
-
-                // Clear screen buffer
-                for (int i = 0; i < H_RES*V_RES; i++) {
-                    screenbuffer[i].a = 0xFF;
-                    screenbuffer[i].b = 0x00;
-                    screenbuffer[i].g = 0x00;
-                    screenbuffer[i].r = 0x00;
-                    zbuffer[i] = 1.0f;
-                }
-
-                vluint64_t clk_frame_end = posedge_cnt;
-                float time_per_frame = (clk_frame_end - clk_frame_start) * 1e-8;
-                float frame_rate = 1.0 / time_per_frame;
-                printf("Clks per frame: %lu\n", clk_frame_end - clk_frame_start);
-                printf("Time per frame: %fs\n", time_per_frame);
-                printf("Frame rate: %f\n", frame_rate);
-                clk_frame_start = clk_frame_end;
-
+                view.update_screen();
+                view.clear_screen();
                 new_frame = true;
+                frame_count++;
             } else {
                 new_frame = false;
             }
@@ -383,11 +233,6 @@ int main(int argc, char* argv[]) {
     double duration = ((double)(end_ticks-start_ticks))/SDL_GetPerformanceFrequency();
     double fps = (double)frame_count/duration;
     printf("Frames per second: %.1f\n", fps);
-
-    SDL_DestroyTexture(sdl_texture);
-    SDL_DestroyRenderer(sdl_renderer);
-    SDL_DestroyWindow(sdl_window);
-    SDL_Quit();
 
     dut->final();  // simulation done
     delete dut;

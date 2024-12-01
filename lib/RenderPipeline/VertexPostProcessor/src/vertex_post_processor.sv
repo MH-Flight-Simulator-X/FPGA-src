@@ -239,21 +239,11 @@ module vertex_post_processor #(
             invalid <= '0;
         end else begin
             case (current_state)
-                VPP_IDLE: begin
-                    $display("VPP: IDLE");
-                    if (i_vertex_dv) begin
-                        $display("VPP: Got (%d, %d, %d, %d)", i_vertex[0], i_vertex[1], i_vertex[2], i_vertex[3]);
-                    end
-                    done <= '0;
-                    invalid <= '0;
-                end
-
                 VPP_SCREEN_SPACE_TRANSFORM: begin
                     o_vertex_pixel[0] <= {w_ss_x_inter[2 * IV_DATAWIDTH - 1], w_ss_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
                     o_vertex_pixel[1] <= {w_ss_y_inter[2 * IV_DATAWIDTH - 1], w_ss_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
                     o_vertex_pixel[2] <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-OV_DATAWIDTH];
                     done <= '1;
-                    $display("VPP: Transform done");
                 end
 
                 VPP_ERROR_STATE: begin

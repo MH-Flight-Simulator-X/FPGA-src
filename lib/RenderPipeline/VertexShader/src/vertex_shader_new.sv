@@ -104,7 +104,9 @@ module vertex_shader_new #(
             end
 
             FINISHED: begin
-                next_state = IDLE;
+                if (i_ready) begin
+                    next_state = IDLE;
+                end
             end
 
             default: begin
@@ -131,7 +133,6 @@ module vertex_shader_new #(
                     if (i_mvp_valid) begin
                         foreach (r_mvp_mat[i,j]) r_mvp_mat[i][j] <= i_mvp[i][j];
                         o_ready <= 1'b0;
-                        $display("Got MVP matrix");
                     end else begin
                         o_ready <= 1'b1;
                     end
@@ -151,7 +152,6 @@ module vertex_shader_new #(
                     o_vertex_valid <= 1'b0;
 
                     if (w_matvec_mul_ready) begin
-                        $display("MatVecMul Ready. i_vertex_valid: %b", i_vertex_valid);
                         if (i_vertex_valid) begin
                             o_vertex_ready <= 1'b0;
                             matvec_mul_start <= 1'b1;
@@ -159,7 +159,6 @@ module vertex_shader_new #(
                             o_vertex_ready <= 1'b1;
                         end
                     end else begin
-                        $display("MatVecMul not Ready");
                         o_vertex_ready <= 1'b0;
                     end
                 end

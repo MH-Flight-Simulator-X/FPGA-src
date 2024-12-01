@@ -16,8 +16,8 @@ module transform_pipeline #(
     parameter unsigned MAX_TRIANGLE_COUNT = 16384,  // For testing
     parameter unsigned MAX_VERTEX_COUNT = 16384,    // When building set to something like 4096
 
-    parameter unsigned SCREEN_WIDTH = 320,
-    parameter unsigned SCREEN_HEIGHT = 320,
+    parameter unsigned SCREEN_WIDTH = 640,
+    parameter unsigned SCREEN_HEIGHT = 480,
 
     parameter real ZFAR = 100.0,
     parameter real ZNEAR = 0.1
@@ -55,71 +55,6 @@ module transform_pipeline #(
     output logic o_triangle_dv,
     output logic o_triangle_last
     );
-
-    // ====== STATE ======
-    typedef enum logic [2:0] {
-        IDLE,
-        VERTEX_SHADER_GET_MATRIX,
-        VERTEX_SHADER,
-        PRIMITIVE_ASSEMBLER,
-        DONE
-    } state_t;
-    state_t current_state = IDLE, next_state;
-
-    always_ff @(posedge clk) begin
-        if (~rstn) begin
-            current_state <= IDLE;
-        end else begin
-            current_state <= next_state;
-            // $display("Current state: %s", current_state.name());
-        end
-    end
-
-    always_comb begin
-        next_state = current_state;
-        transform_pipeline_ready = 1'b0;
-        transform_pipeline_done = 1'b0;
-        // o_mvp_matrix_read_en = 1'b0;
-
-        case (current_state)
-            IDLE: begin
-                if (transform_pipeline_start) begin
-                    next_state = VERTEX_SHADER_GET_MATRIX;
-                end else begin
-                    transform_pipeline_ready = 1'b1;
-                end
-            end
-
-            VERTEX_SHADER_GET_MATRIX: begin
-                if (i_mvp_dv) begin
-                    next_state = VERTEX_SHADER;
-                end else begin
-                    // o_mvp_matrix_read_en = 1'b1;
-                end
-            end
-
-            VERTEX_SHADER: begin
-                if (r_vpp_finished) begin
-                    next_state = PRIMITIVE_ASSEMBLER;
-                end
-            end
-
-            PRIMITIVE_ASSEMBLER: begin
-                if (w_pa_finished) begin
-                    next_state = DONE;
-                end
-            end
-
-            DONE: begin
-                transform_pipeline_done = 1'b1;
-                next_state = IDLE;
-            end
-
-            default: begin
-                next_state = IDLE;
-            end
-        endcase
-    end
 
     // ====== MODULE INSTANTIATION ======
     // Vertex Shader
@@ -188,7 +123,7 @@ module transform_pipeline #(
     logic w_vpp_ready;
 
     logic r_vpp_last_vertex = '0;
-    logic r_vpp_finished = '0;
+    logic r_vpp_last_vertex_finished = '0;
 
     logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_vertexes_processed = '0;
 
@@ -307,14 +242,74 @@ module transform_pipeline #(
         .o_last(o_triangle_last)
     );
 
-    // ===== MORE STATE STUFF =====
+    // ====== STATE ======
+    typedef enum logic [2:0] {
+        IDLE,
+        VERTEX_SHADER_GET_MATRIX,
+        VERTEX_SHADER,
+        PRIMITIVE_ASSEMBLER,
+        DONE
+    } state_t;
+    state_t current_state = IDLE, next_state;
+
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            current_state <= IDLE;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    always_comb begin
+        next_state = current_state;
+        transform_pipeline_ready = 1'b0;
+        transform_pipeline_done = 1'b0;
+
+        case (current_state)
+            IDLE: begin
+                if (transform_pipeline_start) begin
+                    next_state = VERTEX_SHADER_GET_MATRIX;
+                end else begin
+                    transform_pipeline_ready = 1'b1;
+                end
+            end
+
+            VERTEX_SHADER_GET_MATRIX: begin
+                if (i_mvp_dv) begin
+                    next_state = VERTEX_SHADER;
+                end
+            end
+
+            VERTEX_SHADER: begin
+                if (w_vpp_done & r_vpp_last_vertex_finished) begin
+                    next_state = PRIMITIVE_ASSEMBLER;
+                end
+            end
+
+            PRIMITIVE_ASSEMBLER: begin
+                if (w_pa_finished) begin
+                    next_state = DONE;
+                end
+            end
+
+            DONE: begin
+                transform_pipeline_done = 1'b1;
+                next_state = IDLE;
+            end
+
+            default: begin
+                next_state = IDLE;
+            end
+        endcase
+    end
+
     always_ff @(posedge clk) begin
         if (~rstn) begin
             // VPP
             foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= '0;
             r_vpp_i_vertex_dv    <= '0;
             r_vpp_last_vertex    <= '0;
-            r_vpp_finished       <= '0;
+            r_vpp_last_vertex_finished <= '0;
             r_vertexes_processed <= '0;
 
             // GBuff
@@ -342,7 +337,7 @@ module transform_pipeline #(
                     foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= '0;
                     r_vpp_i_vertex_dv    <= '0;
                     r_vpp_last_vertex    <= '0;
-                    r_vpp_finished       <= '0;
+                    r_vpp_last_vertex_finished <= '0;
                     r_vertexes_processed <= '0;
 
                     // GBuff
@@ -368,39 +363,33 @@ module transform_pipeline #(
                 VERTEX_SHADER: begin
                     if (w_vs_o_vertex_dv) begin
                         foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= w_vs_o_vertex[i];
-                        r_vpp_i_vertex_dv <= '1;
-
                         r_vpp_last_vertex <= w_vs_finished;
+                        r_vpp_i_vertex_dv <= '1;
                     end else begin
+                        foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= '0;
                         r_vpp_i_vertex_dv <= '0;
                     end
 
-                    if (w_vpp_done & !r_vpp_finished) begin
-                        if (!w_vpp_o_vertex_invalid) begin
-                            // Increment the gbuff addr
-                            r_gbuff_addr_write <= r_vertexes_processed;
-                            r_vertexes_processed <= r_vertexes_processed + 1;
+                    if (w_vpp_done && !w_vpp_o_vertex_invalid) begin
+                        r_vpp_last_vertex_finished <= r_vpp_last_vertex;
 
-                            // Write VPP data to gbuff
-                            r_gbuff_write_en <= '1;
-                            r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_pixel[2]};
-                        end else begin
-                            r_gbuff_write_en <= '0;
-                        end
+                        // Increment the gbuff addr
+                        r_gbuff_addr_write <= r_vertexes_processed;
+                        r_vertexes_processed <= r_vertexes_processed + 1;
 
-                        // If this was the last vertex, latch vpp finished signal
-                        if (r_vpp_last_vertex) begin
-                            r_vpp_finished <= '1;
-                        end
-
-                        // Reset read_en
-                        r_gbuff_read_en <= '0;
+                        // Write VPP data to gbuff
+                        r_gbuff_write_en <= '1;
+                        r_gbuff_data_write <= {w_vpp_pixel[0], w_vpp_pixel[1], w_vpp_pixel[2]};
+                    end else begin
+                        r_gbuff_write_en <= '0;
                     end
                 end
 
                 PRIMITIVE_ASSEMBLER: begin
                     // Start running primitive assembler as vpp is finished
                     r_gbuff_write_en <= '0;   // Will only be doing read operations on buffer
+                    foreach (r_vpp_i_vertex[i]) r_vpp_i_vertex[i] <= '0;
+                    r_vpp_i_vertex_dv <= '0;
 
                     if (w_pa_o_ready & !w_pa_finished & transform_pipeline_next) begin
                         r_pa_start <= 1;

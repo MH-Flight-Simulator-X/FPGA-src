@@ -1,11 +1,11 @@
 SRC_DIR = ../src
 MODULE=transform_pipeline
 
-MAT_VEC_MUL = ../../../Math/MatVecMul/src/mat_vec_mul.sv
+MAT_VEC_MUL = ../../../Math/MatVecMul/src/mat_vec_mul_new.sv
 FRAC_DIV = ../../../Math/FixedPointDivide/src/fixed_point_divide.sv
 BRAM_SP = ../../../Memory/BRAM_SP/src/bram_sp.sv
 
-VERTEX_SHADER = ../../VertexShader/src/vertex_shader.sv
+VERTEX_SHADER = ../../VertexShader/src/vertex_shader_new.sv
 VERTEX_POST_PROCESSOR = ../../VertexPostProcessor/src/vertex_post_processor.sv
 PRIMITIVE_ASSEMBLER = ../../PrimitiveAssembler/src/primitive_assembler.sv
 GBUFFER = ../../../Memory/G-Buffer/src/g_buffer.sv
@@ -55,6 +55,6 @@ clean:
 	rm -rf .stamp.*;
 	rm -rf ./obj_dir
 	rm -rf waveform.vcd
-	rm *.vert
-	rm *.face
-	rm *.tri
+	# rm *.vert
+	# rm *.face
+	# rm *.tri
