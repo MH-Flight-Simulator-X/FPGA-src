@@ -16,7 +16,7 @@ def read_obj_file(path: str):
                 face = []
                 for vertex in face_indices:
                     v_index = vertex.split("/")[0]
-                    face.append(int(v_index) - 1)
+                    face.append(int(v_index))
                 faces.append(face)
 
     return np.array(vertices), np.array(faces)

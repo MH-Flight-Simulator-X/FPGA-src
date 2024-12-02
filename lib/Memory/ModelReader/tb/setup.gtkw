@@ -1,0 +1,40 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Mon Dec  2 23:37:46 2024
+[*]
+[dumpfile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Memory/ModelReader/tb/waveform.vcd"
+[dumpfile_mtime] "Mon Dec  2 23:27:23 2024"
+[dumpfile_size] 10429
+[savefile] "/media/disk/MH-Flight-Simulator/FPGA-src/lib/Memory/ModelReader/tb/setup.gtkw"
+[timestart] 80
+[size] 1245 1536
+[pos] 1194 -51
+*-5.583639 257 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[sst_width] 233
+[signals_width] 190
+[sst_expanded] 1
+[sst_vpaned_height] 992
+@28
+TOP.model_reader.clk
+TOP.model_reader.current_state[2:0]
+TOP.model_reader.ready
+TOP.model_reader.vertex_read_en
+@22
+TOP.model_reader.vertex_data(0)[23:0]
+TOP.model_reader.vertex_data(1)[23:0]
+TOP.model_reader.vertex_data(2)[23:0]
+@28
+TOP.model_reader.vertex_o_dv
+TOP.model_reader.vertex_data_last
+TOP.model_reader.index_read_en
+@22
+TOP.model_reader.index_data(0)[14:0]
+TOP.model_reader.index_data(1)[14:0]
+TOP.model_reader.index_data(2)[14:0]
+@28
+TOP.model_reader.index_o_dv
+@29
+TOP.model_reader.index_data_last
+[pattern_trace] 1
+[pattern_trace] 0
