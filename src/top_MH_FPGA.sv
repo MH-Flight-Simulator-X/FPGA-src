@@ -78,13 +78,6 @@ module top_MH_FPGA (
     parameter real ZNEAR = 0.1;
 
     // =========================== RENDER PIPELINE ===========================
-    logic r_render_pipeline_start;
-    logic w_render_pipeline_ready;
-    logic w_render_pipeline_finished;
-
-    logic w_mvp_matrix_read_en;
-    logic signed [INPUT_DATAWIDTH-1:0] r_mvp_matrix[4][4];
-    logic r_mvp_dv;
 
     // Read vertex data from Model Buffer -- Effectively accessed as SAM
     logic w_model_buff_vertex_read_en;
@@ -97,13 +90,6 @@ module top_MH_FPGA (
     logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_index_data[3];
     logic r_index_dv;
     logic r_index_last;
-
-    // Rasterizer Output
-    logic [ADDRWIDTH-1:0] w_fb_addr_write;
-    logic w_fb_write_en;
-
-    logic [OUTPUT_DATAWIDTH-1:0] w_fb_depth_data;
-    logic [COLORWIDTH-1:0] w_fb_color_data;
 
     render_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
@@ -125,13 +111,13 @@ module top_MH_FPGA (
         .clk(clk),
         .rstn(rstn),
 
-        .start(r_render_pipeline_start),
-        .ready(w_render_pipeline_ready),
-        .finished(w_render_pipeline_finished),
+        .start(start),
+        .ready(ready),
+        .finished(finished),
 
-        .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
-        .i_mvp_matrix(r_mvp_matrix),
-        .i_mvp_dv(r_mvp_dv),
+        .o_mvp_matrix_read_en(o_mvp_matrix_read_en),
+        .i_mvp_matrix(i_mvp_matrix),
+        .i_mvp_dv(i_mvp_dv),
 
         .o_model_buff_vertex_read_en(w_model_buff_vertex_read_en),
         .i_vertex(r_vertex),
@@ -143,23 +129,12 @@ module top_MH_FPGA (
         .i_index_dv(r_index_dv),
         .i_index_last(r_index_last),
 
-        .o_fb_addr_write(w_fb_addr_write),
-        .o_fb_write_en(w_fb_write_en),
+        .o_fb_addr_write(o_fb_addr_write),
+        .o_fb_write_en(o_fb_write_en),
 
-        .o_fb_depth_data(w_fb_depth_data),
-        .o_fb_color_data(w_fb_color_data)
+        .o_fb_depth_data(o_fb_depth_data),
+        .o_fb_color_data(o_fb_color_data)
     );
-
-    assign r_render_pipeline_start = start;
-    assign ready = w_render_pipeline_ready;
-    assign finished = w_render_pipeline_finished;
-
-    assign o_mvp_matrix_read_en = w_mvp_matrix_read_en;
-    assign r_mvp_matrix[0][0] = i_mvp_matrix[0][0]; assign r_mvp_matrix[0][1] = i_mvp_matrix[0][1]; assign r_mvp_matrix[0][2] = i_mvp_matrix[0][2]; assign r_mvp_matrix[0][3] = i_mvp_matrix[0][3];
-    assign r_mvp_matrix[1][0] = i_mvp_matrix[1][0]; assign r_mvp_matrix[1][1] = i_mvp_matrix[1][1]; assign r_mvp_matrix[1][2] = i_mvp_matrix[1][2]; assign r_mvp_matrix[1][3] = i_mvp_matrix[1][3];
-    assign r_mvp_matrix[2][0] = i_mvp_matrix[2][0]; assign r_mvp_matrix[2][1] = i_mvp_matrix[2][1]; assign r_mvp_matrix[2][2] = i_mvp_matrix[2][2]; assign r_mvp_matrix[2][3] = i_mvp_matrix[2][3];
-    assign r_mvp_matrix[3][0] = i_mvp_matrix[3][0]; assign r_mvp_matrix[3][1] = i_mvp_matrix[3][1]; assign r_mvp_matrix[3][2] = i_mvp_matrix[3][2]; assign r_mvp_matrix[3][3] = i_mvp_matrix[3][3];
-    assign r_mvp_dv = i_mvp_dv;
 
     // Read vertex data from Model Buffer -- Effectively accessed as SAM
     assign o_model_buff_vertex_read_en = w_model_buff_vertex_read_en;
@@ -172,12 +147,5 @@ module top_MH_FPGA (
     assign r_index_data[0] = i_index_data[0]; assign r_index_data[1] = i_index_data[1]; assign r_index_data[2] = i_index_data[2];
     assign r_index_dv = i_index_dv;
     assign r_index_last = i_index_last;
-
-    // Rasterizer Output
-    assign o_fb_addr_write = w_fb_addr_write;
-    assign o_fb_write_en = w_fb_write_en;
-
-    assign o_fb_depth_data = w_fb_depth_data;
-    assign o_fb_color_data = w_fb_color_data;
 
 endmodule

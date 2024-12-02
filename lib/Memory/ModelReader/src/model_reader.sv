@@ -149,7 +149,7 @@ always_ff @(posedge clk) begin
             // Read start indices from header
             index_addr <= header_data[HEADER_DATA_WIDTH-1:VERTEX_ADDR_WIDTH];
             vertex_addr <= header_data[VERTEX_ADDR_WIDTH-1:0];
-            
+
             // Increment header addr to read end indices
             header_addr <= model_index + 1;
         end

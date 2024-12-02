@@ -17,12 +17,12 @@ LIB_DIR = ../lib
 OBJ_DIR = obj_dir
 
 VERILOG_SOURCES = \
-	$(LIB_DIR)/Math/MatVecMul/src/mat_vec_mul.sv \
+	$(LIB_DIR)/Math/MatVecMul/src/mat_vec_mul_new.sv \
 	$(LIB_DIR)/Math/FastInverse/src/fast_inverse.sv \
 	$(LIB_DIR)/Math/FixedPointDivide/src/fixed_point_divide.sv \
 	$(LIB_DIR)/Memory/BRAM_SP/src/bram_sp.sv \
 	$(LIB_DIR)/Memory/G-Buffer/src/g_buffer.sv \
-	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader.sv \
+	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader_new.sv \
 	$(LIB_DIR)/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv \
 	$(LIB_DIR)/RenderPipeline/PrimitiveAssembler/src/primitive_assembler.sv \
 	$(LIB_DIR)/RenderPipeline/TransformPipeline/src/transform_pipeline.sv \
