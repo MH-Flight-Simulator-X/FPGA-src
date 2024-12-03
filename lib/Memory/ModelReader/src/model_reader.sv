@@ -155,7 +155,6 @@ module model_reader #(
             foreach (vertex_data[i]) vertex_data[i] <= '0;
             vertex_o_dv <= '0;
             vertex_data_last <= '0;
-            $display("Model Reader: Resetting");
         end else begin
             case (current_state)
                 IDLE: begin
@@ -206,7 +205,6 @@ module model_reader #(
                             vertex_o_dv <= '0;
                             vertex_data_last <= '0;
                         end else begin
-                            $display("Model Reader: Read vertex data");
                             vertex_data[0] <= w_vertex_data[COORDINATE_WIDTH-1:0];
                             vertex_data[1] <= w_vertex_data[2*COORDINATE_WIDTH-1:COORDINATE_WIDTH];
                             vertex_data[2] <= w_vertex_data[3*COORDINATE_WIDTH-1:2*COORDINATE_WIDTH];

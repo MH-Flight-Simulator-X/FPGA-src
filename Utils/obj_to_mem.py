@@ -5,7 +5,7 @@ from decimal_to_fixed import to_fixed_point_hex, to_fixed_point_bin
 
 
 model_dir = Path(__file__).parent.parent / "algorithms/models/"
-model_files = ["cube.obj"]
+model_files = ["simplify_f35.obj"]
 
 MAX_TRIANGLE_COUNT = 32768;
 MAX_VERTEX_COUNT   = 32768;

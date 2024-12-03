@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdlib>
 #include <stdexcept>
+#include <verilated.h>
 
 #ifdef __APPLE__
     #include <SDL.h>
@@ -47,6 +48,9 @@ public:
     int V_SCREEN_RES = 240;
     std::vector<Pixel> screenbuffer;
     std::vector<float> zbuffer;
+
+    // Timing shiz
+    vluint64_t frame_start = 0;
 
     SDLContext(int H_RES, int V_RES, int H_SCREEN_RES = 320, int V_SCREEN_RES = 240) {
         this->H_RES = H_RES;
@@ -130,11 +134,23 @@ public:
         }
     }
 
-    void update_screen() {
+    void update_screen(bool monitor_frame_rate = false, vluint64_t posedge_cnt = 0) {
         SDL_UpdateTexture(texture, NULL, screenbuffer.data(), H_RES * sizeof(Pixel));
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
+
+        if (monitor_frame_rate) {
+            vluint64_t time_diff = posedge_cnt - frame_start;
+            printf("Clks per frame: %lu\n", time_diff);
+
+            float frame_time = (float)time_diff * 10e-9;
+            float frame_rate = 1.0f / frame_time;
+            printf("Frame rate: %.2f\n", frame_rate);
+            printf("Frame time: %.2f\n", frame_time);
+            printf("\n");
+            frame_start = posedge_cnt;
+        }
     }
 
     void set_pixel(int addr, Pixel color) {

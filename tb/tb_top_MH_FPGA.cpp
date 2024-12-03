@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
 
             if (dut->o_mvp_matrix_read_en) {
                 printf("Assigning MVP matrix\n");
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -4.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 assign_mvp_data(dut, mvp);                
                 t = t + 1.0f;
             }
@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
 
             if (dut->finished && !has_finished) {
                 printf("Finished!\n");
-                view.update_screen();
+                view.update_screen(true, posedge_cnt);
                 view.clear_screen();
                 frame_count++;
                 has_finished = true;
