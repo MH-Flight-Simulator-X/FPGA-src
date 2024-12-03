@@ -22,6 +22,8 @@ VERILOG_SOURCES = \
 	$(LIB_DIR)/Math/FixedPointDivide/src/fixed_point_divide.sv \
 	$(LIB_DIR)/Memory/BRAM_SP/src/bram_sp.sv \
 	$(LIB_DIR)/Memory/G-Buffer/src/g_buffer.sv \
+	$(LIB_DIR)/Memory/ROM/src/rom.sv \
+	$(LIB_DIR)/Memory/ModelReader/src/model_reader.sv \
 	$(LIB_DIR)/RenderPipeline/VertexShader/src/vertex_shader_new.sv \
 	$(LIB_DIR)/RenderPipeline/VertexPostProcessor/src/vertex_post_processor.sv \
 	$(LIB_DIR)/RenderPipeline/PrimitiveAssembler/src/primitive_assembler.sv \

@@ -69,70 +69,9 @@ void assign_mvp_data(Vtop_MH_FPGA* dut, glm::mat4 mvp) {
     }
 };
 
-void assign_vertex_data(Vtop_MH_FPGA* dut, std::vector<glm::vec3>& vertex_data, bool reset = false) {
-    static vluint64_t vertex_read_addr = 0;
-    if (reset) {
-        vertex_read_addr = 0;
-    }
-
-    dut->i_vertex_last = 0;
-    dut->i_vertex[0] = 0;
-    dut->i_vertex[1] = 0;
-    dut->i_vertex[2] = 0;
-    dut->i_vertex_dv = 0;
-
-    if (vertex_read_addr >= vertex_data.size()) {
-        return;
-    }
-    
-    if (dut->o_model_buff_vertex_read_en) {
-        dut->i_vertex[0] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).x, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
-        dut->i_vertex_dv = 1;
-        dut->i_vertex_last = vertex_read_addr == vertex_data.size() - 1;
-
-        if (dut->i_vertex_last)
-            printf("Vertex last\n");
-
-        vertex_read_addr++;
-    }
-};
-
-void assign_index_data(Vtop_MH_FPGA* dut, std::vector<glm::ivec3>& index_data, bool reset = false) {
-    static vluint64_t index_read_addr = 0;
-    if (reset) {
-        index_read_addr = 0;
-    }
-
-    dut->i_index_last = 0;
-    dut->i_index_data[0] = 0;
-    dut->i_index_data[1] = 0;
-    dut->i_index_data[2] = 0;
-    dut->i_index_dv = 0;
-
-    if (dut->o_model_buff_index_read_en) {
-        dut->i_index_data[0] = index_data.at(index_read_addr).x;
-        dut->i_index_data[1] = index_data.at(index_read_addr).y;
-        dut->i_index_data[2] = index_data.at(index_read_addr).z;
-        dut->i_index_dv = 1;
-        dut->i_index_last = index_read_addr == index_data.size() - 1;
-
-        if (dut->i_index_last)
-            printf("Index last\n");
-
-        index_read_addr++;
-    }
-}
-
 int main(int argc, char* argv[]) {
     printf("Program started\n");
     Verilated::commandArgs(argc, argv);
-
-    std::vector<glm::vec3> vertex_buffer = SimDataFileHandler::read_vertex_data("model.vert");
-    std::vector<glm::ivec3> index_buffer = SimDataFileHandler::read_index_data("model.face");
-    printf("Initialized vertex and index buffers\nVertex buffer size: %ld\t Index buffer size: %ld\n", 
-            vertex_buffer.size(), index_buffer.size());
 
     SDLContext view(H_RES, V_RES, H_SCREEN_RES, V_SCREEN_RES);
 
@@ -161,19 +100,11 @@ int main(int argc, char* argv[]) {
         dut->rstn = 0;
         dut->start = 0;
         dut->i_mvp_dv = 0;
-        dut->i_vertex_dv = 0;
-        dut->i_index_dv = 0;
-        dut->i_vertex_last = 0;
 
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 dut->i_mvp_matrix[i][j] = 0;
             }
-        }
-
-        for (int i = 0; i < 3; i++) {
-            dut->i_vertex[i] = 0;
-            dut->i_index_data[i] = 0;
         }
 
         sim_time++;
@@ -184,11 +115,9 @@ int main(int argc, char* argv[]) {
     // Main loop
     float t = 0.0f;
     vluint64_t clk_frame_start = posedge_cnt;
-
-    bool new_frame = false;
-    dut->start = 0;
-
     vluint64_t frame_start = 0;
+
+    bool has_finished = true;
 
     while (true) {
         // Main sim
@@ -205,14 +134,17 @@ int main(int argc, char* argv[]) {
         if (dut->clk) {
             posedge_cnt++;
             dut->i_mvp_dv = 0;
-            dut->i_vertex_dv = 0;
-            dut->i_vertex_last = 0;
+            dut->i_model_reader_reset = 0;
 
-            static bool new_frame = false;
-            if (dut->ready) {
+            if (dut->ready && has_finished) {
                 dut->start = 1;
-                new_frame = true;
                 printf("Render pipeline new frame\n");
+            } else {
+                dut->start = 0;
+            }
+
+            if (dut->finished) {
+                dut->i_model_reader_reset = 1;
             }
 
             if (dut->o_mvp_matrix_read_en) {
@@ -222,21 +154,18 @@ int main(int argc, char* argv[]) {
                 t = t + 1.0f;
             }
 
-            assign_vertex_data(dut, vertex_buffer, new_frame);
-            assign_index_data(dut, index_buffer, new_frame);
-
             if (dut->o_fb_write_en) {
                 view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
             }
 
-            if (dut->finished) {
+            if (dut->finished && !has_finished) {
                 printf("Finished!\n");
                 view.update_screen();
                 view.clear_screen();
-                new_frame = true;
                 frame_count++;
+                has_finished = true;
             } else {
-                new_frame = false;
+                has_finished = false;
             }
         }
 

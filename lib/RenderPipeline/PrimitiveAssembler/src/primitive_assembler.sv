@@ -87,7 +87,9 @@ module primitive_assembler #(
             end
 
             PA_ASSEMBLE_READ_INDEX: begin
-                next_state = PA_ASSEMBLE_READ_VERTEX;
+                if (i_index_dv) begin
+                    next_state = PA_ASSEMBLE_READ_VERTEX;
+                end
             end
 
             PA_ASSEMBLE_READ_VERTEX: begin
@@ -144,14 +146,16 @@ module primitive_assembler #(
                 end
 
                 PA_ASSEMBLE_READ_INDEX: begin
-                    o_index_buff_read_en <= 1;
+                    if (i_index_dv) begin
+                        o_index_buff_read_en <= 0;
+                        foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_index_data[i];
+                        r_triangle_last <= i_index_last;
+                    end else begin
+                        o_index_buff_read_en <= 1;
+                    end
                 end
 
                 PA_ASSEMBLE_READ_VERTEX: begin
-                    o_index_buff_read_en <= 0;
-
-                    if (i_index_last) r_triangle_last <= '1;
-                    foreach (o_vertex_addr[i]) o_vertex_addr[i] <= i_index_data[i];
                     o_vertex_read_en <= 1;
                 end
 

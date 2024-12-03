@@ -24,17 +24,19 @@ module top_MH_FPGA (
     input  logic signed [INPUT_DATAWIDTH-1:0] i_mvp_matrix[4][4],
     input  logic i_mvp_dv,
 
-    // Read vertex data from Model Buffer -- Effectively accessed as SAM
-    output logic o_model_buff_vertex_read_en,
-    input  logic signed [INPUT_DATAWIDTH-1:0] i_vertex[3],
-    input  logic i_vertex_dv,
-    input  logic i_vertex_last,
+    input logic i_model_reader_reset,
 
-    // Read index data from Model Buffer -- Also SAM access pattern
-    output logic o_model_buff_index_read_en,
-    input  logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_index_data[3],
-    input  logic i_index_dv,
-    input  logic i_index_last,
+    // // Read vertex data from Model Buffer -- Effectively accessed as SAM
+    // output logic o_model_buff_vertex_read_en,
+    // input  logic signed [INPUT_DATAWIDTH-1:0] i_vertex[3],
+    // input  logic i_vertex_dv,
+    // input  logic i_vertex_last,
+    //
+    // // Read index data from Model Buffer -- Also SAM access pattern
+    // output logic o_model_buff_index_read_en,
+    // input  logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_index_data[3],
+    // input  logic i_index_dv,
+    // input  logic i_index_last,
 
     // Rasterizer Output
     output logic [ADDRWIDTH-1:0] o_fb_addr_write,
@@ -66,6 +68,7 @@ module top_MH_FPGA (
 
     parameter unsigned MAX_TRIANGLE_COUNT = 32768;
     parameter unsigned MAX_VERTEX_COUNT   = 32768;
+    parameter unsigned MAX_INDEX_COUNT    = 32768;
     parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
@@ -77,7 +80,8 @@ module top_MH_FPGA (
     parameter real ZFAR = 100.0;
     parameter real ZNEAR = 0.1;
 
-    // =========================== RENDER PIPELINE ===========================
+    // ============================ MODEL READER =============================
+    logic w_model_reader_ready;
 
     // Read vertex data from Model Buffer -- Effectively accessed as SAM
     logic w_model_buff_vertex_read_en;
@@ -91,6 +95,34 @@ module top_MH_FPGA (
     logic r_index_dv;
     logic r_index_last;
 
+    model_reader #(
+        .MODEL_INDEX_WIDTH($clog2(MAX_MODEL_COUNT)),
+        .INDEX_ADDR_WIDTH($clog2(MAX_INDEX_COUNT)),
+        .VERTEX_ADDR_WIDTH($clog2(MAX_VERTEX_COUNT)),
+        .COORDINATE_WIDTH(INPUT_DATAWIDTH),
+        .MODEL_HEADER_FILE("model_headers.mem"),
+        .MODEL_FACES_FILE("model_faces.mem"),
+        .MODEL_VERTEX_FILE("model_vertex.mem")
+    ) model_reader_inst (
+        .clk(clk),
+        .reset(i_model_reader_reset),
+        .ready(w_model_reader_ready),
+
+        .model_index(0),        // Can be used to select which mesh to render, for now just 0
+
+        .index_read_en (w_model_buff_index_read_en),
+        .vertex_read_en(w_model_buff_vertex_read_en),
+
+        .index_data(r_index_data),
+        .vertex_data(r_vertex),
+
+        .index_o_dv(r_index_dv),
+        .vertex_o_dv(r_vertex_dv),
+        .index_data_last(r_index_last),
+        .vertex_data_last(r_vertex_last)
+    );
+
+    // =========================== RENDER PIPELINE ===========================
     render_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
         .INPUT_FRACBITS(INPUT_FRACBITS),
@@ -136,16 +168,16 @@ module top_MH_FPGA (
         .o_fb_color_data(o_fb_color_data)
     );
 
-    // Read vertex data from Model Buffer -- Effectively accessed as SAM
-    assign o_model_buff_vertex_read_en = w_model_buff_vertex_read_en;
-    assign r_vertex[0] = i_vertex[0]; assign r_vertex[1] = i_vertex[1]; assign r_vertex[2] = i_vertex[2];
-    assign r_vertex_dv = i_vertex_dv;
-    assign r_vertex_last = i_vertex_last;
-
-    // Read index data from Model Buffer -- Also SAM access pattern
-    assign o_model_buff_index_read_en = w_model_buff_index_read_en;
-    assign r_index_data[0] = i_index_data[0]; assign r_index_data[1] = i_index_data[1]; assign r_index_data[2] = i_index_data[2];
-    assign r_index_dv = i_index_dv;
-    assign r_index_last = i_index_last;
+    // // Read vertex data from Model Buffer -- Effectively accessed as SAM
+    // assign o_model_buff_vertex_read_en = w_model_buff_vertex_read_en;
+    // assign r_vertex[0] = i_vertex[0]; assign r_vertex[1] = i_vertex[1]; assign r_vertex[2] = i_vertex[2];
+    // assign r_vertex_dv = i_vertex_dv;
+    // assign r_vertex_last = i_vertex_last;
+    //
+    // // Read index data from Model Buffer -- Also SAM access pattern
+    // assign o_model_buff_index_read_en = w_model_buff_index_read_en;
+    // assign r_index_data[0] = i_index_data[0]; assign r_index_data[1] = i_index_data[1]; assign r_index_data[2] = i_index_data[2];
+    // assign r_index_dv = i_index_dv;
+    // assign r_index_last = i_index_last;
 
 endmodule
