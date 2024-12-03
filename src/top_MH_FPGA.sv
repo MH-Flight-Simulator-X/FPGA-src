@@ -15,7 +15,6 @@ module top_MH_FPGA (
     input  logic clk_pix,
     input  logic rstn,
 
-    input  logic start,
     output logic ready,
     output logic finished,
 
@@ -24,19 +23,7 @@ module top_MH_FPGA (
     input  logic signed [INPUT_DATAWIDTH-1:0] i_mvp_matrix[4][4],
     input  logic i_mvp_dv,
 
-    input logic i_model_reader_reset,
-
-    // // Read vertex data from Model Buffer -- Effectively accessed as SAM
-    // output logic o_model_buff_vertex_read_en,
-    // input  logic signed [INPUT_DATAWIDTH-1:0] i_vertex[3],
-    // input  logic i_vertex_dv,
-    // input  logic i_vertex_last,
-    //
-    // // Read index data from Model Buffer -- Also SAM access pattern
-    // output logic o_model_buff_index_read_en,
-    // input  logic [$clog2(MAX_VERTEX_COUNT)-1:0] i_index_data[3],
-    // input  logic i_index_dv,
-    // input  logic i_index_last,
+    // input logic i_model_reader_reset,
 
     // Rasterizer Output
     output logic [ADDRWIDTH-1:0] o_fb_addr_write,
@@ -82,6 +69,9 @@ module top_MH_FPGA (
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
+    logic r_model_reader_reset = 1'b0;
+
+    logic [$clog2(MAX_MODEL_COUNT)-1:0] r_model_id = '0;
 
     // Read vertex data from Model Buffer -- Effectively accessed as SAM
     logic w_model_buff_vertex_read_en;
@@ -105,10 +95,10 @@ module top_MH_FPGA (
         .MODEL_VERTEX_FILE("model_vertex.mem")
     ) model_reader_inst (
         .clk(clk),
-        .reset(i_model_reader_reset),
+        .reset(r_model_reader_reset),
         .ready(w_model_reader_ready),
 
-        .model_index(0),        // Can be used to select which mesh to render, for now just 0
+        .model_index(r_model_id),
 
         .index_read_en (w_model_buff_index_read_en),
         .vertex_read_en(w_model_buff_vertex_read_en),
@@ -122,7 +112,14 @@ module top_MH_FPGA (
         .vertex_data_last(r_vertex_last)
     );
 
-    // =========================== RENDER PIPELINE ===========================
+    // =========================== RENDER_START PIPELINE ===========================
+    logic r_render_pipeline_start = 1'b0;
+    logic w_render_pipeline_ready;
+    logic w_render_pipeline_finished;
+
+    // MVP Matrix
+    logic w_mvp_matrix_read_en;
+
     render_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
         .INPUT_FRACBITS(INPUT_FRACBITS),
@@ -143,11 +140,11 @@ module top_MH_FPGA (
         .clk(clk),
         .rstn(rstn),
 
-        .start(start),
-        .ready(ready),
-        .finished(finished),
+        .start(r_render_pipeline_start),
+        .ready(w_render_pipeline_ready),
+        .finished(w_render_pipeline_finished),
 
-        .o_mvp_matrix_read_en(o_mvp_matrix_read_en),
+        .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
         .i_mvp_matrix(i_mvp_matrix),
         .i_mvp_dv(i_mvp_dv),
 
@@ -168,16 +165,123 @@ module top_MH_FPGA (
         .o_fb_color_data(o_fb_color_data)
     );
 
-    // // Read vertex data from Model Buffer -- Effectively accessed as SAM
-    // assign o_model_buff_vertex_read_en = w_model_buff_vertex_read_en;
-    // assign r_vertex[0] = i_vertex[0]; assign r_vertex[1] = i_vertex[1]; assign r_vertex[2] = i_vertex[2];
-    // assign r_vertex_dv = i_vertex_dv;
-    // assign r_vertex_last = i_vertex_last;
-    //
-    // // Read index data from Model Buffer -- Also SAM access pattern
-    // assign o_model_buff_index_read_en = w_model_buff_index_read_en;
-    // assign r_index_data[0] = i_index_data[0]; assign r_index_data[1] = i_index_data[1]; assign r_index_data[2] = i_index_data[2];
-    // assign r_index_dv = i_index_dv;
-    // assign r_index_last = i_index_last;
+    // ============================ STATE =============================
+    typedef enum logic [2:0] {
+        MODEL_BUFFER_RESET,
+        MODEL_BUFFER_WAIT_RESET,
+        RENDER_START,
+        MVP_MATRIX_SET,
+        MVP_MATRIX_WAIT_SET,
+        RENDER_WAIT_FINISHED,
+        RENDER_FINISHED
+    } state_t;
+    state_t current_state = MODEL_BUFFER_RESET, next_state;
+
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            current_state <= MODEL_BUFFER_RESET;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    always_comb begin
+        next_state = current_state;
+
+        case (current_state)
+            MODEL_BUFFER_RESET: begin
+                next_state = MODEL_BUFFER_WAIT_RESET;
+            end
+
+            MODEL_BUFFER_WAIT_RESET: begin
+                if (w_model_reader_ready) begin
+                    next_state = RENDER_START;
+                end
+            end
+
+            RENDER_START: begin
+                if (w_render_pipeline_ready && r_render_pipeline_start) begin
+                    next_state = MVP_MATRIX_SET;
+                end
+            end
+
+            MVP_MATRIX_SET: begin
+                next_state = MVP_MATRIX_WAIT_SET;
+            end
+
+            MVP_MATRIX_WAIT_SET: begin
+                if (~w_mvp_matrix_read_en) begin
+                    next_state = RENDER_WAIT_FINISHED;
+                end
+            end
+
+            RENDER_WAIT_FINISHED: begin
+                if (w_render_pipeline_finished) begin
+                    next_state = RENDER_FINISHED;
+                end
+            end
+
+            RENDER_FINISHED: begin
+                next_state = MODEL_BUFFER_RESET;
+            end
+
+            default: begin
+                next_state = MODEL_BUFFER_RESET;
+            end
+        endcase
+    end
+
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            r_render_pipeline_start <= 1'b0;
+            o_mvp_matrix_read_en <= 1'b0;
+            finished <= 1'b0;
+        end else begin
+            case (current_state)
+                MODEL_BUFFER_RESET: begin
+                    r_render_pipeline_start <= 1'b0;
+                    o_mvp_matrix_read_en <= 1'b0;
+                    finished <= 1'b0;
+
+                    r_model_reader_reset <= 1'b1;
+                end
+
+                MODEL_BUFFER_WAIT_RESET: begin
+                    r_model_reader_reset <= 1'b0;
+                end
+
+                RENDER_START: begin
+                    if (w_render_pipeline_ready) begin
+                        r_render_pipeline_start <= 1'b1;
+                    end else begin
+                        r_render_pipeline_start <= 1'b0;
+                    end
+                end
+
+                MVP_MATRIX_SET: begin
+                    r_render_pipeline_start <= 1'b0;
+
+                    if (w_mvp_matrix_read_en) begin
+                        o_mvp_matrix_read_en <= 1'b1;
+                    end else begin
+                        o_mvp_matrix_read_en <= 1'b0;
+                    end
+                end
+
+                MVP_MATRIX_WAIT_SET: begin
+                    o_mvp_matrix_read_en <= 1'b0;
+                end
+
+                RENDER_FINISHED: begin
+                    finished <= 1'b1;
+
+                    r_model_id <= (r_model_id == '0) ? 1 : 0;
+                end
+
+                default: begin
+                end
+            endcase
+        end
+    end
 
 endmodule

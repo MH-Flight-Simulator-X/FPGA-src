@@ -3,9 +3,8 @@ from pathlib import Path
 from read_obj_file import read_obj_file
 from decimal_to_fixed import to_fixed_point_hex, to_fixed_point_bin
 
-
 model_dir = Path(__file__).parent.parent / "algorithms/models/"
-model_files = ["simplify_f35.obj"]
+model_files = ["suzanne.obj", "cube.obj"]
 
 MAX_TRIANGLE_COUNT = 32768;
 MAX_VERTEX_COUNT   = 32768;

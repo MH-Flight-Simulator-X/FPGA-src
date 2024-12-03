@@ -61,32 +61,10 @@ module transform_pipeline #(
     logic w_vs_ready;
     logic w_vs_vertex_ready;
     logic w_vs_finished;
-    // logic r_vs_enable;
 
     logic signed [INPUT_DATAWIDTH-1:0] w_vs_o_vertex[4];
     logic w_vs_o_vertex_dv;
 
-    // vertex_shader #(
-    //     .DATAWIDTH(INPUT_DATAWIDTH),
-    //     .FRACBITS(INPUT_FRACBITS)
-    // ) vertex_shader_inst (
-    //     .clk(clk),
-    //     .rstn(rstn),
-    //
-    //     .o_ready(w_vs_ready),
-    //     .o_finished(w_vs_finished),
-    //     .i_enable(r_vs_enable),
-    //
-    //     .i_mvp_mat(i_mvp_matrix),
-    //     .i_mvp_dv(i_mvp_dv),
-    //
-    //     .i_vertex(i_vertex),
-    //     .i_vertex_dv(i_vertex_dv),
-    //     .i_vertex_last(i_vertex_last),
-    //
-    //     .o_vertex(w_vs_o_vertex),
-    //     .o_vertex_dv(w_vs_o_vertex_dv)
-    // );
     vertex_shader_new #(
         .DATAWIDTH(INPUT_DATAWIDTH),
         .FRACBITS(INPUT_FRACBITS)
@@ -257,6 +235,9 @@ module transform_pipeline #(
             current_state <= IDLE;
         end else begin
             current_state <= next_state;
+            if (current_state != next_state) begin
+                $display("### Transform pipeline ### Next state: %s", next_state.name());
+            end
         end
     end
 
@@ -269,9 +250,8 @@ module transform_pipeline #(
             IDLE: begin
                 if (transform_pipeline_start) begin
                     next_state = VERTEX_SHADER_GET_MATRIX;
-                end else begin
-                    transform_pipeline_ready = 1'b1;
                 end
+                transform_pipeline_ready = 1'b1;
             end
 
             VERTEX_SHADER_GET_MATRIX: begin

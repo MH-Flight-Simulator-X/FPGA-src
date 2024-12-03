@@ -40,7 +40,7 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     model = glm::rotate(model, glm::radians(rot.y * t), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    float scale = 3.5f;
+    float scale = 3.0f;
     model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     // Adjust the camera view based on current position and rotation
@@ -98,7 +98,6 @@ int main(int argc, char* argv[]) {
         }
 
         dut->rstn = 0;
-        dut->start = 0;
         dut->i_mvp_dv = 0;
 
         for (int i = 0; i < 4; i++) {
@@ -117,8 +116,6 @@ int main(int argc, char* argv[]) {
     vluint64_t clk_frame_start = posedge_cnt;
     vluint64_t frame_start = 0;
 
-    bool has_finished = true;
-
     while (true) {
         // Main sim
         dut->clk ^= 1;
@@ -134,22 +131,10 @@ int main(int argc, char* argv[]) {
         if (dut->clk) {
             posedge_cnt++;
             dut->i_mvp_dv = 0;
-            dut->i_model_reader_reset = 0;
-
-            if (dut->ready && has_finished) {
-                dut->start = 1;
-                printf("Render pipeline new frame\n");
-            } else {
-                dut->start = 0;
-            }
-
-            if (dut->finished) {
-                dut->i_model_reader_reset = 1;
-            }
 
             if (dut->o_mvp_matrix_read_en) {
                 printf("Assigning MVP matrix\n");
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(-15.0f, -25.0f, -25.0f), 1.0f);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 assign_mvp_data(dut, mvp);                
                 t = t + 1.0f;
             }
@@ -158,14 +143,11 @@ int main(int argc, char* argv[]) {
                 view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
             }
 
-            if (dut->finished && !has_finished) {
+            if (dut->finished) {
                 printf("Finished!\n");
                 view.update_screen(true, posedge_cnt);
                 view.clear_screen();
                 frame_count++;
-                has_finished = true;
-            } else {
-                has_finished = false;
             }
         }
 
