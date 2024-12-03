@@ -12,7 +12,7 @@
 ```
 # What is MicroHard Flight Simulator X?
 MicroHard Flight Simulator X is a student project in the course TDT4295 Computer Design Project at NTNU with the goal of designing, programming and developing a custom 3D fligt simulator utilizing a self designed PCB sporting a Xilinx Artix 
-A100T FPGA and a SiliconLabs EFM32 MCU. The system outlined here is the graphics processing system residing on the FPGA, and deals with all the graphical processing and effects needed to visualize the flight simulator. This part of the project is the culmination of a few months worth of hard work by Morten sørensen and Andreas V. Jonsterhaug. The system is written in SystemVerilog with Verilator testbenches for each module in the system.
+A100T FPGA and a SiliconLabs EFM32 MCU. The system outlined here is the graphics processing system residing on the FPGA, and deals with all the graphical processing and effects needed to visualize the flight simulator. This part of the project is the culmination of a few months worth of hard work by Morten sørensen and Andreas V. Jonsterhaug. The system is written in SystemVerilog with Verilator testbenches for each module in the system. The other parts of the system, that is the PCB and the MCU source code can be found elsewhere in the MH Flight Simulator X org: ![GitHub Page](https://github.com/MH-Flight-Simulator-X)
 
 ## Overview 
 The project is splitt into multiple modules and accompanying documentation in **Documentation/**.
