@@ -40,7 +40,7 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     model = glm::rotate(model, glm::radians(rot.y * t), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    float scale = 3.0f;
+    float scale = 3.5f;
     model = glm::scale(model, glm::vec3(scale, scale, scale));
 
     // Adjust the camera view based on current position and rotation
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
 
             if (dut->o_mvp_matrix_read_en) {
                 printf("Assigning MVP matrix\n");
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, -0.5f, 0.0f), glm::vec3(-15.0f, -25.0f, -25.0f), 1.0f);
                 assign_mvp_data(dut, mvp);                
                 t = t + 1.0f;
             }
