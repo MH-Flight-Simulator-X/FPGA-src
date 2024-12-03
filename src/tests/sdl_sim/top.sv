@@ -4,7 +4,8 @@
 module top #(
     parameter unsigned DATAWIDTH = 12,
     parameter unsigned SCREEN_WIDTH = 160,
-    parameter unsigned SCREEN_HEIGHT = 120
+    parameter unsigned SCREEN_HEIGHT = 120,
+    parameter unsigned DISPLAY_CORD_WIDTH = 16
     ) (
     input  logic clk_100m,            // 100MHz clock
     input  logic clk_pix,             // pixel clock
@@ -12,8 +13,8 @@ module top #(
     input  logic rasterizer_dv,
     input  logic display_clear,
     input  logic triangleA,
-    output logic [ADDR_WIDTH-1:0] sdl_sx,  // horizontal SDL position
-    output logic [ADDR_WIDTH-1:0] sdl_sy,  // vertical SDL position
+    output logic [DISPLAY_CORD_WIDTH-1:0] sdl_sx,  // horizontal SDL position
+    output logic [DISPLAY_CORD_WIDTH-1:0] sdl_sy,  // vertical SDL position
     output logic sdl_de,              // data enable (low in blanking interval)
     output logic [7:0] sdl_r,         // 8-bit red
     output logic [7:0] sdl_g,         // 8-bit green
@@ -77,9 +78,9 @@ module top #(
         else begin
             v0[0] = BX0; v0[1] = BY0; v0[2] = BZ0;
             v1[0] = BX1; v1[1] = BY1; v1[2] = BZ1;
-            v2[0] = BX2; v2[1] = BY2; v2[2] = BZ2; 
+            v2[0] = BX2; v2[1] = BY2; v2[2] = BZ2;
             w_color_data = 1;
-        end 
+        end
     end
 
 
@@ -101,7 +102,7 @@ module top #(
         .i_v1(v1),
         .i_v2(v2),
         .i_triangle_dv(rasterizer_dv),
-        .i_triangle_last(0),
+        .i_triangle_last(1),
 
         .o_fb_addr_write(i_pixel_write_addr),
         .o_fb_write_en(fb_write_enable),
@@ -121,29 +122,23 @@ module top #(
 
     logic hsync;
     logic vsync;
-    display #(
-        .DISPLAY_WIDTH(SCREEN_WIDTH),
-        .DISPLAY_HEIGHT(SCREEN_HEIGHT),
-        .DISPLAY_COORD_WIDTH(ADDR_WIDTH),
-        .FB_DATA_WIDTH(FB_DATA_WIDTH),
-        .DB_DATA_WIDTH(DATAWIDTH),
-        .CHANNEL_WIDTH(CHANNEL_WIDTH),
-        .FB_CLEAR_VALUE(FB_CLEAR_VALUE),
+    display_new #(
+        .FB_CLEAR_VALUE(10),
         .PALETTE_FILE(PALETTE_FILE),
         .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
         .clk(clk_100m),
-        .clk_pix(clk_pix),
-        .rst(sim_rst),
+        .clk_pixel(clk_pix),
+        .rstn(~sim_rst),
+
+        .frame_render_done(done),
+        .frame_clear(display_clear),
+        .new_frame_render_ready(),
 
         .i_pixel_write_addr(i_pixel_write_addr),
         .i_pixel_write_valid(fb_write_enable),
-
         .i_fb_data(w_color_data),
         .i_db_data(w_depth_data),
-
-        .clear(display_clear),
-        .ready(),
 
         .o_red(red),
         .o_green(green),

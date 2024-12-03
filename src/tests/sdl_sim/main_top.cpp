@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
                         
                         if (code == SDL_SCANCODE_D) {
                             top->display_clear = 1;
+                            printf("Clear\n");
                         }
                         else {
                             top->display_clear = 0;
@@ -152,6 +153,7 @@ int main(int argc, char* argv[]) {
 
                         if (code == SDL_SCANCODE_R) {
                             top->rasterizer_dv = 1;
+                            printf("Render\n");
                         }
                         else {
                             top->rasterizer_dv = 0;

@@ -64,14 +64,12 @@ module display#(
         .FILE(PALETTE_FILE)
     ) clut (
         .clk(clk_pix),
-        .read_en(),
-        .addr(fb_data),
-        .data(clut_data),
-        .dv()
+        .addr(o_fb_data),
+        .data(clut_data)
     );
 
     // Framebuffer memory
-    logic [FB_DATA_WIDTH-1:0] fb_data;
+    logic [FB_DATA_WIDTH-1:0] o_fb_data;
     logic fb_ready;
     logic buffer_write_enable;
 
@@ -79,7 +77,7 @@ module display#(
         .WIDTH(FB_DATA_WIDTH),
         .DEPTH(BUFFER_DEPTH),
         .FILE(FB_IMAGE_FILE)
-    ) framebuffer (
+    ) framebuffer_inst_1 (
         .clk_write(clk),
         .clk_read(clk_pix),
         .write_enable(buffer_write_enable),
@@ -89,7 +87,7 @@ module display#(
         .addr_write(delayed_buffer_addr_write),
         .addr_read(fb_addr_read),
         .data_in(i_fb_data),
-        .data_out(fb_data)
+        .data_out(o_fb_data)
     );
 
 

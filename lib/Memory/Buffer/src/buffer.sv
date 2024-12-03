@@ -88,7 +88,6 @@ module buffer #(
                     clear_counter <= clear_counter + 1;
                 end else begin
                     state <= IDLE;
-                    $display("Buffer cleared");
                 end
             end
 

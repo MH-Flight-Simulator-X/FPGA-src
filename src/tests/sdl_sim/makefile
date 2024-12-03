@@ -5,7 +5,7 @@ SDL_LDFLAGS = `sdl2-config --libs`
 LIB_PATH = ../../../lib
 
 VERILOG_SOURCES = \
-    $(LIB_PATH)/Display/display.sv \
+    $(LIB_PATH)/Display/display_new.sv \
     $(LIB_PATH)/Display/DisplaySignals/projectf_display_480p.sv \
     $(LIB_PATH)/Memory/BRAM_DP/src/bram_dp.sv \
     $(LIB_PATH)/Memory/ROM/src/rom.sv \
