@@ -10,8 +10,9 @@
      /_/   /_/_/\__, /_/ /_/\__/   /____/_/_/ /_/ /_/\__,_/_/\__,_/\__/\____/_/      /_/|_|  
                /____/
 ```
-# FPGA-src
-The source files for the FPGA system, written in SystemVerilog.
+# What is MicroHard Flight Simulator X?
+MicroHard Flight Simulator X is a student project in the course TDT4295 Computer Design Project at NTNU with the goal of designing, programming and developing a custom 3D fligt simulator utilizing a self designed PCB sporting a Xilinx Artix 
+A100T FPGA and a SiliconLabs EFM32 MCU. The system outlined here is the graphics processing system residing on the FPGA, and deals with all the graphical processing and effects needed to visualize the flight simulator. This part of the project is the culmination of a few months worth of hard work by Morten sørensen and Andreas V. Jonsterhaug. The system is written in SystemVerilog with Verilator testbenches for each module in the system.
 
 ## Overview 
 The project is splitt into multiple modules and accompanying documentation in **Documentation/**.
