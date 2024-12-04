@@ -20,8 +20,8 @@
 // screen dimensions
 const int H_RES = 640;
 const int V_RES = 480;
-const int H_SCREEN_RES = 320;
-const int V_SCREEN_RES = 240;
+const int H_SCREEN_RES = 640;
+const int V_SCREEN_RES = 480;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 8; i++) {
         dut->clk ^= 1;
         if (sim_time % 4 == 0) {
-            dut->clk_pix ^= 1;
+            dut->clk_pixel ^= 1;
         }
         dut->eval();
 
@@ -109,7 +109,6 @@ int main(int argc, char* argv[]) {
         sim_time++;
     }    
     dut->rstn = 1;
-    dut->clear = 0;
 
     // Main loop
     float t = 0.0f;
@@ -120,7 +119,7 @@ int main(int argc, char* argv[]) {
         // Main sim
         dut->clk ^= 1;
         if (sim_time % 4 == 0) {
-            dut->clk_pix ^= 1;
+            dut->clk_pixel ^= 1;
         }
         dut->eval();
 
@@ -138,18 +137,31 @@ int main(int argc, char* argv[]) {
                 assign_mvp_data(dut, mvp);                
                 t = t + 1.0f;
             }
+        }
 
-            if (dut->o_fb_write_en) {
-                view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
+        static bool clk_pixel_last = 0;
+        if (dut->clk_pixel == 1 && clk_pixel_last == 0) {
+            if (dut->display_en) {
+                int addr = dut->sy * H_RES + dut->sx;
+                Pixel color = {
+                    .a = 0xFF, 
+                    .b = dut->vga_b, 
+                    .g = dut->vga_g, 
+                    .r = dut->vga_r, 
+                };
+                view.set_pixel(addr, color);
             }
 
-            if (dut->finished) {
-                printf("Finished!\n");
+            static bool frame_last = 0;
+            if (dut->frame == 1 && frame_last == 0) {
+                printf("New Frame!\n");
                 view.update_screen(true, posedge_cnt);
                 view.clear_screen();
                 frame_count++;
             }
+            frame_last = dut->frame;
         }
+        clk_pixel_last = dut->clk_pixel;
 
         sim_time++;
     }

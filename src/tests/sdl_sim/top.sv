@@ -124,8 +124,6 @@ module top #(
         CLEAR_WAIT_DONE,
         RENDER_FIRST,
         RENDER_FIRST_WAIT,
-        // RENDER_SECOND,
-        // RENDER_SECOND_WAIT,
         RENDER_DONE
     } state_t;
     state_t current_state, next_state;
@@ -161,7 +159,9 @@ module top #(
             end
 
             CLEAR: begin
-                next_state = CLEAR_WAIT_DONE;
+                if (clear && ~w_new_frame_render_ready) begin
+                    next_state = CLEAR_WAIT_DONE;
+                end
             end
 
             CLEAR_WAIT_DONE: begin
@@ -179,16 +179,6 @@ module top #(
                     next_state = RENDER_DONE;
                 end
             end
-
-            // RENDER_SECOND: begin
-            //     next_state = RENDER_SECOND_WAIT;
-            // end
-            //
-            // RENDER_SECOND_WAIT: begin
-            //     if (done) begin
-            //         next_state = RENDER_DONE;
-            //     end
-            // end
 
             RENDER_DONE: begin
                 if (w_frame_swapped) begin
@@ -211,8 +201,11 @@ module top #(
             case (current_state)
                 IDLE: begin
                     r_triangle_dv <= 1'b0;
-                    current_triangle <= ~current_triangle;
                     clear <= 1'b0;
+
+                    if (render && w_rasterizer_ready) begin
+                        current_triangle <= ~current_triangle;
+                    end
                 end
 
                 CLEAR: begin
@@ -230,15 +223,6 @@ module top #(
                 RENDER_FIRST_WAIT: begin
                     r_triangle_dv <= 1'b0;
                 end
-
-                // RENDER_SECOND: begin
-                //     r_triangle_dv <= 1'b1;
-                //     current_triangle <= 2'b10;
-                // end
-                //
-                // RENDER_SECOND_WAIT: begin
-                //     r_triangle_dv <= 1'b0;
-                // end
 
                 RENDER_DONE: begin
                     r_triangle_dv <= 1'b0;

@@ -12,7 +12,7 @@
 
 module top_MH_FPGA (
     input  logic clk,
-    input  logic clk_pix,
+    input  logic clk_pixel,
     input  logic rstn,
 
     output logic ready,
@@ -23,28 +23,16 @@ module top_MH_FPGA (
     input  logic signed [INPUT_DATAWIDTH-1:0] i_mvp_matrix[4][4],
     input  logic i_mvp_dv,
 
-    // input logic i_model_reader_reset,
-
-    // Rasterizer Output
-    output logic [ADDRWIDTH-1:0] o_fb_addr_write,
-    output logic o_fb_write_en,
-
-    output logic [OUTPUT_DATAWIDTH-1:0] o_fb_depth_data,
-    output logic [COLORWIDTH-1:0] o_fb_color_data,
-
     output logic frame,
-    output logic display_ready,
     output logic display_en,
-    output [ADDRWIDTH-1:0] sx,
-    output [ADDRWIDTH-1:0] sy,
-
-    input logic clear,
+    output [15:0] sx,
+    output [15:0] sy,
 
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
-    output      logic [3:0] vga_r,  // 4-bit VGA red
-    output      logic [3:0] vga_g,  // 4-bit VGA green
-    output      logic [3:0] vga_b   // 4-bit VGA blue
+    output      logic [7:0] vga_r,  // (8-bit temp for sim) 4-bit VGA red
+    output      logic [7:0] vga_g,  // (8-bit temp for sim) 4-bit VGA green
+    output      logic [7:0] vga_b   // (8-bit temp for sim) 4-bit VGA blue
     );
 
     // =========================== PARAMETERS ===========================
@@ -59,13 +47,16 @@ module top_MH_FPGA (
     parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
-    parameter unsigned SCREEN_WIDTH  = 320;
-    parameter unsigned SCREEN_HEIGHT = 240;
+    parameter unsigned SCREEN_WIDTH  = 160;
+    parameter unsigned SCREEN_HEIGHT = 120;
 
     parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT);
 
     parameter real ZFAR = 100.0;
     parameter real ZNEAR = 0.1;
+
+    parameter string PALETTE_FILE = "palette.mem";
+    parameter string FB_IMAGE_FILE = "image.mem";
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
@@ -120,6 +111,13 @@ module top_MH_FPGA (
     // MVP Matrix
     logic w_mvp_matrix_read_en;
 
+    // Output raster signals
+    logic [ADDRWIDTH-1:0] w_fb_addr_write;
+    logic w_fb_write_en;
+
+    logic [OUTPUT_DATAWIDTH-1:0] w_fb_depth_data;
+    logic [COLORWIDTH-1:0] w_fb_color_data;
+
     render_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
         .INPUT_FRACBITS(INPUT_FRACBITS),
@@ -158,17 +156,70 @@ module top_MH_FPGA (
         .i_index_dv(r_index_dv),
         .i_index_last(r_index_last),
 
-        .o_fb_addr_write(o_fb_addr_write),
-        .o_fb_write_en(o_fb_write_en),
+        .o_fb_addr_write(w_fb_addr_write),
+        .o_fb_write_en(w_fb_write_en),
 
-        .o_fb_depth_data(o_fb_depth_data),
-        .o_fb_color_data(o_fb_color_data)
+        .o_fb_depth_data(w_fb_depth_data),
+        .o_fb_color_data(w_fb_color_data)
     );
 
+    // ============================ DISPLAY ============================
+    logic r_display_clear = 1'b0;
+
+    logic w_display_new_frame_render_ready;
+    logic w_display_frame_swapped;
+
+    display_new #(
+        .DISPLAY_WIDTH(SCREEN_WIDTH),
+        .DISPLAY_HEIGHT(SCREEN_HEIGHT),
+        .DISPLAY_COORD_WIDTH(16),
+        .SCALE(4),
+
+        .FB_DATA_WIDTH(COLORWIDTH),
+        .DB_DATA_WIDTH(OUTPUT_DATAWIDTH),
+
+        .COLOR_CHANNEL_WIDTH(4),
+        .FB_CLEAR_VALUE(0),
+
+        .PALETTE_FILE(PALETTE_FILE),
+        .FB_IMAGE_FILE(FB_IMAGE_FILE)
+    ) display_inst (
+        .clk(clk),
+        .clk_pixel(clk_pixel),
+        .rstn(rstn),
+
+        .frame_render_done(w_render_pipeline_finished),
+        .frame_clear(r_display_clear),
+        .new_frame_render_ready(w_display_new_frame_render_ready),
+        .frame_swapped(w_display_frame_swapped),
+
+        .i_pixel_write_addr(w_fb_addr_write),
+        .i_pixel_write_valid(w_fb_write_en),
+        .i_fb_data(w_fb_color_data),
+        .i_db_data(w_fb_depth_data),
+
+        .o_red(),
+        .o_green(),
+        .o_blue(),
+        .hsync(vga_hsync),
+        .vsync(vga_vsync)
+    );
+
+    assign frame = display_inst.frame;
+    assign sx = display_inst.screen_x;
+    assign sy = display_inst.screen_y;
+    assign display_en = display_inst.de;
+
+    assign vga_r = {2{display_inst.o_red}};
+    assign vga_g = {2{display_inst.o_green}};
+    assign vga_b = {2{display_inst.o_blue}};
+
     // ============================ STATE =============================
-    typedef enum logic [2:0] {
+    typedef enum logic [3:0] {
         MODEL_BUFFER_RESET,
         MODEL_BUFFER_WAIT_RESET,
+        DISPLAY_CLEAR,
+        DISPLAY_CLEAR_WAIT,
         RENDER_START,
         MVP_MATRIX_SET,
         MVP_MATRIX_WAIT_SET,
@@ -195,6 +246,18 @@ module top_MH_FPGA (
 
             MODEL_BUFFER_WAIT_RESET: begin
                 if (w_model_reader_ready) begin
+                    next_state = DISPLAY_CLEAR;
+                end
+            end
+
+            DISPLAY_CLEAR: begin
+                if (r_display_clear && ~w_display_new_frame_render_ready) begin
+                    next_state = DISPLAY_CLEAR_WAIT;
+                end
+            end
+
+            DISPLAY_CLEAR_WAIT: begin
+                if (w_display_new_frame_render_ready && w_render_pipeline_ready) begin
                     next_state = RENDER_START;
                 end
             end
@@ -222,7 +285,9 @@ module top_MH_FPGA (
             end
 
             RENDER_FINISHED: begin
-                next_state = MODEL_BUFFER_RESET;
+                if (w_display_frame_swapped) begin
+                    next_state = MODEL_BUFFER_RESET;
+                end
             end
 
             default: begin
@@ -236,18 +301,27 @@ module top_MH_FPGA (
             r_render_pipeline_start <= 1'b0;
             o_mvp_matrix_read_en <= 1'b0;
             finished <= 1'b0;
+            r_display_clear <= 1'b0;
         end else begin
             case (current_state)
                 MODEL_BUFFER_RESET: begin
                     r_render_pipeline_start <= 1'b0;
                     o_mvp_matrix_read_en <= 1'b0;
                     finished <= 1'b0;
-
                     r_model_reader_reset <= 1'b1;
+                    r_display_clear <= 1'b0;
                 end
 
                 MODEL_BUFFER_WAIT_RESET: begin
                     r_model_reader_reset <= 1'b0;
+                end
+
+                DISPLAY_CLEAR: begin
+                    r_display_clear <= 1'b1;
+                end
+
+                DISPLAY_CLEAR_WAIT: begin
+                    r_display_clear <= 1'b0;
                 end
 
                 RENDER_START: begin
@@ -274,7 +348,6 @@ module top_MH_FPGA (
 
                 RENDER_FINISHED: begin
                     finished <= 1'b1;
-
                     r_model_id <= (r_model_id == '0) ? 1 : 0;
                 end
 

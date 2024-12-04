@@ -41,10 +41,7 @@ module buffer #(
                 bram_addr_write = addr_write;
                 bram_data_write = data_in;
                 bram_write_en = write_enable;
-
-                if (~clear) begin
-                    ready = 1'b1;
-                end
+                ready = 1'b1;
             end
 
             CLEARING: begin
