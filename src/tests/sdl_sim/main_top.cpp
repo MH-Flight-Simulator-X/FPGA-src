@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
         top->eval(); 
 
         if (top->clk_100m == 1) {
-            top->rasterizer_dv = 0;
+            top->render = 0;
             // update pixel if not in blanking interval
             if (top->sdl_de) {
                 Pixel* p = &screenbuffer[top->sdl_sy*H_RES + top->sdl_sx];
@@ -143,30 +143,30 @@ int main(int argc, char* argv[]) {
                             running = false;
                         }
                         
-                        if (code == SDL_SCANCODE_D) {
-                            top->display_clear = 1;
-                            printf("Clear\n");
-                        }
-                        else {
-                            top->display_clear = 0;
-                        }
+                        // if (code == SDL_SCANCODE_D) {
+                        //     top->clear = 1;
+                        //     printf("Clear\n");
+                        // }
+                        // else {
+                        //     top->clear = 0;
+                        // }
 
                         if (code == SDL_SCANCODE_R) {
-                            top->rasterizer_dv = 1;
+                            top->render = 1;
                             printf("Render\n");
                         }
                         else {
-                            top->rasterizer_dv = 0;
+                            top->render = 0;
                         }
 
-                        if (code == SDL_SCANCODE_A) {
-                            printf("A\n");
-                            top->triangleA = 1;
-                        }
-                        else if (code == SDL_SCANCODE_S) {
-                            printf("S\n");
-                            top->triangleA = 0;
-                        }
+                        // if (code == SDL_SCANCODE_A) {
+                        //     printf("A\n");
+                        //     top->triangleA = 1;
+                        // }
+                        // else if (code == SDL_SCANCODE_S) {
+                        //     printf("S\n");
+                        //     top->triangleA = 0;
+                        // }
                     }
                 }
             }

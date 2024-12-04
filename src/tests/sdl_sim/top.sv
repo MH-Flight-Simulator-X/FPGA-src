@@ -10,9 +10,9 @@ module top #(
     input  logic clk_100m,            // 100MHz clock
     input  logic clk_pix,             // pixel clock
     input  logic sim_rst,
-    input  logic rasterizer_dv,
-    input  logic display_clear,
-    input  logic triangleA,
+
+    input  logic render,
+
     output logic [DISPLAY_CORD_WIDTH-1:0] sdl_sx,  // horizontal SDL position
     output logic [DISPLAY_CORD_WIDTH-1:0] sdl_sy,  // vertical SDL position
     output logic sdl_de,              // data enable (low in blanking interval)
@@ -67,9 +67,14 @@ module top #(
     logic signed [DATAWIDTH-1:0] v1[3];
     logic signed [DATAWIDTH-1:0] v2[3];
 
+    logic current_triangle = '0;
+    logic r_triangle_dv = 1'b0;
+    logic w_rasterizer_ready;
+    logic w_new_frame_render_ready;
+    logic w_frame_swapped;
 
     always_comb begin
-        if (triangleA) begin
+        if (current_triangle) begin
             v0[0] = AX0; v0[1] = AY0; v0[2] = AZ0;
             v1[0] = AX1; v1[1] = AY1; v1[2] = AZ1;
             v2[0] = AX2; v2[1] = AY2; v2[2] = AZ2;
@@ -83,7 +88,6 @@ module top #(
         end
     end
 
-
     logic unsigned [DATAWIDTH-1:0] w_depth_data;
     logic unsigned [COLOR_LOOKUP_WIDTH-1:0] w_color_data;
 
@@ -96,13 +100,14 @@ module top #(
     ) rasterizer_inst (
         .clk(clk_100m),
         .rstn(~sim_rst),
-        .ready(),
+
+        .ready(w_rasterizer_ready),
 
         .i_v0(v0),
         .i_v1(v1),
         .i_v2(v2),
-        .i_triangle_dv(rasterizer_dv),
-        .i_triangle_last(1),
+        .i_triangle_dv(r_triangle_dv),
+        .i_triangle_last(1), // current_triangle == 2'b10
 
         .o_fb_addr_write(i_pixel_write_addr),
         .o_fb_write_en(fb_write_enable),
@@ -113,6 +118,139 @@ module top #(
         .finished(done)
     );
 
+    typedef enum logic [2:0] {
+        IDLE,
+        CLEAR,
+        CLEAR_WAIT_DONE,
+        RENDER_FIRST,
+        RENDER_FIRST_WAIT,
+        // RENDER_SECOND,
+        // RENDER_SECOND_WAIT,
+        RENDER_DONE
+    } state_t;
+    state_t current_state, next_state;
+    state_t last_state;
+
+    always_ff @(posedge clk_100m) begin
+        if (sim_rst) begin
+            last_state <= IDLE;
+            current_state <= IDLE;
+        end else begin
+            current_state <= next_state;
+            last_state <= current_state;
+
+            if (current_state == IDLE && current_state != last_state) begin
+                $display("\n\n");
+
+                $display("Current triangle: %d", current_triangle);
+            end
+            if (current_state != last_state) begin
+                $display("Current state: %s", current_state.name());
+            end
+        end
+    end
+
+    always_comb begin
+        next_state = current_state;
+
+        case (current_state)
+            IDLE: begin
+                if (render && w_rasterizer_ready) begin
+                    next_state = CLEAR;
+                end
+            end
+
+            CLEAR: begin
+                next_state = CLEAR_WAIT_DONE;
+            end
+
+            CLEAR_WAIT_DONE: begin
+                if (w_new_frame_render_ready && w_rasterizer_ready) begin
+                    next_state = RENDER_FIRST;
+                end
+            end
+
+            RENDER_FIRST: begin
+                next_state = RENDER_FIRST_WAIT;
+            end
+
+            RENDER_FIRST_WAIT: begin
+                if (done) begin
+                    next_state = RENDER_DONE;
+                end
+            end
+
+            // RENDER_SECOND: begin
+            //     next_state = RENDER_SECOND_WAIT;
+            // end
+            //
+            // RENDER_SECOND_WAIT: begin
+            //     if (done) begin
+            //         next_state = RENDER_DONE;
+            //     end
+            // end
+
+            RENDER_DONE: begin
+                if (w_frame_swapped) begin
+                    next_state = IDLE;
+                end
+            end
+
+            default: begin
+                next_state = IDLE;
+            end
+        endcase
+    end
+
+    always_ff @(posedge clk_100m) begin
+        if (sim_rst) begin
+            r_triangle_dv <= 1'b0;
+            current_triangle <= '0;
+            clear <= 1'b0;
+        end else begin
+            case (current_state)
+                IDLE: begin
+                    r_triangle_dv <= 1'b0;
+                    current_triangle <= ~current_triangle;
+                    clear <= 1'b0;
+                end
+
+                CLEAR: begin
+                    clear <= 1'b1;
+                end
+
+                CLEAR_WAIT_DONE: begin
+                    clear <= 1'b0;
+                end
+
+                RENDER_FIRST: begin
+                    r_triangle_dv <= 1'b1;
+                end
+
+                RENDER_FIRST_WAIT: begin
+                    r_triangle_dv <= 1'b0;
+                end
+
+                // RENDER_SECOND: begin
+                //     r_triangle_dv <= 1'b1;
+                //     current_triangle <= 2'b10;
+                // end
+                //
+                // RENDER_SECOND_WAIT: begin
+                //     r_triangle_dv <= 1'b0;
+                // end
+
+                RENDER_DONE: begin
+                    r_triangle_dv <= 1'b0;
+                end
+
+                default: begin
+                    r_triangle_dv <= 1'b0;
+                end
+            endcase
+        end
+    end
+
     localparam CLUT_WIDTH = 12;
     localparam CLUT_DEPTH = 16;
     localparam FB_CLEAR_VALUE = 10;
@@ -122,6 +260,7 @@ module top #(
 
     logic hsync;
     logic vsync;
+    logic clear;
     display_new #(
         .FB_CLEAR_VALUE(10),
         .PALETTE_FILE(PALETTE_FILE),
@@ -132,8 +271,9 @@ module top #(
         .rstn(~sim_rst),
 
         .frame_render_done(done),
-        .frame_clear(display_clear),
-        .new_frame_render_ready(),
+        .frame_clear(clear),
+        .new_frame_render_ready(w_new_frame_render_ready),
+        .frame_swapped(w_frame_swapped),
 
         .i_pixel_write_addr(i_pixel_write_addr),
         .i_pixel_write_valid(fb_write_enable),

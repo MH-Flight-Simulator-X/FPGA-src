@@ -138,4 +138,21 @@ module rasterizer #(
 
     assign finished = w_rasterizer_frontend_finished_with_cull || w_rasterizer_backend_finished;
 
+    always_ff @(posedge clk) begin
+        if (i_triangle_last && i_triangle_dv) begin
+            $display("Last triangle to render");
+        end else if (i_triangle_dv) begin
+            $display("Triangle valid");
+        end
+        if (w_rasterizer_frontend_o_dv) begin
+            $display("Frontend output valid");
+        end
+        if (w_rasterizer_backend_done) begin
+            $display("Backend done");
+        end
+        if (finished) begin
+            $display("Rasterizer finished");
+        end
+    end
+
 endmodule

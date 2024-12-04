@@ -34,28 +34,26 @@ module buffer #(
     logic bram_write_en;
 
     always_comb begin
-        ready = 1'b1;
+        ready = 1'b0;
+
         case (state)
             IDLE: begin
                 bram_addr_write = addr_write;
                 bram_data_write = data_in;
                 bram_write_en = write_enable;
+
+                if (~clear) begin
+                    ready = 1'b1;
+                end
             end
 
             CLEARING: begin
                 bram_addr_write = clear_counter;
                 bram_data_write = clear_value;
                 bram_write_en = 1;
-
-                if (clear_counter != ADDR_WIDTH'(DEPTH - 1)) begin
-                    ready = 1'b0;
-                end
             end
 
             default: begin
-                bram_addr_write = '0;
-                bram_data_write = '0;
-                bram_write_en = '0;
             end
         endcase
     end
