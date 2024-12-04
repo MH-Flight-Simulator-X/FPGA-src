@@ -348,7 +348,9 @@ module top_MH_FPGA (
 
                 RENDER_FINISHED: begin
                     finished <= 1'b1;
-                    r_model_id <= (r_model_id == '0) ? 1 : 0;
+                    if (w_display_frame_swapped) begin
+                        r_model_id <= (r_model_id == '0) ? 1 : 0;
+                    end
                 end
 
                 default: begin

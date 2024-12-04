@@ -201,10 +201,8 @@ module display_new #(
     logic [1:0] r_frame_swapped_sync;
 
     logic pixel_in_fb;
-    always_comb begin
-        pixel_in_fb = (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE &&
-                        0 <= screen_x && screen_x < DISPLAY_WIDTH * SCALE);
-    end
+    // always_comb begin
+    // end
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
@@ -240,6 +238,8 @@ module display_new #(
     assign frame_swapped = r_frame_swapped_sync[1];
 
     always_ff @(posedge clk_pixel) begin
+        pixel_in_fb <= (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE &&
+                        0 <= screen_x && screen_x < DISPLAY_WIDTH * SCALE);
         if (frame) begin
             if (r_frame_render_done) begin
                 r_current_active_render_target <= ~r_current_active_render_target;

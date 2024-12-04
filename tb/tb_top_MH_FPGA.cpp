@@ -118,9 +118,10 @@ int main(int argc, char* argv[]) {
     while (true) {
         // Main sim
         dut->clk ^= 1;
-        if (sim_time % 4 == 0) {
-            dut->clk_pixel ^= 1;
-        }
+        // if (sim_time % 4 == 0) {
+        //     dut->clk_pixel ^= 1;
+        // }
+        dut->clk_pixel ^= 1;    // Makes it a lot faster for testing
         dut->eval();
 
         if (view.update()) {
