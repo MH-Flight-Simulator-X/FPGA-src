@@ -15,14 +15,6 @@ module top_MH_FPGA (
     input  logic clk_pixel,
     input  logic rstn,
 
-    output logic ready,
-    output logic finished,
-
-    // Transform matrix from MVP Matrix FIFO
-    output logic o_mvp_matrix_read_en,
-    input  logic signed [INPUT_DATAWIDTH-1:0] i_mvp_matrix[4][4],
-    input  logic i_mvp_dv,
-
     output logic frame,
     output logic display_en,
     output [15:0] sx,
@@ -41,9 +33,9 @@ module top_MH_FPGA (
     parameter unsigned OUTPUT_DATAWIDTH = 12;
     parameter unsigned COLORWIDTH = 4;
 
-    parameter unsigned MAX_TRIANGLE_COUNT = 32768;
-    parameter unsigned MAX_VERTEX_COUNT   = 32768;
-    parameter unsigned MAX_INDEX_COUNT    = 32768;
+    parameter unsigned MAX_TRIANGLE_COUNT = 4096;
+    parameter unsigned MAX_VERTEX_COUNT   = 4096;
+    parameter unsigned MAX_INDEX_COUNT    = 4096;
     parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
@@ -59,6 +51,8 @@ module top_MH_FPGA (
     parameter string FB_IMAGE_FILE = "image.mem";
 
     parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
+
+    // ============================ PIXEL CLOCK ==============================
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
@@ -106,24 +100,29 @@ module top_MH_FPGA (
     );
 
     // =========================== MVP Matrix Generation ===========================
-    logic [TRIG_LUT_ADDRWIDTH-1:0] r_angle = '0;
+    logic [TRIG_LUT_ADDRWIDTH-1:0] r_angle = 0;
 
-    logic signed [INPUT_DATAWIDTH-1:0] r_view_projection_mat[4][4];
-    logic signed [INPUT_DATAWIDTH-1:0] w_rot_z_mat[4][4];
+    logic signed [INPUT_DATAWIDTH-1:0] r_view_projection_mat[4][4] = '{
+        '{24'h0039F1, '0, '0, '0},
+        '{'0, 24'h004D41, '0, '0},
+        '{'0, '0, 24'hFFDFF0, 24'h0021AC},
+        '{'0, '0, 24'hFFE000, 24'h002800}
+    };
+    logic signed [INPUT_DATAWIDTH-1:0] w_rot_y_mat[4][4];
     logic r_mvp_matrix_compontents_dv = 1'b0;
 
     logic signed [INPUT_DATAWIDTH-1:0] w_mvp_matrix[4][4];
     logic w_mvp_matrix_dv;
     logic w_mat_mul_ready;
 
-    rot_z #(
+    rot_y #(
         .DATA_WIDTH(INPUT_DATAWIDTH),
-        .FRA_BITS(INPUT_FRACBITS),
+        .FRAC_BITS(INPUT_FRACBITS),
         .TRIG_LUT_ADDR_WIDTH(TRIG_LUT_ADDRWIDTH)
-    ) rot_z_mat_inst (
+    ) rot_y_mat_inst (
         .clk(clk),
         .angle(r_angle),
-        .rot_z_mat(w_rot_z_mat)
+        .rot_y_mat(w_rot_y_mat)
     );
 
     mat_mul #(
@@ -134,8 +133,8 @@ module top_MH_FPGA (
         .rstn(rstn),
 
         .A(r_view_projection_mat),
-        .B(w_rot_z_mat),
-        .i_dv(r_mvp_matrix_components_dv),
+        .B(w_rot_y_mat),
+        .i_dv(r_mvp_matrix_compontents_dv),
 
         .C(w_mvp_matrix),
         .o_dv(w_mvp_matrix_dv),
@@ -183,12 +182,9 @@ module top_MH_FPGA (
         .ready(w_render_pipeline_ready),
         .finished(w_render_pipeline_finished),
 
-    logic signed [INPUT_DATAWIDTH-1:0] w_mvp_matrix[4][4];
-    logic w_mvp_matrix_dv;
-
         .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
-        .i_mvp_matrix(i_mvp_matrix),
-        .i_mvp_dv(i_mvp_dv),
+        .i_mvp_matrix(r_mvp_matrix),
+        .i_mvp_dv(r_mvp_dv),
 
         .o_model_buff_vertex_read_en(w_model_buff_vertex_read_en),
         .i_vertex(r_vertex),
@@ -264,9 +260,9 @@ module top_MH_FPGA (
         MODEL_BUFFER_WAIT_RESET,
         DISPLAY_CLEAR,
         DISPLAY_CLEAR_WAIT,
+        MVP_MATRIX_CALCULATE,
+        MVP_MATRIX_WAIT_DONE,
         RENDER_START,
-        MVP_MATRIX_SET,
-        MVP_MATRIX_WAIT_SET,
         RENDER_WAIT_FINISHED,
         RENDER_FINISHED
     } state_t;
@@ -308,22 +304,24 @@ module top_MH_FPGA (
 
             RENDER_START: begin
                 if (w_render_pipeline_ready && r_render_pipeline_start) begin
-                    next_state = MVP_MATRIX_SET;
+                    next_state = MVP_MATRIX_CALCULATE;
                 end
             end
 
-            MVP_MATRIX_SET: begin
-                next_state = MVP_MATRIX_WAIT_SET;
+            MVP_MATRIX_CALCULATE: begin
+                if (w_mat_mul_ready) begin
+                    next_state = MVP_MATRIX_WAIT_DONE;
+                end
             end
 
-            MVP_MATRIX_WAIT_SET: begin
-                if (~w_mvp_matrix_read_en) begin
+            MVP_MATRIX_WAIT_DONE: begin
+                if (r_mvp_dv && w_mvp_matrix_read_en) begin
                     next_state = RENDER_WAIT_FINISHED;
                 end
             end
 
             RENDER_WAIT_FINISHED: begin
-                if (w_render_pipeline_finished) begin
+                if (w_render_pipeline_finished && ~r_render_pipeline_start) begin
                     next_state = RENDER_FINISHED;
                 end
             end
@@ -343,15 +341,11 @@ module top_MH_FPGA (
     always_ff @(posedge clk) begin
         if (~rstn) begin
             r_render_pipeline_start <= 1'b0;
-            o_mvp_matrix_read_en <= 1'b0;
-            finished <= 1'b0;
             r_display_clear <= 1'b0;
         end else begin
             case (current_state)
                 MODEL_BUFFER_RESET: begin
                     r_render_pipeline_start <= 1'b0;
-                    o_mvp_matrix_read_en <= 1'b0;
-                    finished <= 1'b0;
                     r_model_reader_reset <= 1'b1;
                     r_display_clear <= 1'b0;
                 end
@@ -376,25 +370,34 @@ module top_MH_FPGA (
                     end
                 end
 
-                MVP_MATRIX_SET: begin
-                    r_render_pipeline_start <= 1'b0;
-
-                    if (w_mvp_matrix_read_en) begin
-                        o_mvp_matrix_read_en <= 1'b1;
-                    end else begin
-                        o_mvp_matrix_read_en <= 1'b0;
+                MVP_MATRIX_CALCULATE: begin
+                    if (w_mat_mul_ready) begin
+                        r_mvp_matrix_compontents_dv <= 1'b1;
                     end
                 end
 
-                MVP_MATRIX_WAIT_SET: begin
-                    o_mvp_matrix_read_en <= 1'b0;
+                MVP_MATRIX_WAIT_DONE: begin
+                    r_mvp_matrix_compontents_dv <= 1'b0;
+                    if (w_mvp_matrix_dv) begin
+                        r_mvp_matrix <= w_mvp_matrix;
+                        r_mvp_dv <= 1'b1;
+
+                        r_angle <= r_angle + 64;
+                    end
+
+                    if (w_mvp_matrix_read_en && r_mvp_dv) begin
+                        r_mvp_dv <= 1'b0;
+                    end
+                end
+
+                RENDER_WAIT_FINISHED: begin
+                    r_render_pipeline_start <= 1'b0;
                 end
 
                 RENDER_FINISHED: begin
-                    finished <= 1'b1;
-                    if (w_display_frame_swapped) begin
-                        r_model_id <= (r_model_id == '0) ? 1 : 0;
-                    end
+                    // if (w_display_frame_swapped) begin
+                    //     // r_model_id <= (r_model_id == '0) ? 1 : 0;
+                    // end
                 end
 
                 default: begin

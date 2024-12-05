@@ -243,8 +243,8 @@ module display_new #(
         if (frame) begin
             if (r_frame_render_done) begin
                 r_current_active_render_target <= ~r_current_active_render_target;
-                $display("Switching buffers");
-                $display("Current active render target: %d", ~r_current_active_render_target);
+                // $display("Switching buffers");
+                // $display("Current active render target: %d", ~r_current_active_render_target);
                 r_frame_swapped <= 1'b1;
             end else begin
                 r_frame_swapped <= 1'b0;

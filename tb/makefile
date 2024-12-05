@@ -18,8 +18,11 @@ OBJ_DIR = obj_dir
 
 VERILOG_SOURCES = \
 	$(LIB_DIR)/Math/MatVecMul/src/mat_vec_mul_new.sv \
+	$(LIB_DIR)/Math/MatMul/src/mat_mul.sv \
 	$(LIB_DIR)/Math/FastInverse/src/fast_inverse.sv \
 	$(LIB_DIR)/Math/FixedPointDivide/src/fixed_point_divide.sv \
+	$(LIB_DIR)/Math/TrigLUT/src/sin_cos_lu.sv \
+	$(LIB_DIR)/Math/RotMat/src/rot_y.sv \
 	$(LIB_DIR)/Memory/BRAM_SP/src/bram_sp.sv \
     $(LIB_DIR)/Memory/BRAM_DP/src/bram_dp.sv \
 	$(LIB_DIR)/Memory/Buffer/src/buffer.sv \

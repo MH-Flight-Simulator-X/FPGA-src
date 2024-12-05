@@ -143,10 +143,10 @@ module render_pipeline #(
             finished <= 1'b0;
         end else begin
             // $display("Start: %d, Ready: %d, Finished: %d", start, transform_pipeline_ready, w_rasterizer_finished);
-            if (w_rasterizer_finished) begin
-                finished <= 1'b1;
-            end else if (start) begin
+            if (start) begin
                 finished <= 1'b0;
+            end else if (w_rasterizer_finished) begin
+                finished <= 1'b1;
             end
         end
     end

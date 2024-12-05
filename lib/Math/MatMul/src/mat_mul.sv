@@ -103,6 +103,9 @@ module mat_mul #(
         if (~rstn) begin
             index <= 2'b00;
             foreach (C_r[i,j]) C_r[i][j] <= '0;
+        end else if (current_state == MAT_MUL_IDLE) begin
+            index <= 2'b00;
+            foreach (C_r[i,j]) C_r[i][j] <= '0;
         end else if (current_state == MAT_MUL_PROCESSING) begin
             // DO COMPUTATION
             C_r[0][0] <= C_r[0][0] + (A_r[0][index] * B_r[index][0]);

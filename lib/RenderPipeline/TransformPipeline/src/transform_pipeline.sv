@@ -229,15 +229,18 @@ module transform_pipeline #(
         DONE
     } state_t;
     state_t current_state = IDLE, next_state;
+    state_t last_state = IDLE;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
             current_state <= IDLE;
+            last_state <= IDLE;
         end else begin
             current_state <= next_state;
-            if (current_state != next_state) begin
-                $display("### Transform pipeline ### Next state: %s", next_state.name());
-            end
+            last_state <= current_state;
+            // if (current_state != last_state) begin
+            //     $display("### Transform pipeline ### Next state: %s", current_state.name());
+            // end
         end
     end
 
