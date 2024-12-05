@@ -42,7 +42,7 @@ module mat_mul #(
                                                     // with only using DATAWIDTH for
                                                     // intermediate calculation
 
-    mat_mat_mul_state_t current_state = MAT_MUL_IDLE, next_state = MAT_MUL_IDLE;
+    mat_mat_mul_state_t current_state = MAT_MUL_IDLE, next_state;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin

@@ -58,6 +58,8 @@ module top_MH_FPGA (
     parameter string PALETTE_FILE = "palette.mem";
     parameter string FB_IMAGE_FILE = "image.mem";
 
+    parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
+
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
     logic r_model_reader_reset = 1'b0;
@@ -103,6 +105,43 @@ module top_MH_FPGA (
         .vertex_data_last(r_vertex_last)
     );
 
+    // =========================== MVP Matrix Generation ===========================
+    logic [TRIG_LUT_ADDRWIDTH-1:0] r_angle = '0;
+
+    logic signed [INPUT_DATAWIDTH-1:0] r_view_projection_mat[4][4];
+    logic signed [INPUT_DATAWIDTH-1:0] w_rot_z_mat[4][4];
+    logic r_mvp_matrix_compontents_dv = 1'b0;
+
+    logic signed [INPUT_DATAWIDTH-1:0] w_mvp_matrix[4][4];
+    logic w_mvp_matrix_dv;
+    logic w_mat_mul_ready;
+
+    rot_z #(
+        .DATA_WIDTH(INPUT_DATAWIDTH),
+        .FRA_BITS(INPUT_FRACBITS),
+        .TRIG_LUT_ADDR_WIDTH(TRIG_LUT_ADDRWIDTH)
+    ) rot_z_mat_inst (
+        .clk(clk),
+        .angle(r_angle),
+        .rot_z_mat(w_rot_z_mat)
+    );
+
+    mat_mul #(
+        .DATAWIDTH(INPUT_DATAWIDTH),
+        .FRACBITS(INPUT_FRACBITS)
+    ) mat_mul_inst (
+        .clk(clk),
+        .rstn(rstn),
+
+        .A(r_view_projection_mat),
+        .B(w_rot_z_mat),
+        .i_dv(r_mvp_matrix_components_dv),
+
+        .C(w_mvp_matrix),
+        .o_dv(w_mvp_matrix_dv),
+        .o_ready(w_mat_mul_ready)
+    );
+
     // =========================== RENDER_START PIPELINE ===========================
     logic r_render_pipeline_start = 1'b0;
     logic w_render_pipeline_ready;
@@ -110,6 +149,8 @@ module top_MH_FPGA (
 
     // MVP Matrix
     logic w_mvp_matrix_read_en;
+    logic signed [INPUT_DATAWIDTH-1:0] r_mvp_matrix[4][4];
+    logic r_mvp_dv = 1'b0;
 
     // Output raster signals
     logic [ADDRWIDTH-1:0] w_fb_addr_write;
@@ -141,6 +182,9 @@ module top_MH_FPGA (
         .start(r_render_pipeline_start),
         .ready(w_render_pipeline_ready),
         .finished(w_render_pipeline_finished),
+
+    logic signed [INPUT_DATAWIDTH-1:0] w_mvp_matrix[4][4];
+    logic w_mvp_matrix_dv;
 
         .o_mvp_matrix_read_en(w_mvp_matrix_read_en),
         .i_mvp_matrix(i_mvp_matrix),
