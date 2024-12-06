@@ -296,6 +296,8 @@ module rasterizer_frontend #(
                         r_edge_function_v2 <= '{i_v1[0], i_v1[1]};
                         r_edge_function_p  <= '{i_v2[0], i_v2[1]};
 
+                        r_id <= r_id + 1;
+
                     end else begin
                         foreach (r_edge_function_v1[i]) r_edge_function_v1[i] <= '0;
                         foreach (r_edge_function_v2[i]) r_edge_function_v2[i] <= '0;
@@ -449,8 +451,6 @@ module rasterizer_frontend #(
                         if (r_i_triangle_last) begin
                             r_i_triangle_last <= '0;
                             r_id <= 1;
-                        end else begin
-                            r_id <= r_id + 1;
                         end
                     end else begin
                         o_dv <= '0;
