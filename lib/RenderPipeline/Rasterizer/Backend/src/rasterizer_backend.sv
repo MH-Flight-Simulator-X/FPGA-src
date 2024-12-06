@@ -6,7 +6,7 @@ module rasterizer_backend #(
     parameter unsigned [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
     parameter unsigned [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
     parameter unsigned ADDRWIDTH = 16,
-    parameter unsigned IDWIDTH = 16
+    parameter unsigned IDWIDTH = 4
     ) (
     input logic clk,
     input logic rstn,

@@ -37,13 +37,16 @@ module fast_inverse #(
     end
 
     logic [2*DATAWIDTH-1:0] two_fp = 2 << DATAWIDTH;
+    logic [2*DATAWIDTH-1:0] AX;
+    logic [2*DATAWIDTH-1:0] two_fp_minus_AX;
+    logic [2*DATAWIDTH:0] X_two_AX;
     /* verilator lint_off UNUSED */
     logic [2*DATAWIDTH:0] w_X_next;
     /* verilator lint_on UNUSED */
     always_comb begin
-        logic [2*DATAWIDTH-1:0] AX = ((r_A_scaled * X) >> DATAWIDTH);
-        logic [2*DATAWIDTH-1:0] two_fp_minus_AX = (two_fp - AX);
-        logic [2*DATAWIDTH:0] X_two_AX = X * two_fp_minus_AX;
+        AX = ((r_A_scaled * X) >> DATAWIDTH);
+        two_fp_minus_AX = (two_fp - AX);
+        X_two_AX = X * two_fp_minus_AX;
         w_X_next = (X_two_AX >> DATAWIDTH);
     end
 

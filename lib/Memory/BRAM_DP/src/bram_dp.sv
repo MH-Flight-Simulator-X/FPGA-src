@@ -1,6 +1,6 @@
 module bram_dp #(
-    parameter unsigned WIDTH,
-    parameter unsigned DEPTH,
+    parameter unsigned WIDTH = 16,
+    parameter unsigned DEPTH = 32,
     parameter string FILE = ""
 ) (
     input wire clk_write,

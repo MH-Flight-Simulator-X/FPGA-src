@@ -65,6 +65,50 @@ module transform_pipeline #(
     logic signed [INPUT_DATAWIDTH-1:0] w_vs_o_vertex[4];
     logic w_vs_o_vertex_dv;
 
+    // Vertex Post-Processor
+    logic signed [INPUT_DATAWIDTH-1:0] r_vpp_i_vertex[4];
+    logic r_vpp_i_vertex_dv;
+
+    logic signed [OUTPUT_DATAWIDTH-1:0] w_vpp_pixel[3];
+    logic w_vpp_done;
+
+    logic w_vpp_o_vertex_invalid;
+    logic w_vpp_ready;
+
+    logic r_vpp_last_vertex = '0;
+    logic r_vpp_last_vertex_finished = '0;
+
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_vertexes_processed = '0;
+
+    // G-Buffer
+    logic w_gbuff_ready;
+    logic r_gbuff_write_en;
+    logic r_gbuff_read_en;
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_write;
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port0;
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port1;
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port2;
+
+    logic [3 * OUTPUT_DATAWIDTH-1:0] r_gbuff_data_write;
+    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port0;
+    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port1;
+    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port2;
+    logic w_gbuff_dv;
+
+    // Primitive assembler
+    logic r_pa_start;
+    logic w_pa_o_ready;
+    logic w_pa_finished;
+
+    logic [$clog2(MAX_VERTEX_COUNT)-1:0] w_pa_vertex_addr[3];
+    logic w_pa_vertex_read_en;
+
+    logic signed [OUTPUT_DATAWIDTH-1:0] r_pa_i_v0[3];
+    logic signed [OUTPUT_DATAWIDTH-1:0] r_pa_i_v1[3];
+    logic signed [OUTPUT_DATAWIDTH-1:0] r_pa_i_v2[3];
+    logic r_pa_i_vertex_dv = '0;
+
+    // Vertex Shader
     vertex_shader_new #(
         .DATAWIDTH(INPUT_DATAWIDTH),
         .FRACBITS(INPUT_FRACBITS)
@@ -88,23 +132,7 @@ module transform_pipeline #(
         .o_finished(w_vs_finished)
     );
 
-    assign o_mvp_matrix_read_en = w_vs_ready & (current_state == VERTEX_SHADER_GET_MATRIX);
-
     // Vertex Post-Processor
-    logic signed [INPUT_DATAWIDTH-1:0] r_vpp_i_vertex[4];
-    logic r_vpp_i_vertex_dv;
-
-    logic signed [OUTPUT_DATAWIDTH-1:0] w_vpp_pixel[3];
-    logic w_vpp_done;
-
-    logic w_vpp_o_vertex_invalid;
-    logic w_vpp_ready;
-
-    logic r_vpp_last_vertex = '0;
-    logic r_vpp_last_vertex_finished = '0;
-
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_vertexes_processed = '0;
-
     vertex_post_processor #(
         .IV_DATAWIDTH(INPUT_DATAWIDTH),
         .IV_FRACBITS(INPUT_FRACBITS),
@@ -129,20 +157,6 @@ module transform_pipeline #(
     );
 
     // G-Buffer
-    logic w_gbuff_ready;
-    logic r_gbuff_write_en;
-    logic r_gbuff_read_en;
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_write;
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port0;
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port1;
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] r_gbuff_addr_read_port2;
-
-    logic [3 * OUTPUT_DATAWIDTH-1:0] r_gbuff_data_write;
-    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port0;
-    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port1;
-    logic [3 * OUTPUT_DATAWIDTH-1:0] w_gbuff_data_read_port2;
-    logic w_gbuff_dv;
-
     g_buffer #(
         .VERTEX_DATAWIDTH(OUTPUT_DATAWIDTH),
         .MAX_VERTEX_COUNT(MAX_TRIANGLE_COUNT)
@@ -167,18 +181,6 @@ module transform_pipeline #(
     );
 
     // Primitive assembler
-    logic r_pa_start;
-    logic w_pa_o_ready;
-    logic w_pa_finished;
-
-    logic [$clog2(MAX_VERTEX_COUNT)-1:0] w_pa_vertex_addr[3];
-    logic w_pa_vertex_read_en;
-
-    logic [OUTPUT_DATAWIDTH-1:0] r_pa_i_v0[3];
-    logic [OUTPUT_DATAWIDTH-1:0] r_pa_i_v1[3];
-    logic [OUTPUT_DATAWIDTH-1:0] r_pa_i_v2[3];
-    logic r_pa_i_vertex_dv = '0;
-
     // TODO: Add vertex invalid signal to gbuffer and propagate it to PA
     primitive_assembler #(
         .DATAWIDTH(OUTPUT_DATAWIDTH),
@@ -238,9 +240,6 @@ module transform_pipeline #(
         end else begin
             current_state <= next_state;
             last_state <= current_state;
-            // if (current_state != last_state) begin
-            //     $display("### Transform pipeline ### Next state: %s", current_state.name());
-            // end
         end
     end
 
@@ -408,4 +407,5 @@ module transform_pipeline #(
 
     // assign r_vs_enable = w_vpp_ready;
     assign o_model_buff_vertex_read_en = w_vs_vertex_ready;
+    assign o_mvp_matrix_read_en = w_vs_ready & (current_state == VERTEX_SHADER_GET_MATRIX);
 endmodule

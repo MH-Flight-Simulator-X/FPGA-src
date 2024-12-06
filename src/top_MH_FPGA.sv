@@ -7,24 +7,26 @@
                            /____/
 */
 
-`default_nettype none
 `timescale 1ns / 1ps
 
 module top_MH_FPGA (
     input  logic clk,
-    input  logic clk_pixel,
+    // input  logic clk_pixel,
     input  logic rstn,
 
-    output logic frame,
-    output logic display_en,
-    output [15:0] sx,
-    output [15:0] sy,
+    input logic btn,
+    output logic [3:0] led,
+
+    // output logic frame,
+    // output logic display_en,
+    // output [15:0] sx,
+    // output [15:0] sy,
 
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
-    output      logic [7:0] vga_r,  // (8-bit temp for sim) 4-bit VGA red
-    output      logic [7:0] vga_g,  // (8-bit temp for sim) 4-bit VGA green
-    output      logic [7:0] vga_b   // (8-bit temp for sim) 4-bit VGA blue
+    output      logic [3:0] vga_r,  // (8-bit temp for sim) 4-bit VGA red
+    output      logic [3:0] vga_g,  // (8-bit temp for sim) 4-bit VGA green
+    output      logic [3:0] vga_b   // (8-bit temp for sim) 4-bit VGA blue
     );
 
     // =========================== PARAMETERS ===========================
@@ -53,6 +55,19 @@ module top_MH_FPGA (
     parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
 
     // ============================ PIXEL CLOCK ==============================
+    // Generate Pixel Clock
+    logic clk_pix;
+    logic clk_pix_locked;
+    logic rst_pix;
+    clock_480p clock_pix_inst (
+       .clk_100m(clk),
+       .rst(0),  // reset button is active low
+       .clk_pix(clk_pix),
+       .clk_pix_5x(),  // not used for VGA output
+       .clk_pix_locked(clk_pix_locked)
+    );
+    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
+    assign led[0] = clk_pix_locked;
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
@@ -100,7 +115,7 @@ module top_MH_FPGA (
     );
 
     // =========================== MVP Matrix Generation ===========================
-    logic [TRIG_LUT_ADDRWIDTH-1:0] r_angle = 0;
+    logic [TRIG_LUT_ADDRWIDTH-1:0] r_angle = '0;
 
     logic signed [INPUT_DATAWIDTH-1:0] r_view_projection_mat[4][4] = '{
         '{24'h0039F1, '0, '0, '0},
@@ -225,8 +240,9 @@ module top_MH_FPGA (
         .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
         .clk(clk),
-        .clk_pixel(clk_pixel),
+        .clk_pixel(clk_pix),
         .rstn(rstn),
+        .rst_pix(rst_pix),
 
         .frame_render_done(w_render_pipeline_finished),
         .frame_clear(r_display_clear),
@@ -238,24 +254,28 @@ module top_MH_FPGA (
         .i_fb_data(w_fb_color_data),
         .i_db_data(w_fb_depth_data),
 
-        .o_red(),
-        .o_green(),
-        .o_blue(),
+        .o_red(vga_r),
+        .o_green(vga_g),
+        .o_blue(vga_b),
         .hsync(vga_hsync),
         .vsync(vga_vsync)
     );
 
-    assign frame = display_inst.frame;
-    assign sx = display_inst.screen_x;
-    assign sy = display_inst.screen_y;
-    assign display_en = display_inst.de;
+    assign led[1] = ~display_inst.r_current_active_render_target;
+    assign led[2] =  display_inst.r_current_active_render_target;
 
-    assign vga_r = {2{display_inst.o_red}};
-    assign vga_g = {2{display_inst.o_green}};
-    assign vga_b = {2{display_inst.o_blue}};
+    // assign frame = display_inst.frame;
+    // assign sx = display_inst.screen_x;
+    // assign sy = display_inst.screen_y;
+    // assign display_en = display_inst.de;
+    //
+    // assign vga_r = {2{display_inst.o_red}};
+    // assign vga_g = {2{display_inst.o_green}};
+    // assign vga_b = {2{display_inst.o_blue}};
 
     // ============================ STATE =============================
     typedef enum logic [3:0] {
+        IDLE,
         MODEL_BUFFER_RESET,
         MODEL_BUFFER_WAIT_RESET,
         DISPLAY_CLEAR,
@@ -266,11 +286,11 @@ module top_MH_FPGA (
         RENDER_WAIT_FINISHED,
         RENDER_FINISHED
     } state_t;
-    state_t current_state = MODEL_BUFFER_RESET, next_state;
+    state_t current_state = IDLE, next_state;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
-            current_state <= MODEL_BUFFER_RESET;
+            current_state <= IDLE;
         end else begin
             current_state <= next_state;
         end
@@ -280,6 +300,12 @@ module top_MH_FPGA (
         next_state = current_state;
 
         case (current_state)
+            IDLE: begin
+                if (btn) begin
+                    next_state = MODEL_BUFFER_RESET;
+                end
+            end
+
             MODEL_BUFFER_RESET: begin
                 next_state = MODEL_BUFFER_WAIT_RESET;
             end
@@ -342,6 +368,10 @@ module top_MH_FPGA (
         if (~rstn) begin
             r_render_pipeline_start <= 1'b0;
             r_display_clear <= 1'b0;
+            r_model_reader_reset <= 1'b0;
+            r_angle <= '0;
+            foreach (r_mvp_matrix[i,j]) r_mvp_matrix[i][j] <= '0;
+            r_mvp_dv <= '0;
         end else begin
             case (current_state)
                 MODEL_BUFFER_RESET: begin
@@ -405,5 +435,7 @@ module top_MH_FPGA (
             endcase
         end
     end
+
+    assign led[3] = current_state != IDLE;
 
 endmodule

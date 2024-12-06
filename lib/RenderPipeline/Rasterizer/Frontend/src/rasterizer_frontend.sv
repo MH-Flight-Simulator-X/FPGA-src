@@ -3,7 +3,7 @@
 
 /* verilator lint_off DECLFILENAME */
 module edge_compute #(
-    parameter unsigned DATAWIDTH
+    parameter unsigned DATAWIDTH = 24
     ) (
     input logic signed [DATAWIDTH-1:0] v1[2],
     input logic signed [DATAWIDTH-1:0] v2[2],
@@ -26,7 +26,7 @@ module rasterizer_frontend #(
     parameter unsigned DATAWIDTH = 12,
     parameter signed [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
     parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
-    parameter unsigned IDWIDTH = 16
+    parameter unsigned IDWIDTH = 4
     ) (
     input logic clk,
     input logic rstn,
@@ -52,7 +52,7 @@ module rasterizer_frontend #(
     output logic signed [DATAWIDTH-1:0] z_coeff,
     output logic signed [DATAWIDTH-1:0] z_coeff_delta[2],
 
-    output [IDWIDTH-1:0] id,
+    output logic [IDWIDTH-1:0] id,
     output logic o_dv,
     output logic o_last,
     output logic finished_with_cull
@@ -124,7 +124,7 @@ module rasterizer_frontend #(
     );
 
     // DIVIDER UNIT
-    logic w_area_division_ready = '0;
+    logic w_area_division_ready;
     logic [2*DATAWIDTH-1:0] r_area_division_in_A;
     logic r_area_division_in_A_dv;
 

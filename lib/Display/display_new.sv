@@ -27,6 +27,7 @@ module display_new #(
     input logic clk,
     input logic clk_pixel,
     input logic rstn,
+    input logic rst_pix,
 
     input logic frame_render_done,
     input logic frame_clear,
@@ -54,7 +55,7 @@ module display_new #(
         .CORDW(DISPLAY_COORD_WIDTH)
     ) display_signal_inst (
         .clk_pix(clk_pixel),
-        .rst_pix(~rstn),
+        .rst_pix(rst_pix),
 
         .sx(screen_x),
         .sy(screen_y),
@@ -103,7 +104,8 @@ module display_new #(
     // Selects which display should be the one to be rendered to. The other
     // one will be used to display to the screen. 0 indicates inst_1 is active,
     // 1 indicates inst_2 is active.
-    logic r_current_active_render_target = 1'b0;
+    logic r_current_active_render_target = 1'b0;    // In pixel clock domain :/
+    logic [1:0] r_current_active_render_target_sync;
 
     logic w_fb_inst_1_write_en;
     logic w_fb_inst_2_write_en;
@@ -118,8 +120,9 @@ module display_new #(
     logic [FB_DATA_WIDTH-1:0] w_fb_inst_2_data_read;
 
     // Logic for determining which display should be interacted with
+    // "clk" clock domain
     always_comb begin
-        if (r_current_active_render_target) begin
+        if (r_current_active_render_target_sync[1]) begin
             w_fb_inst_2_write_en = r_display_buffers_write_en & w_fb_inst_2_ready;
             w_fb_inst_2_clear = frame_clear;
             w_display_buffers_ready = w_fb_inst_2_ready; //  && w_db_ready
@@ -127,7 +130,6 @@ module display_new #(
             w_fb_inst_1_write_en = '0;
             w_fb_inst_1_clear = '0;
 
-            w_display_data_read = w_fb_inst_1_data_read;
         end else begin
             w_fb_inst_1_write_en = r_display_buffers_write_en & w_fb_inst_1_ready;
             w_fb_inst_1_clear = frame_clear;
@@ -136,6 +138,14 @@ module display_new #(
             w_fb_inst_2_write_en = '0;
             w_fb_inst_2_clear = '0;
 
+        end
+    end
+
+    // "clk_pixel" clock domain
+    always_comb begin
+        if (r_current_active_render_target) begin
+            w_display_data_read = w_fb_inst_1_data_read;
+        end else begin
             w_display_data_read = w_fb_inst_2_data_read;
         end
     end
@@ -195,10 +205,9 @@ module display_new #(
     logic [DISPLAY_COORD_WIDTH-1:0] x_scale_counter, y_scale_counter;
     logic [DISPLAY_ADDR_WIDTH-1:0] fb_x, fb_y;
 
-    logic r_frame_render_done;
-    logic r_frame_swapped;
-    logic [2:0] r_frame_signal_sync;
+    logic [1:0] r_frame_render_done_sync;
     logic [1:0] r_frame_swapped_sync;
+    logic r_frame_swapped;
 
     logic pixel_in_fb;
     // always_comb begin
@@ -206,10 +215,8 @@ module display_new #(
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
-            r_frame_render_done <= '0;
-            r_frame_signal_sync[0] <= '0;
-            r_frame_signal_sync[1] <= '0;
-            r_frame_signal_sync[2] <= '0;
+            r_current_active_render_target_sync[0] <= '0;
+            r_current_active_render_target_sync[1] <= '0;
         end else begin
             delayed_i_db_data <= i_db_data;
             delayed_i_fb_data <= i_fb_data;
@@ -221,18 +228,11 @@ module display_new #(
                 r_display_buffers_write_en <= 0;
             end
 
-            r_frame_signal_sync[0] <= frame;
-            r_frame_signal_sync[1] <= r_frame_signal_sync[0];
-            r_frame_signal_sync[2] <= r_frame_signal_sync[1];
-
-            if (~r_frame_signal_sync[1] && r_frame_signal_sync[2]) begin
-                r_frame_render_done <= '0;
-            end else if (frame_render_done) begin
-                r_frame_render_done <= frame_render_done;
-            end
-
             r_frame_swapped_sync[0] <= r_frame_swapped;
             r_frame_swapped_sync[1] <= r_frame_swapped_sync[0];
+
+            r_current_active_render_target_sync[0] <= r_current_active_render_target;
+            r_current_active_render_target_sync[1] <= r_current_active_render_target_sync[0];
         end
     end
     assign frame_swapped = r_frame_swapped_sync[1];
@@ -240,11 +240,14 @@ module display_new #(
     always_ff @(posedge clk_pixel) begin
         pixel_in_fb <= (0 <= screen_y && screen_y < DISPLAY_HEIGHT * SCALE &&
                         0 <= screen_x && screen_x < DISPLAY_WIDTH * SCALE);
+
+
         if (frame) begin
-            if (r_frame_render_done) begin
+            r_frame_render_done_sync[0] <= '0;
+            r_frame_render_done_sync[1] <= '0;
+
+            if (r_frame_render_done_sync[1]) begin
                 r_current_active_render_target <= ~r_current_active_render_target;
-                // $display("Switching buffers");
-                // $display("Current active render target: %d", ~r_current_active_render_target);
                 r_frame_swapped <= 1'b1;
             end else begin
                 r_frame_swapped <= 1'b0;
@@ -256,6 +259,9 @@ module display_new #(
             fb_y <= '0;
             r_fb_addr_read <= '0;
         end else if (pixel_in_fb) begin
+            r_frame_render_done_sync[0] <= frame_render_done;
+            r_frame_render_done_sync[1] <= r_frame_render_done_sync[0];
+
             r_frame_swapped <= 1'b0;
             if (x_scale_counter < SCALE-1) begin
                 x_scale_counter <= x_scale_counter + 1;
@@ -282,6 +288,9 @@ module display_new #(
             r_fb_addr_read <= fb_y * DISPLAY_WIDTH + fb_x;
         end else begin
             r_frame_swapped <= 1'b0;
+
+            r_frame_render_done_sync[0] <= frame_render_done;
+            r_frame_render_done_sync[1] <= r_frame_render_done_sync[0];
         end
     end
 

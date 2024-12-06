@@ -1,7 +1,8 @@
 module buffer #(
     parameter unsigned WIDTH = 16,
     parameter unsigned DEPTH = 32,
-    parameter string FILE = ""
+    parameter string FILE = "",
+    parameter unsigned ADDR_WIDTH = $clog2(DEPTH)
 ) (
     input logic clk_write,
     input logic clk_read,
@@ -17,8 +18,6 @@ module buffer #(
     input logic [WIDTH-1:0] data_in,
     output logic [WIDTH-1:0] data_out
 );
-
-    localparam ADDR_WIDTH = $clog2(DEPTH);
 
     // State Machine States
     typedef enum logic {

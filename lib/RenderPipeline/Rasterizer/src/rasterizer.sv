@@ -32,7 +32,7 @@ module rasterizer #(
         output logic finished
     );
 
-    parameter unsigned IDWIDTH = 16;
+    parameter unsigned IDWIDTH = 4;
 
     // ========== RASTERIZER FRONTEND ==========
     logic signed [DATAWIDTH-1:0] w_bb_tl[2];

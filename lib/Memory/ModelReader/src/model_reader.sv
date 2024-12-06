@@ -32,8 +32,8 @@ module model_reader #(
     localparam integer INDEX_DATA_WIDTH = INDEX_ADDR_WIDTH * 3;
     localparam integer HEADER_DATA_WIDTH = INDEX_ADDR_WIDTH + VERTEX_ADDR_WIDTH;
 
-    logic  [MODEL_INDEX_WIDTH-1:0] header_addr;
-    logic [HEADER_DATA_WIDTH-1:0]  header_data;
+    logic [MODEL_INDEX_WIDTH-1:0] header_addr;
+    logic [HEADER_DATA_WIDTH-1:0] header_data;
 
 
     // Current and end indices for faces and vertices
