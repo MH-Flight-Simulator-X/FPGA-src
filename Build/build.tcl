@@ -1,11 +1,11 @@
 set design_name "top_MH_FPGA"
-set board_name "Arty-A7"
+set board_name "MH-FPGA"
 
 # MH FPGA
-# set fpga_part "xc7a100tftg256-1"
+set fpga_part "xc7a100tftg256-1"
 
 # Arty A7 100T FPGA
-set fpga_part "xc7a100tcsg324-1"
+# set fpga_part "xc7a100tcsg324-1"
 
 set lib_dir [file normalize "./../lib"]
 set src_dir [file normalize "./../src"]
@@ -16,7 +16,7 @@ file mkdir logs
 
 # Read lib files
 read_verilog -sv "${lib_dir}/Clock/clock_480p.sv"
-# read_verilog -sv "${lib_dir}/Clock/clock_100Mhz.sv"
+read_verilog -sv "${lib_dir}/Clock/clock_100Mhz.sv"
 
 read_verilog -sv "${lib_dir}/Math/MatVecMul/src/mat_vec_mul_new.sv"
 read_verilog -sv "${lib_dir}/Math/MatMul/src/mat_mul.sv"
@@ -81,8 +81,8 @@ set_property BITSTREAM.Config.SPI_buswidth 4 [current_design]
 # Write bitstream
 write_bitstream -force "${origin_dir}/Build/output/${design_name}.bit"
 
-# write_cfgmem -format bin -force \
-#   -size 16 \
-#   -interface spix4 \
-#   -loadbit "up 0x0 ${origin_dir}/Build/output/${design_name}.bit" \
-#   -file "${origin_dir}/Build/output/${design_name}.bin"
+write_cfgmem -format bin -force \
+  -size 16 \
+  -interface spix4 \
+  -loadbit "up 0x0 ${origin_dir}/Build/output/${design_name}.bit" \
+  -file "${origin_dir}/Build/output/${design_name}.bin"

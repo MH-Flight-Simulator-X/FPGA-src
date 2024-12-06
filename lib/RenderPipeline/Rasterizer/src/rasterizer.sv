@@ -8,7 +8,8 @@ module rasterizer #(
         parameter unsigned COLORWIDTH = 4,
         parameter unsigned SCREEN_WIDTH = 320,
         parameter unsigned SCREEN_HEIGHT = 320,
-        parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT)
+        parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT),
+        parameter unsigned IDWIDTH = 4
     ) (
         input logic clk,
         input logic rstn,
@@ -32,8 +33,6 @@ module rasterizer #(
         output logic finished
     );
 
-    parameter unsigned IDWIDTH = 4;
-
     // ========== RASTERIZER FRONTEND ==========
     logic signed [DATAWIDTH-1:0] w_bb_tl[2];
     logic signed [DATAWIDTH-1:0] w_bb_br[2];
@@ -54,6 +53,12 @@ module rasterizer #(
     logic w_rasterizer_frontend_o_last;
     logic w_rasterizer_frontend_finished_with_cull;
 
+    // ========== RASTERIZER BACKEND ==========
+    logic w_rasterizer_backend_ready;
+    logic w_rasterizer_backend_done;
+    logic w_rasterizer_backend_finished;
+
+    // ========== RASTERIZER FRONTEND ==========
     rasterizer_frontend #(
         .DATAWIDTH(DATAWIDTH),
         .SCREEN_WIDTH(SCREEN_WIDTH),
@@ -93,10 +98,6 @@ module rasterizer #(
     );
 
     // ========== RASTERIZER BACKEND ==========
-    logic w_rasterizer_backend_ready;
-    logic w_rasterizer_backend_done;
-    logic w_rasterizer_backend_finished;
-
     rasterizer_backend #(
         .DATAWIDTH(DATAWIDTH),
         .COLORWIDTH(COLORWIDTH),

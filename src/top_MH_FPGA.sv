@@ -12,10 +12,10 @@
 module top_MH_FPGA (
     input  logic clk,
     // input  logic clk_pixel,
-    input  logic rstn,
+    // input  logic rstn,
 
-    input logic btn,
-    output logic [3:0] led,
+    // input logic btn,
+    output logic [2:0] led,
 
     // output logic frame,
     // output logic display_en,
@@ -54,20 +54,33 @@ module top_MH_FPGA (
 
     parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
 
+    // ============================ SYSTEM CLOCK =============================
+    logic rstn = 1'b1;
+    logic clk_100m;
+    logic clk_100m_locked;
+    clock_100Mhz sys_clock_inst (
+        .clk_20m(clk),
+        .rst(0),
+        .clk_100m(clk_100m),
+        .clk_100m_5x(),
+        .clk_100m_locked(clk_100m_locked)
+    );
+    always_ff @(posedge clk_100m) rstn <= clk_100m_locked;
+    assign led[0] = clk_100m_locked;
+
     // ============================ PIXEL CLOCK ==============================
     // Generate Pixel Clock
     logic clk_pix;
     logic clk_pix_locked;
     logic rst_pix;
     clock_480p clock_pix_inst (
-       .clk_100m(clk),
+       .clk_100m(clk_100m),
        .rst(0),  // reset button is active low
        .clk_pix(clk_pix),
        .clk_pix_5x(),  // not used for VGA output
        .clk_pix_locked(clk_pix_locked)
     );
     always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
-    assign led[0] = clk_pix_locked;
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
@@ -96,7 +109,7 @@ module top_MH_FPGA (
         .MODEL_FACES_FILE("model_faces.mem"),
         .MODEL_VERTEX_FILE("model_vertex.mem")
     ) model_reader_inst (
-        .clk(clk),
+        .clk(clk_100m),
         .reset(r_model_reader_reset),
         .ready(w_model_reader_ready),
 
@@ -135,7 +148,7 @@ module top_MH_FPGA (
         .FRAC_BITS(INPUT_FRACBITS),
         .TRIG_LUT_ADDR_WIDTH(TRIG_LUT_ADDRWIDTH)
     ) rot_y_mat_inst (
-        .clk(clk),
+        .clk(clk_100m),
         .angle(r_angle),
         .rot_y_mat(w_rot_y_mat)
     );
@@ -144,7 +157,7 @@ module top_MH_FPGA (
         .DATAWIDTH(INPUT_DATAWIDTH),
         .FRACBITS(INPUT_FRACBITS)
     ) mat_mul_inst (
-        .clk(clk),
+        .clk(clk_100m),
         .rstn(rstn),
 
         .A(r_view_projection_mat),
@@ -190,7 +203,7 @@ module top_MH_FPGA (
         .ZFAR(ZFAR),
         .ZNEAR(ZNEAR)
     ) render_pipeline_inst (
-        .clk(clk),
+        .clk(clk_100m),
         .rstn(rstn),
 
         .start(r_render_pipeline_start),
@@ -239,7 +252,7 @@ module top_MH_FPGA (
         .PALETTE_FILE(PALETTE_FILE),
         .FB_IMAGE_FILE(FB_IMAGE_FILE)
     ) display_inst (
-        .clk(clk),
+        .clk(clk_100m),
         .clk_pixel(clk_pix),
         .rstn(rstn),
         .rst_pix(rst_pix),
@@ -288,7 +301,7 @@ module top_MH_FPGA (
     } state_t;
     state_t current_state = IDLE, next_state;
 
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk_100m) begin
         if (~rstn) begin
             current_state <= IDLE;
         end else begin
@@ -301,9 +314,10 @@ module top_MH_FPGA (
 
         case (current_state)
             IDLE: begin
-                if (btn) begin
-                    next_state = MODEL_BUFFER_RESET;
-                end
+                // if (btn) begin
+                //     next_state = MODEL_BUFFER_RESET;
+                // end
+                next_state = MODEL_BUFFER_RESET;
             end
 
             MODEL_BUFFER_RESET: begin
@@ -364,7 +378,7 @@ module top_MH_FPGA (
         endcase
     end
 
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk_100m) begin
         if (~rstn) begin
             r_render_pipeline_start <= 1'b0;
             r_display_clear <= 1'b0;
@@ -436,6 +450,6 @@ module top_MH_FPGA (
         end
     end
 
-    assign led[3] = current_state != IDLE;
+    // assign led[3] = current_state != IDLE;
 
 endmodule
