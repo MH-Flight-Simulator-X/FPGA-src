@@ -41,8 +41,8 @@ module top_MH_FPGA (
     parameter unsigned MAX_MODEL_COUNT    = 16;
     parameter unsigned MAX_NUM_OBJECTS_PER_FRAME = 1024;
 
-    parameter unsigned SCREEN_WIDTH  = 160;
-    parameter unsigned SCREEN_HEIGHT = 120;
+    parameter unsigned SCREEN_WIDTH  = 320;
+    parameter unsigned SCREEN_HEIGHT = 240;
 
     parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT);
 
@@ -228,7 +228,7 @@ module top_MH_FPGA (
         .DISPLAY_WIDTH(SCREEN_WIDTH),
         .DISPLAY_HEIGHT(SCREEN_HEIGHT),
         .DISPLAY_COORD_WIDTH(16),
-        .SCALE(4),
+        .SCALE(2),
 
         .FB_DATA_WIDTH(COLORWIDTH),
         .DB_DATA_WIDTH(OUTPUT_DATAWIDTH),
@@ -412,7 +412,7 @@ module top_MH_FPGA (
                         r_mvp_matrix <= w_mvp_matrix;
                         r_mvp_dv <= 1'b1;
 
-                        r_angle <= r_angle + 64;
+                        r_angle <= r_angle + 16;
                     end
 
                     if (w_mvp_matrix_read_en && r_mvp_dv) begin
