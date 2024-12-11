@@ -100,7 +100,7 @@ public:
         keyb_state = SDL_GetKeyboardState(NULL);
 
         screenbuffer.resize(H_RES * V_RES);
-        zbuffer.resize(H_RES * V_RES);
+        zbuffer.resize(H_RES * V_RES, 1.0f);
     }
     
     ~SDLContext() {
@@ -153,11 +153,16 @@ public:
         }
     }
 
-    void set_pixel(int addr, Pixel color) {
+    void set_pixel(int addr, Pixel color, float z = 1.0f, bool z_test = true) {
         if (addr >= this->H_SCREEN_RES * this->V_SCREEN_RES)
             return;
     
         int addr_fb = addr / this->H_SCREEN_RES * this->H_RES + addr % H_SCREEN_RES;
+        if (z_test && zbuffer.at(addr_fb) < z) {
+            return;
+        }
+        zbuffer.at(addr_fb) = z;
+        
         Pixel* p = &screenbuffer.at(addr_fb);
         p->a = 0xFF;
         p->b = color.b;

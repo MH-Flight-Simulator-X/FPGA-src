@@ -15,10 +15,14 @@
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
+#define DEPTH_DATAWIDTH 12
 
 // screen dimensions
 const int H_RES = 640;
 const int V_RES = 480;
+
+const int H_SCREEN_RES = 320;
+const int V_SCREEN_RES = 240;
 
 const int VERTEX_WIDTH = 12;
 const int RECIPROCAL_WIDTH = 12;
@@ -29,6 +33,18 @@ glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 camera_rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 float camera_speed = 0.75f;
 float rotation_speed = glm::pi<float>() / 4.0f;
+
+glm::mat4 projection_linear(float fov, float aspect, float z_near, float z_far) {
+    float tanHalfFov = tan(fov / 2.0f);
+    glm::mat4 proj = glm::mat4(0.0f);
+    proj[0][0] = 1.0f / (aspect * tanHalfFov);
+    proj[1][1] = 1.0f / tanHalfFov;
+    proj[2][2] = -z_far / (z_far - z_near);
+    proj[3][2] = -z_far * z_near / (z_far - z_near);
+    proj[2][3] = -1;
+    proj[3][3] = 0.0f;
+    return proj;
+}
 
 glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     glm::mat4 model = glm::mat4(1.0f);
@@ -49,7 +65,15 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     float fov = glm::radians(45.0f);
     float aspectRatio = (float)H_RES / V_RES;
     float farPlane = 100.0f;
-    glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, farPlane);
+    float nearPlane = 0.1f;
+    // glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, farPlane);
+    glm::mat4 projection = projection_linear(fov, aspectRatio, nearPlane, farPlane);
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            printf("%f ", projection[j][i]);
+        }
+        printf("\n");
+    }
 
     glm::mat4 mvp = projection * view * model;
 
@@ -93,7 +117,7 @@ void assign_vertex_data(Vrender_pipeline* dut, std::vector<glm::vec3>& vertex_da
         dut->i_vertex[1] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).y, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex[2] = FixedPoint<int32_t>::fromFloat(vertex_data.at(vertex_read_addr).z, INPUT_VERTEX_FRACBITS, INPUT_VERTEX_DATAWIDTH).get();
         dut->i_vertex_dv = 1;
-        printf("Reading vertex: %ld\n", vertex_read_addr);
+        // printf("Reading vertex: %ld\n", vertex_read_addr);
 
         vertex_read_addr++;
     } else {
@@ -139,7 +163,7 @@ int main(int argc, char* argv[]) {
     std::vector<glm::vec3> vertex_buffer = SimDataFileHandler::read_vertex_data("model.vert");
     std::vector<glm::ivec3> index_buffer = SimDataFileHandler::read_index_data("model.face");
 
-    SDLContext view(H_RES, V_RES, H_RES, V_RES);
+    SDLContext view(H_RES, V_RES, H_SCREEN_RES, V_SCREEN_RES);
 
     // initialize Verilog module
     Vrender_pipeline* dut = new Vrender_pipeline;
@@ -175,6 +199,14 @@ int main(int argc, char* argv[]) {
     }
     dut->rstn = 1;
 
+
+    dut->start = 1;
+    dut->clk ^= 1;
+    dut->eval();
+    dut->clk ^= 1;
+    dut->eval();
+    dut->start = 0;
+
     // Main loop
     float t = 0.0f;
     vluint64_t clk_frame_start = posedge_cnt;
@@ -192,16 +224,17 @@ int main(int argc, char* argv[]) {
             dut->i_mvp_dv = 0;
             dut->i_vertex_dv = 0;
             dut->i_vertex_last = 0;
+            dut->start = 0;
 
             static bool new_frame = false;
-            if (dut->ready) {
+            if (dut->ready && dut->finished) {
                 dut->start = 1;
                 new_frame = true;
-                printf("New frame\n");
+                printf("New frame (%ld)\n", posedge_cnt);
             }
 
             if (dut->o_mvp_matrix_read_en) {
-                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -10.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
+                glm::mat4 mvp = generate_mvp(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(15.0f, -15.0f, -25.0f), t);
                 t = t + 1.0f;
 
                 // glm::mat4 mvp = glm::mat4(1.0f);
@@ -213,7 +246,8 @@ int main(int argc, char* argv[]) {
             assign_index_data(dut, index_buffer, new_frame);
 
             if (dut->o_fb_write_en) {
-                view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10]);
+                float z = FixedPoint<int>(dut->o_fb_depth_data, DEPTH_DATAWIDTH, DEPTH_DATAWIDTH, false).toFloat();
+                view.set_pixel(dut->o_fb_addr_write, color_palette[dut->o_fb_color_data % 10], z, true);
             }
 
             if (dut->finished) {

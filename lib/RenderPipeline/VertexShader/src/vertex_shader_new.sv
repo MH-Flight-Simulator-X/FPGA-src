@@ -171,6 +171,12 @@ module vertex_shader_new #(
                         foreach (o_vertex[i]) o_vertex[i] <= w_transformed_vertex[i];
                         o_vertex_valid <= 1'b1;
                         o_finished <= r_vertex_last;
+
+                        $display("Vertex: %d %d %d %d",
+                            w_transformed_vertex[0],
+                            w_transformed_vertex[1],
+                            w_transformed_vertex[2],
+                            w_transformed_vertex[3]);
                     end
                 end
 
