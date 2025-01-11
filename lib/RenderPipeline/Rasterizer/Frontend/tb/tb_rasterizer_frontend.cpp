@@ -1,29 +1,30 @@
 #include <cstdlib>
+#include <iterator>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "../../../../../verilator_utils/fixed_point.h"
 
 #include "obj_dir/Vrasterizer_frontend.h"
 
-#define DATAWIDTH 12
+#define DATAWIDTH 24
+#define FRACBITS 13
 
 #define RESET_CLKS 8
-#define MAX_SIM_TIME 120
+#define MAX_SIM_TIME 4096
 vluint64_t sim_time = 0;
 vluint64_t posedge_cnt = 0;
 
 typedef struct {
-    int32_t x;
-    int32_t y;
+    float x;
+    float y;
     float z;
 } Vertex;
 
 Vertex test_data[3] = {
-    {25,  50, 0.9},
-    {50, 210, 0.2},
-    {60, 220, 0.3}
+    {25.0f,  50.0f, 0.9f},
+    {55.0f, 190.0f, 0.2f},
+    {60.0f, 170.0f, 0.3f}
 };
-
 
 int32_t sign_extend(int32_t a, int data_width) {
     int32_t sign = (a >> (data_width - 1)) & 1;
@@ -43,17 +44,17 @@ int32_t truncate(int32_t a, int data_width) {
 }
 
 void assign_data(Vrasterizer_frontend* dut, Vertex& v0, Vertex& v1, Vertex& v2) {
-    dut->i_v0[0] = v0.x;
-    dut->i_v0[1] = v0.y;
-    dut->i_v0[2] = FixedPoint<uint32_t>::fromFloat(v0.z, DATAWIDTH, DATAWIDTH).get();
+    dut->i_v0[0] = FixedPoint<int32_t>::fromFloat(v0.x, FRACBITS, DATAWIDTH).get();
+    dut->i_v0[1] = FixedPoint<int32_t>::fromFloat(v0.y, FRACBITS, DATAWIDTH).get();
+    dut->i_v0[2] = FixedPoint<int32_t>::fromFloat(v0.z, FRACBITS, DATAWIDTH).get();
 
-    dut->i_v1[0] = v1.x;
-    dut->i_v1[1] = v1.y;
-    dut->i_v1[2] = FixedPoint<uint32_t>::fromFloat(v1.z, DATAWIDTH, DATAWIDTH).get();
+    dut->i_v1[0] = FixedPoint<int32_t>::fromFloat(v1.x, FRACBITS, DATAWIDTH).get();
+    dut->i_v1[1] = FixedPoint<int32_t>::fromFloat(v1.y, FRACBITS, DATAWIDTH).get();
+    dut->i_v1[2] = FixedPoint<int32_t>::fromFloat(v1.z, FRACBITS, DATAWIDTH).get();
 
-    dut->i_v2[0] = v2.x;
-    dut->i_v2[1] = v2.y;
-    dut->i_v2[2] = FixedPoint<uint32_t>::fromFloat(v2.z, DATAWIDTH, DATAWIDTH).get();
+    dut->i_v2[0] = FixedPoint<int32_t>::fromFloat(v2.x, FRACBITS, DATAWIDTH).get();
+    dut->i_v2[1] = FixedPoint<int32_t>::fromFloat(v2.y, FRACBITS, DATAWIDTH).get();
+    dut->i_v2[2] = FixedPoint<int32_t>::fromFloat(v2.z, FRACBITS, DATAWIDTH).get();
 }
 
 int main(int argc, char** argv) {
@@ -100,18 +101,23 @@ int main(int argc, char** argv) {
                 dut->i_triangle_dv = 1;
             }
 
+            if (dut->finished_with_cull) {
+                perror("Finished with cull");
+                break;
+            }
+
             if (dut->o_dv) {
                 printf("Got:\n");
 
-                int32_t bb_br[2];
-                int32_t bb_tl[2];
+                float bb_br[2];
+                float bb_tl[2];
 
-                int32_t edge_coeffs[3];
-                int32_t edge_delta0[2];
-                int32_t edge_delta1[2];
-                int32_t edge_delta2[2];
+                float edge_coeffs[3];
+                float edge_delta0[2];
+                float edge_delta1[2];
+                float edge_delta2[2];
 
-                int32_t area;
+                float area;
                 float area_reciprocal;
 
                 float barycentric_weight[3];
@@ -120,64 +126,64 @@ int main(int argc, char** argv) {
                 float z_coeff;
                 float z_coeff_delta[2];
 
-                bb_tl[0] = sign_extend(dut->bb_tl[0], DATAWIDTH);
-                bb_tl[1] = sign_extend(dut->bb_tl[1], DATAWIDTH);
-                bb_br[0] = sign_extend(dut->bb_br[0], DATAWIDTH);
-                bb_br[1] = sign_extend(dut->bb_br[1], DATAWIDTH);
+                bb_tl[0] = FixedPoint<int32_t>(dut->bb_tl[0], FRACBITS, DATAWIDTH).toFloat();
+                bb_tl[1] = FixedPoint<int32_t>(dut->bb_tl[1], FRACBITS, DATAWIDTH).toFloat();
+                bb_br[0] = FixedPoint<int32_t>(dut->bb_br[0], FRACBITS, DATAWIDTH).toFloat();
+                bb_br[1] = FixedPoint<int32_t>(dut->bb_br[1], FRACBITS, DATAWIDTH).toFloat();
 
-                edge_coeffs[0] = sign_extend(dut->edge_val0, 2*DATAWIDTH);
-                edge_coeffs[1] = sign_extend(dut->edge_val1, 2*DATAWIDTH);
-                edge_coeffs[2] = sign_extend(dut->edge_val2, 2*DATAWIDTH);
+                edge_coeffs[0] = FixedPoint<long long>(dut->edge_val0, 2*FRACBITS, 2*DATAWIDTH).toFloat();
+                edge_coeffs[1] = FixedPoint<long long>(dut->edge_val1, 2*FRACBITS, 2*DATAWIDTH).toFloat();
+                edge_coeffs[2] = FixedPoint<long long>(dut->edge_val2, 2*FRACBITS, 2*DATAWIDTH).toFloat();
 
-                edge_delta0[0] = sign_extend(dut->edge_delta0[0], DATAWIDTH);
-                edge_delta0[1] = sign_extend(dut->edge_delta0[1], DATAWIDTH);
+                edge_delta0[0] = FixedPoint<int32_t>(dut->edge_delta0[0], FRACBITS, DATAWIDTH).toFloat();
+                edge_delta0[1] = FixedPoint<int32_t>(dut->edge_delta0[1], FRACBITS, DATAWIDTH).toFloat();
 
-                edge_delta1[0] = sign_extend(dut->edge_delta1[0], DATAWIDTH);
-                edge_delta1[1] = sign_extend(dut->edge_delta1[1], DATAWIDTH);
+                edge_delta1[0] = FixedPoint<int32_t>(dut->edge_delta1[0], FRACBITS, DATAWIDTH).toFloat();
+                edge_delta1[1] = FixedPoint<int32_t>(dut->edge_delta1[1], FRACBITS, DATAWIDTH).toFloat();
 
-                edge_delta2[0] = sign_extend(dut->edge_delta2[0], DATAWIDTH);
-                edge_delta2[1] = sign_extend(dut->edge_delta2[1], DATAWIDTH);
+                edge_delta2[0] = FixedPoint<int32_t>(dut->edge_delta2[0], FRACBITS, DATAWIDTH).toFloat();
+                edge_delta2[1] = FixedPoint<int32_t>(dut->edge_delta2[1], FRACBITS, DATAWIDTH).toFloat();
 
-                area = sign_extend(dut->rasterizer_frontend__DOT__r_area, 2*DATAWIDTH);
-                area_reciprocal = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__r_area_reciprocal, DATAWIDTH, DATAWIDTH).toFloat();
+                area = FixedPoint<long long>(dut->rasterizer_frontend__DOT__r_area, 2*FRACBITS, 2*DATAWIDTH).toFloat();
+                area_reciprocal = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__r_area_reciprocal, FRACBITS, FRACBITS, false).toFloat();
 
-                barycentric_weight[0] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight[0], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
-                barycentric_weight[1] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight[1], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
-                barycentric_weight[2] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight[2], DATAWIDTH, 3*DATAWIDTH+1).toFloat();
+                barycentric_weight[0] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight[0], 2*FRACBITS, 2*DATAWIDTH).toFloat();
+                barycentric_weight[1] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight[1], 2*FRACBITS, 2*DATAWIDTH).toFloat();
+                barycentric_weight[2] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight[2], 2*FRACBITS, 2*DATAWIDTH).toFloat();
 
-                barycentric_weight_delta[0][0] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[0][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
-                barycentric_weight_delta[0][1] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[0][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[0][0] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[0][0], FRACBITS, DATAWIDTH).toFloat();
+                barycentric_weight_delta[0][1] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[0][1], FRACBITS, DATAWIDTH).toFloat();
 
-                barycentric_weight_delta[1][0] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[1][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
-                barycentric_weight_delta[1][1] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[1][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[1][0] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[1][0], FRACBITS, DATAWIDTH).toFloat();
+                barycentric_weight_delta[1][1] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[1][1], FRACBITS, DATAWIDTH).toFloat();
 
-                barycentric_weight_delta[2][0] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[2][0], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
-                barycentric_weight_delta[2][1] = FixedPoint<int32_t>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[2][1], DATAWIDTH, 2 * DATAWIDTH+1).toFloat();
+                barycentric_weight_delta[2][0] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[2][0], FRACBITS, DATAWIDTH).toFloat();
+                barycentric_weight_delta[2][1] = FixedPoint<int>(dut->rasterizer_frontend__DOT__barycentric_weight_delta[2][1], FRACBITS, DATAWIDTH).toFloat();
 
                 z_coeff = FixedPoint<int32_t>(dut->z_coeff, DATAWIDTH, DATAWIDTH, false).toFloat();
                 z_coeff_delta[0] = FixedPoint<int16_t>(dut->z_coeff_delta[0], DATAWIDTH-1, DATAWIDTH, true).toFloat();
                 z_coeff_delta[1] = FixedPoint<int16_t>(dut->z_coeff_delta[1], DATAWIDTH-1, DATAWIDTH, true).toFloat();
 
                 printf("Bounding Box:\n");
-                printf("Top Left: (%d, %d)\n", bb_tl[0], bb_tl[1]);
-                printf("Bottom Right: (%d, %d)\n", bb_br[0], bb_br[1]);
+                printf("Top Left: (%f, %f)\n", bb_tl[0], bb_tl[1]);
+                printf("Bottom Right: (%f, %f)\n", bb_br[0], bb_br[1]);
                 printf("\n");
 
                 printf("Edge Coefficients:\n");
-                printf("Edge 0: %d\n", edge_coeffs[0]);
-                printf("Edge 1: %d\n", edge_coeffs[1]);
-                printf("Edge 2: %d\n", edge_coeffs[2]);
-                printf("\n");
-
-                printf("Area stuff:\n");
-                printf("Area: %d\n", area);
-                printf("Area reciprocal: %f\n", area_reciprocal);
+                printf("Edge 0: %f\n", edge_coeffs[0]);
+                printf("Edge 1: %f\n", edge_coeffs[1]);
+                printf("Edge 2: %f\n", edge_coeffs[2]);
                 printf("\n");
 
                 printf("Edge Deltas:\n");
-                printf("Edge 0: (%d, %d)\n", edge_delta0[0], edge_delta0[1]);
-                printf("Edge 1: (%d, %d)\n", edge_delta1[0], edge_delta1[1]);
-                printf("Edge 2: (%d, %d)\n", edge_delta2[0], edge_delta2[1]);
+                printf("Edge 0: (%f, %f)\n", edge_delta0[0], edge_delta0[1]);
+                printf("Edge 1: (%f, %f)\n", edge_delta1[0], edge_delta1[1]);
+                printf("Edge 2: (%f, %f)\n", edge_delta2[0], edge_delta2[1]);
+                printf("\n");
+
+                printf("Area stuff:\n");
+                printf("Area: %f\n", area);
+                printf("Area reciprocal: %f\n", area_reciprocal);
                 printf("\n");
 
                 printf("Barycentric Weights:\n");

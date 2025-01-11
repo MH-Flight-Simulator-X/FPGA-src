@@ -19,8 +19,8 @@
 
 #define INPUT_VERTEX_DATAWIDTH 24
 #define INPUT_VERTEX_FRACBITS 13
-#define OUTPUT_VERTEX_DATAWIDTH 12
-#define OUTPUT_DEPTH_FRACBITS 12
+#define OUTPUT_VERTEX_DATAWIDTH 24
+#define OUTPUT_VERTEX_FRACBITS 13
 
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 320
@@ -28,12 +28,9 @@
 #define ZNEAR 0.1f
 
 typedef struct {
-    glm::ivec2 v0;
-    float v0_z;
-    glm::ivec2 v1;
-    float v1_z;
-    glm::ivec2 v2;
-    float v2_z;
+    glm::vec3 v0;
+    glm::vec3 v1;
+    glm::vec3 v2;
 } Triangle_t;
 
 std::vector<glm::vec3> read_vertex_data(const std::string& filename) {
@@ -103,7 +100,7 @@ void write_triangle_data(const std::string& filename, std::vector<Triangle_t>& t
     }
 
     for (const auto& tri : triangles) {
-        outfile << tri.v0.x << ", " << tri.v0.y << ", " << tri.v0_z << ", " << tri.v1.x << ", " << tri.v1.y  << ", " <<  tri.v1_z << ", " << tri.v2.x << ", " << tri.v2.y  << ", " <<  tri.v2_z << std::endl;
+        outfile << tri.v0.x << ", " << tri.v0.y << ", " << tri.v0.z << ", " << tri.v1.x << ", " << tri.v1.y  << ", " <<  tri.v1.z << ", " << tri.v2.x << ", " << tri.v2.y  << ", " <<  tri.v2.z << std::endl;
     }
 
     outfile.close();
@@ -184,7 +181,6 @@ void assign_vertex_data(Vtransform_pipeline* dut, std::vector<glm::vec3>& vertex
     if (dut->o_model_buff_vertex_read_en) {
         if (vertex_read_addr == vertex_data.size() - 1) {
             dut->i_vertex_last = 1;
-            printf("Last vertex!\n");
         } else {
             dut->i_vertex_last = 0;
         }
@@ -316,24 +312,33 @@ int main(int argc, char** argv) {
                 num_triangles_rec = 0;
 
             if (dut->o_triangle_dv) {
-                int32_t v0[2]; int32_t v1[2]; int32_t v2[2];
-                float v0_z; float v1_z; float v2_z;
+                float v0[3];
+                float v1[3];
+                float v2[3];
 
-                v0[0] = sign_extend(dut->o_v0[0], OUTPUT_VERTEX_DATAWIDTH);
-                v0[1] = sign_extend(dut->o_v0[1], OUTPUT_VERTEX_DATAWIDTH);
-                v0_z = FixedPoint<uint32_t>(dut->o_v0[2], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
+                v0[0] = FixedPoint<int32_t>(dut->o_v0[0], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v0[1] = FixedPoint<int32_t>(dut->o_v0[1], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v0[2] = FixedPoint<int32_t>(dut->o_v0[2], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
 
-                v1[0] = sign_extend(dut->o_v1[0], OUTPUT_VERTEX_DATAWIDTH);
-                v1[1] = sign_extend(dut->o_v1[1], OUTPUT_VERTEX_DATAWIDTH);
-                v1_z = FixedPoint<uint32_t>(dut->o_v1[2], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
+                v1[0] = FixedPoint<int32_t>(dut->o_v1[0], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v1[1] = FixedPoint<int32_t>(dut->o_v1[1], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v1[2] = FixedPoint<int32_t>(dut->o_v1[2], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
 
-                v2[0] = sign_extend(dut->o_v2[0], OUTPUT_VERTEX_DATAWIDTH);
-                v2[1] = sign_extend(dut->o_v2[1], OUTPUT_VERTEX_DATAWIDTH);
-                v2_z = FixedPoint<uint32_t>(dut->o_v2[2], OUTPUT_DEPTH_FRACBITS, OUTPUT_DEPTH_FRACBITS, false).toFloat();
+                v2[0] = FixedPoint<int32_t>(dut->o_v2[0], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v2[1] = FixedPoint<int32_t>(dut->o_v2[1], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
+                v2[2] = FixedPoint<int32_t>(dut->o_v2[2], OUTPUT_VERTEX_FRACBITS, OUTPUT_VERTEX_DATAWIDTH).toFloat();
 
                 // Store triangle data
-                Triangle_t tri = {glm::ivec2(v0[0], v0[1]), v0_z, glm::ivec2(v1[0], v1[1]), v1_z, glm::ivec2(v2[0], v2[1]), v2_z};
-                printf("Triangle %d: (%d, %d, %f), (%d, %d, %f), (%d, %d, %f)\n", num_triangles_rec, v0[0], v0[1], v0_z, v1[0], v1[1], v1_z, v2[0], v2[1], v2_z);
+                Triangle_t tri = {
+                    glm::vec3(v0[0], v0[1], v0[2]),
+                    glm::vec3(v1[0], v1[1], v1[2]),
+                    glm::vec3(v2[0], v2[1], v2[2]),
+                };
+                // printf("Triangle %d: (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)\n", 
+                //         num_triangles_rec++, 
+                //         v0[0], v0[1], v0[2],
+                //         v1[0], v1[1], v1[2],
+                //         v2[0], v2[1], v2[2]);
                 output_triangles.push_back(tri);
             }
 

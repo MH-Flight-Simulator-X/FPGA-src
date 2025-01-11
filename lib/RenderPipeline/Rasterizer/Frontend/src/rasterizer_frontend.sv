@@ -23,7 +23,8 @@ endmodule
 /* verilator lint_on DECLFILENAME */
 
 module rasterizer_frontend #(
-    parameter unsigned DATAWIDTH = 12,
+    parameter unsigned DATAWIDTH = 24,
+    parameter unsigned FRACBITS = 13,
     parameter signed [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
     parameter signed [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
     parameter unsigned IDWIDTH = 4
@@ -103,9 +104,9 @@ module rasterizer_frontend #(
 
     bounding_box #(
         .TILE_MIN_X (0),
-        .TILE_MAX_X (SCREEN_WIDTH),
+        .TILE_MAX_X (SCREEN_WIDTH << FRACBITS),
         .TILE_MIN_Y (0),
-        .TILE_MAX_Y (SCREEN_HEIGHT),
+        .TILE_MAX_Y (SCREEN_HEIGHT << FRACBITS),
         .COORD_WIDTH(DATAWIDTH)
     ) bounding_box_inst (
         .x0(r_v0[0]),
@@ -128,14 +129,15 @@ module rasterizer_frontend #(
     logic [2*DATAWIDTH-1:0] r_area_division_in_A;
     logic r_area_division_in_A_dv;
 
-    logic [2*DATAWIDTH-1:0] w_area_reciprocal;
+    logic [FRACBITS-1:0] w_area_reciprocal;
     logic w_area_reciprocal_dv;
 
-    logic [2*DATAWIDTH-1:0] r_area_reciprocal;
+    logic [FRACBITS-1:0] r_area_reciprocal;
 
     fast_inverse #(
-        .DATAWIDTH(2 * DATAWIDTH),
-        .NUM_ITERATIONS(8)
+        .DATAWIDTH(DATAWIDTH),
+        .FRACBITS(FRACBITS),
+        .NUM_ITERATIONS(20)
     ) fast_inverse_inst (
         .clk (clk),
         .rstn(rstn),
@@ -149,8 +151,8 @@ module rasterizer_frontend #(
     );
 
     // Barycentric coordinate compute
-    logic signed [3*DATAWIDTH:0] barycentric_weight[3];
-    logic signed [2*DATAWIDTH:0] barycentric_weight_delta[3][2];
+    logic signed [2*DATAWIDTH:0] barycentric_weight[3];
+    logic signed [DATAWIDTH+2:0] barycentric_weight_delta[3][2];
 
     // z_coeff: A signed Q0.12 fixed-point number
     logic signed [3*DATAWIDTH:0] z;
@@ -177,12 +179,29 @@ module rasterizer_frontend #(
         DONE
     } state_t;
     state_t current_state = IDLE, next_state;
+    state_t last_state;
 
     always_ff @(posedge clk) begin
         if (~rstn) begin
             current_state <= IDLE;
         end else begin
             current_state <= next_state;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            last_state <= IDLE;
+        end else begin
+            last_state <= current_state;
+
+            if (current_state != last_state) begin
+                if (current_state == COMPUTE_EDGE_0) begin
+                    if (w_should_be_culled) begin
+                        $display("Culling triangle %d", r_id);
+                    end
+                end
+            end
         end
     end
 
@@ -289,6 +308,20 @@ module rasterizer_frontend #(
                         foreach (r_v1[i]) r_v1[i] <= i_v1[i];
                         foreach (r_v2[i]) r_v2[i] <= i_v2[i];
 
+                        $display("Triangle: \n(%f, %f, %f)\n(%f, %f, %f)\n(%f, %f, %f)\n\n",
+                            real'({{(32 - DATAWIDTH){i_v0[0][DATAWIDTH-1]}}, i_v0[0]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v0[1][DATAWIDTH-1]}}, i_v0[1]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v0[2][DATAWIDTH-1]}}, i_v0[2]}) / (2.0 ** FRACBITS),
+
+                            real'({{(32 - DATAWIDTH){i_v1[0][DATAWIDTH-1]}}, i_v1[0]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v1[1][DATAWIDTH-1]}}, i_v1[1]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v1[2][DATAWIDTH-1]}}, i_v1[2]}) / (2.0 ** FRACBITS),
+
+                            real'({{(32 - DATAWIDTH){i_v2[0][DATAWIDTH-1]}}, i_v2[0]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v2[1][DATAWIDTH-1]}}, i_v2[1]}) / (2.0 ** FRACBITS),
+                            real'({{(32 - DATAWIDTH){i_v2[2][DATAWIDTH-1]}}, i_v2[2]}) / (2.0 ** FRACBITS)
+                        );
+
                         r_i_triangle_last <= i_triangle_last;
 
                         // Add values to register in order to compute area
@@ -389,21 +422,21 @@ module rasterizer_frontend #(
                 end
 
                 COMPUTE_BARYCENTRIC: begin
-                    barycentric_weight[0] <= r_edge_val0 * $unsigned(r_area_reciprocal);
-                    barycentric_weight[1] <= r_edge_val1 * $unsigned(r_area_reciprocal);
-                    barycentric_weight[2] <= r_edge_val2 * $unsigned(r_area_reciprocal);
+                    barycentric_weight[0] <= (r_edge_val0 * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS);
+                    barycentric_weight[1] <= (r_edge_val1 * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS);
+                    barycentric_weight[2] <= (r_edge_val2 * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS);
 
                     barycentric_weight_delta[0] <= '{
-                        r_edge_delta0[0] * $signed({1'b0, r_area_reciprocal}),
-                        r_edge_delta0[1] * $signed({1'b0, r_area_reciprocal})
+                        (r_edge_delta0[0] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS),
+                        (r_edge_delta0[1] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS)
                     };
                     barycentric_weight_delta[1] <= '{
-                        r_edge_delta1[0] * $signed({1'b0, r_area_reciprocal}),
-                        r_edge_delta1[1] * $signed({1'b0, r_area_reciprocal})
+                        (r_edge_delta1[0] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS),
+                        (r_edge_delta1[1] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS)
                     };
                     barycentric_weight_delta[2] <= '{
-                        r_edge_delta2[0] * $signed({1'b0, r_area_reciprocal}),
-                        r_edge_delta2[1] * $signed({1'b0, r_area_reciprocal})
+                        (r_edge_delta2[0] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS),
+                        (r_edge_delta2[1] * $signed({1'b0, r_area_reciprocal})) >>> (2 * FRACBITS)
                     };
                 end
 

@@ -156,12 +156,13 @@ public:
     void set_pixel(int addr, Pixel color, float z = 1.0f, bool z_test = true) {
         if (addr >= this->H_SCREEN_RES * this->V_SCREEN_RES)
             return;
+        // printf("Hi\n");
     
         int addr_fb = addr / this->H_SCREEN_RES * this->H_RES + addr % H_SCREEN_RES;
-        if (z_test && zbuffer.at(addr_fb) < z) {
-            return;
-        }
-        zbuffer.at(addr_fb) = z;
+        // if (z_test && zbuffer.at(addr_fb) < z) {
+        //     return;
+        // }
+        // zbuffer.at(addr_fb) = z;
         
         Pixel* p = &screenbuffer.at(addr_fb);
         p->a = 0xFF;

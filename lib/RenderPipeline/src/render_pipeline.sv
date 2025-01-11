@@ -3,7 +3,8 @@
 module render_pipeline #(
     parameter unsigned INPUT_DATAWIDTH = 24,
     parameter unsigned INPUT_FRACBITS  = 13,
-    parameter unsigned OUTPUT_DATAWIDTH = 12,
+    parameter unsigned OUTPUT_DATAWIDTH = 24,
+    parameter unsigned OUTPUT_FRACBITS = 13,
     parameter unsigned COLORWIDTH = 4,
 
     parameter unsigned MAX_TRIANGLE_COUNT = 32768,
@@ -68,6 +69,7 @@ module render_pipeline #(
         .INPUT_DATAWIDTH(INPUT_DATAWIDTH),
         .INPUT_FRACBITS(INPUT_FRACBITS),
         .OUTPUT_DATAWIDTH(OUTPUT_DATAWIDTH),
+        .OUTPUT_FRACBITS(OUTPUT_FRACBITS),
 
         .MAX_TRIANGLE_COUNT(MAX_TRIANGLE_COUNT),
         .MAX_VERTEX_COUNT(MAX_VERTEX_COUNT),

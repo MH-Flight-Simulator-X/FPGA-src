@@ -66,14 +66,8 @@ glm::mat4 generate_mvp(glm::vec3 pos, glm::vec3 rot, float t) {
     float aspectRatio = (float)H_RES / V_RES;
     float farPlane = 100.0f;
     float nearPlane = 0.1f;
-    // glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, farPlane);
-    glm::mat4 projection = projection_linear(fov, aspectRatio, nearPlane, farPlane);
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            printf("%f ", projection[j][i]);
-        }
-        printf("\n");
-    }
+    glm::mat4 projection = glm::perspective(fov, aspectRatio, 0.1f, farPlane);
+    // glm::mat4 projection = projection_linear(fov, aspectRatio, nearPlane, farPlane);
 
     glm::mat4 mvp = projection * view * model;
 

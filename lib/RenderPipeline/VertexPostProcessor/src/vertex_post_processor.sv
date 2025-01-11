@@ -16,7 +16,8 @@ typedef enum logic [2:0] {
 module vertex_post_processor #(
         parameter unsigned IV_DATAWIDTH = 24,
         parameter unsigned IV_FRACBITS = 13,
-        parameter unsigned OV_DATAWIDTH = 12,
+        parameter unsigned OV_DATAWIDTH = 24,
+        parameter unsigned OV_FRACBITS = 13,
 
         logic signed [IV_DATAWIDTH-1:0] WIDTH = 320,
         logic signed [IV_DATAWIDTH-1:0] HEIGHT = 320,
@@ -240,9 +241,15 @@ module vertex_post_processor #(
         end else begin
             case (current_state)
                 VPP_SCREEN_SPACE_TRANSFORM: begin
-                    o_vertex_pixel[0] <= {w_ss_x_inter[2 * IV_DATAWIDTH - 1], w_ss_x_inter[OutPixIndEnd + 1:OutPixIndStart + 1]};
-                    o_vertex_pixel[1] <= {w_ss_y_inter[2 * IV_DATAWIDTH - 1], w_ss_y_inter[OutPixIndEnd+1:OutPixIndStart+1]};
-                    o_vertex_pixel[2] <= w_ndc_z[IV_FRACBITS-1:IV_FRACBITS-OV_DATAWIDTH];
+                    o_vertex_pixel[0] <= {
+                        w_ss_x_inter[2 * IV_DATAWIDTH],
+                        w_ss_x_inter[OV_DATAWIDTH + OV_FRACBITS-1:OV_FRACBITS+1]
+                    };
+                    o_vertex_pixel[1] <= {
+                        w_ss_y_inter[2 * IV_DATAWIDTH],
+                        w_ss_y_inter[OV_DATAWIDTH + OV_FRACBITS-1:OV_FRACBITS+1]
+                    };
+                    o_vertex_pixel[2] <= w_ndc_z;
                     done <= '1;
                 end
 
@@ -258,4 +265,21 @@ module vertex_post_processor #(
             endcase
         end
     end
+
+    logic last_done = '0;
+    always_ff @(posedge clk) begin
+        if (~rstn) begin
+            last_done <= '0;
+        end else begin
+            last_done <= done;
+
+            // if (done & ~last_done) begin
+            //     $display("VPP: Output triangle: (%f, %f, %f)",
+            //         real'({{(32 - OV_DATAWIDTH){o_vertex_pixel[0][OV_DATAWIDTH-1]}}, o_vertex_pixel[0]}) / (2.0 ** OV_FRACBITS),
+            //         real'({{(32 - OV_DATAWIDTH){o_vertex_pixel[0][OV_DATAWIDTH-1]}}, o_vertex_pixel[0]}) / (2.0 ** OV_FRACBITS),
+            //         real'({{(32 - OV_DATAWIDTH){o_vertex_pixel[0][OV_DATAWIDTH-1]}}, o_vertex_pixel[0]}) / (2.0 ** OV_FRACBITS));
+            // end
+        end
+    end
+
 endmodule

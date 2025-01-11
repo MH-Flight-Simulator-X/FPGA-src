@@ -7,11 +7,8 @@
 module transform_pipeline #(
     parameter unsigned INPUT_DATAWIDTH = 24,
     parameter unsigned INPUT_FRACBITS = 13,
-    parameter unsigned OUTPUT_DATAWIDTH = 12,   // Pixel coordinates are integers,
-                                                // whilst depth is Q0.12
-                                                // NB. signals are signed, but
-                                                // z value should be
-                                                // interpreted as unsigned!
+    parameter unsigned OUTPUT_DATAWIDTH = 24,
+    parameter unsigned OUTPUT_FRACBITS = 13,
 
     parameter unsigned MAX_TRIANGLE_COUNT = 16384,  // For testing
     parameter unsigned MAX_VERTEX_COUNT = 16384,    // When building set to something like 4096
@@ -137,6 +134,7 @@ module transform_pipeline #(
         .IV_DATAWIDTH(INPUT_DATAWIDTH),
         .IV_FRACBITS(INPUT_FRACBITS),
         .OV_DATAWIDTH(OUTPUT_DATAWIDTH),
+        .OV_FRACBITS(OUTPUT_FRACBITS),
 
         .WIDTH(SCREEN_WIDTH),
         .HEIGHT(SCREEN_HEIGHT),

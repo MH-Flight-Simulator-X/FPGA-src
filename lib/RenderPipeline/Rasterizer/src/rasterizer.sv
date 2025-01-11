@@ -4,11 +4,14 @@
 `timescale 1ns / 1ps
 
 module rasterizer #(
-        parameter unsigned DATAWIDTH = 12,
-        parameter unsigned COLORWIDTH = 4,
+        parameter unsigned DATAWIDTH = 24,
+        parameter unsigned FRACBITS  = 13,
+
         parameter unsigned SCREEN_WIDTH = 320,
         parameter unsigned SCREEN_HEIGHT = 320,
         parameter unsigned ADDRWIDTH = $clog2(SCREEN_WIDTH * SCREEN_HEIGHT),
+
+        parameter unsigned COLORWIDTH = 4,
         parameter unsigned IDWIDTH = 4
     ) (
         input logic clk,
@@ -61,6 +64,7 @@ module rasterizer #(
     // ========== RASTERIZER FRONTEND ==========
     rasterizer_frontend #(
         .DATAWIDTH(DATAWIDTH),
+        .FRACBITS(FRACBITS),
         .SCREEN_WIDTH(SCREEN_WIDTH),
         .SCREEN_HEIGHT(SCREEN_HEIGHT),
         .IDWIDTH(IDWIDTH)
@@ -100,6 +104,7 @@ module rasterizer #(
     // ========== RASTERIZER BACKEND ==========
     rasterizer_backend #(
         .DATAWIDTH(DATAWIDTH),
+        .FRACBITS(FRACBITS),
         .COLORWIDTH(COLORWIDTH),
         .SCREEN_WIDTH(SCREEN_WIDTH),
         .SCREEN_HEIGHT(SCREEN_HEIGHT),

@@ -1,11 +1,14 @@
 `timescale 1ns / 1ps
 
 module rasterizer_backend #(
-    parameter unsigned DATAWIDTH = 12,
-    parameter unsigned COLORWIDTH = 4,
+    parameter unsigned DATAWIDTH = 24,
+    parameter unsigned FRACBITS = 13,
+
     parameter unsigned [DATAWIDTH-1:0] SCREEN_WIDTH = 320,
     parameter unsigned [DATAWIDTH-1:0] SCREEN_HEIGHT = 320,
     parameter unsigned ADDRWIDTH = 16,
+
+    parameter unsigned COLORWIDTH = 4,
     parameter unsigned IDWIDTH = 4
     ) (
     input logic clk,
@@ -93,7 +96,10 @@ module rasterizer_backend #(
             end
 
             RASTERIZE: begin
-                if (r_x >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[0]} && r_y >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[1]}) begin
+                // if (r_x >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[0]} && r_y >= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, r_bb_br[1]}) begin
+                if ({{(DATAWIDTH-ADDRWIDTH){1'b0}}, r_x} >= r_bb_br[0] &&
+                    {{(DATAWIDTH-ADDRWIDTH){1'b0}}, r_y} >= r_bb_br[1])
+                begin
                     next_state = DONE;
                 end
             end
@@ -114,6 +120,9 @@ module rasterizer_backend #(
     logic signed [2*DATAWIDTH-1:0] w_addr_start_y;
     logic signed [DATAWIDTH-1:0]   w_addr_start_x;
     logic signed [2*DATAWIDTH:0] w_addr_start_x_y;
+
+    logic [DATAWIDTH-1:0] w_addr_delta_y;
+
     always_comb begin
         w_addr_start_y = bb_tl[1] * SCREEN_WIDTH;
         if (bb_tl[0] == 0) begin
@@ -123,6 +132,7 @@ module rasterizer_backend #(
         end
         w_addr_start_x_y = ({{(DATAWIDTH){1'b0}}, w_addr_start_x} + w_addr_start_y);
         w_addr_start = w_addr_start_x_y[ADDRWIDTH-1:0];
+        w_addr_delta_y = SCREEN_WIDTH - (bb_br[0] - bb_tl[0]);
     end
 
     // Compute
@@ -141,6 +151,7 @@ module rasterizer_backend #(
 
                     r_x <= {{(ADDRWIDTH-DATAWIDTH){bb_tl[0][DATAWIDTH-1]}}, bb_tl[0]};
                     r_y <= {{(ADDRWIDTH-DATAWIDTH){bb_tl[1][DATAWIDTH-1]}}, bb_tl[1]};
+                    // $display("r_x: %d", {{(ADDRWIDTH-DATAWIDTH){r_bb_tl[0][DATAWIDTH-1]}}, r_bb_tl[0]});
 
                     r_edge0 <= edge_val0;
                     r_edge1 <= edge_val1;
@@ -156,7 +167,7 @@ module rasterizer_backend #(
                     r_z_delta[1] <= z_delta[1];
 
                     r_addr <= w_addr_start;
-                    r_addr_delta_y <= {{(ADDRWIDTH-DATAWIDTH){1'b0}}, SCREEN_WIDTH - (bb_br[0] - bb_tl[0])};
+                    r_addr_delta_y <= w_addr_delta_y[ADDRWIDTH-1:0];
 
                     r_i_last <= i_last;
                 end

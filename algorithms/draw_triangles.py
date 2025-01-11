@@ -163,8 +163,6 @@ def main(filename):
             if (area <= 0):
                 continue
 
-            print(f"i = {i}")
-            print(f"{v0, v1, v2}")
             total_area += area
 
             depths = [z for (x, y, z) in triangle]
