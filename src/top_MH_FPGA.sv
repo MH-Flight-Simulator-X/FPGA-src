@@ -13,16 +13,9 @@ module top_MH_FPGA #(
     parameter unsigned DEBUG = 1
 ) (
     input  logic clk,
-    // input  logic clk_pixel,
-    // input  logic rstn,
 
     input logic btn,
     output logic [2:0] led,
-
-    // output logic frame,
-    // output logic display_en,
-    // output [15:0] sx,
-    // output [15:0] sy,
 
     output      logic vga_hsync,    // horizontal sync
     output      logic vga_vsync,    // vertical sync
@@ -57,49 +50,39 @@ module top_MH_FPGA #(
     parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
 
     logic rstn      /* verilator public_flat_rw */;
-    logic clk_100m  /* verilator public_flat_rw */;
-    logic clk_pix   /* verilator public_flat_rw */;
-    logic rst_pix   /* verilator public_flat_rw */;
+
+    // ============================ SYSTEM CLOCK =============================
+    logic clk_100m;
+    logic sys_clk_rstn;
+    logic clk_100m_locked;
+    clock_100Mhz sys_clock_inst (
+        .clk_20m(clk),
+        .rst(0),
+        .clk_100m(clk_100m),
+        .clk_100m_5x(),
+        .clk_100m_locked(clk_100m_locked)
+    );
+    always_ff @(posedge clk_100m) sys_clk_rstn <= clk_100m_locked;
+    assign led[0] = clk_100m_locked;
+
+    // ============================ PIXEL CLOCK ==============================
+    logic clk_pix;
+    logic rst_pix;
+    logic clk_pix_locked;
+    clock_480p clock_pix_inst (
+        .clk_100m(clk_100m),
+        .rst(0),  // reset button is active low
+        .clk_pix(clk_pix),
+        .clk_pix_5x(),  // not used for VGA output
+        .clk_pix_locked(clk_pix_locked)
+    );
+    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
 
     generate
-        if (DEBUG == 0) begin : g_gen_clk
-            // ============================ SYSTEM CLOCK =============================
-            logic sys_clk_rstn;
-            logic clk_100m_locked;
-            clock_100Mhz sys_clock_inst (
-                .clk_20m(clk),
-                .rst(0),
-                .clk_100m(clk_100m),
-                .clk_100m_5x(),
-                .clk_100m_locked(clk_100m_locked)
-            );
-            always_ff @(posedge clk_100m) sys_clk_rstn <= clk_100m_locked;
-            assign led[0] = clk_100m_locked;
-
-            // ============================ PIXEL CLOCK ==============================
-            logic clk_pix_locked;
-            clock_480p clock_pix_inst (
-               .clk_100m(clk_100m),
-               .rst(0),  // reset button is active low
-               .clk_pix(clk_pix),
-               .clk_pix_5x(),  // not used for VGA output
-               .clk_pix_locked(clk_pix_locked)
-            );
-            always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
-
+        if (DEBUG == '0) begin : g_gen_clk
             assign rstn = sys_clk_rstn;
-        end else begin : g_gen_debug_clk
-
-            assign clk_100m = clk;
-            assign clk_pix = clk;
-            assign rst_pix = ~rstn;
         end
     endgenerate
-
-    always_ff @(posedge clk) begin
-        $display("rstn: %b", ~rstn);
-        $display("rst_pix: %b", rst_pix);
-    end
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;

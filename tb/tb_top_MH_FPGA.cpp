@@ -47,9 +47,6 @@ int main(int argc, char* argv[]) {
     dut->clk = 0;
     for (int i = 0; i < 8; i++) {
         dut->clk ^= 1;
-        if (sim_time % 4 == 0) {
-            dut->top_MH_FPGA__DOT__clk_pix ^= 1;
-        }
         dut->eval();
         dut->top_MH_FPGA__DOT__rstn = 0;
         sim_time++;
@@ -60,7 +57,6 @@ int main(int argc, char* argv[]) {
     while (true) {
         // Main sim
         dut->clk ^= 1;
-        dut->top_MH_FPGA__DOT__clk_pix ^= 1;    // Makes it a lot faster for testing
         dut->eval();
 
         if (view.update()) {
@@ -76,7 +72,7 @@ int main(int argc, char* argv[]) {
         static int num_black_even = 0;
 
         static bool clk_pixel_last = 0;
-        if (dut->top_MH_FPGA__DOT__clk_pix == 1 && clk_pixel_last == 0) {
+        if (dut->clk == 1 && clk_pixel_last == 0) {
             if (dut->top_MH_FPGA__DOT__display_en) {
                 int addr = dut->top_MH_FPGA__DOT__sy * H_SCREEN_RES + dut->top_MH_FPGA__DOT__sx;
                 Pixel color = {
@@ -97,7 +93,7 @@ int main(int argc, char* argv[]) {
             }
             frame_last = dut->top_MH_FPGA__DOT__frame;
         }
-        clk_pixel_last = dut->top_MH_FPGA__DOT__clk_pix;
+        clk_pixel_last = dut->clk;
 
         sim_time++;
     }
