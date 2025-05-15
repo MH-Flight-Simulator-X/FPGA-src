@@ -48,6 +48,8 @@ module display_new #(
     output logic [COLOR_CHANNEL_WIDTH-1:0] o_blue
 );
 
+    localparam unsigned SCALE_MINUS_ONE = (SCALE > 1) ? (SCALE - 1) : 0;
+
     // Generates display signals
     logic signed [DISPLAY_COORD_WIDTH-1:0] screen_x, screen_y;
     logic de, frame;
@@ -263,7 +265,7 @@ module display_new #(
             r_frame_render_done_sync[1] <= r_frame_render_done_sync[0];
 
             r_frame_swapped <= 1'b0;
-            if (x_scale_counter < SCALE-1) begin
+            if (x_scale_counter < SCALE_MINUS_ONE) begin
                 x_scale_counter <= x_scale_counter + 1;
             end else begin
                 x_scale_counter <= '0;
@@ -273,7 +275,7 @@ module display_new #(
                 end else begin
                     fb_x <= '0;
 
-                    if (y_scale_counter < SCALE - 1) begin
+                    if (y_scale_counter < SCALE_MINUS_ONE) begin
                         y_scale_counter <= y_scale_counter + 1;
                     end else begin
                         y_scale_counter <= '0;

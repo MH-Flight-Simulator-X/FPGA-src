@@ -9,12 +9,14 @@
 
 `timescale 1ns / 1ps
 
-module top_MH_FPGA (
+module top_MH_FPGA #(
+    parameter unsigned DEBUG = 1
+) (
     input  logic clk,
     // input  logic clk_pixel,
     // input  logic rstn,
 
-    // input logic btn,
+    input logic btn,
     output logic [2:0] led,
 
     // output logic frame,
@@ -54,33 +56,50 @@ module top_MH_FPGA (
 
     parameter unsigned TRIG_LUT_ADDRWIDTH = 12;
 
-    // ============================ SYSTEM CLOCK =============================
-    logic rstn = 1'b1;
-    logic clk_100m;
-    logic clk_100m_locked;
-    clock_100Mhz sys_clock_inst (
-        .clk_20m(clk),
-        .rst(0),
-        .clk_100m(clk_100m),
-        .clk_100m_5x(),
-        .clk_100m_locked(clk_100m_locked)
-    );
-    always_ff @(posedge clk_100m) rstn <= clk_100m_locked;
-    assign led[0] = clk_100m_locked;
+    logic rstn      /* verilator public_flat_rw */;
+    logic clk_100m  /* verilator public_flat_rw */;
+    logic clk_pix   /* verilator public_flat_rw */;
+    logic rst_pix   /* verilator public_flat_rw */;
 
-    // ============================ PIXEL CLOCK ==============================
-    // Generate Pixel Clock
-    logic clk_pix;
-    logic clk_pix_locked;
-    logic rst_pix;
-    clock_480p clock_pix_inst (
-       .clk_100m(clk_100m),
-       .rst(0),  // reset button is active low
-       .clk_pix(clk_pix),
-       .clk_pix_5x(),  // not used for VGA output
-       .clk_pix_locked(clk_pix_locked)
-    );
-    always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
+    generate
+        if (DEBUG == 0) begin : g_gen_clk
+            // ============================ SYSTEM CLOCK =============================
+            logic sys_clk_rstn;
+            logic clk_100m_locked;
+            clock_100Mhz sys_clock_inst (
+                .clk_20m(clk),
+                .rst(0),
+                .clk_100m(clk_100m),
+                .clk_100m_5x(),
+                .clk_100m_locked(clk_100m_locked)
+            );
+            always_ff @(posedge clk_100m) sys_clk_rstn <= clk_100m_locked;
+            assign led[0] = clk_100m_locked;
+
+            // ============================ PIXEL CLOCK ==============================
+            logic clk_pix_locked;
+            clock_480p clock_pix_inst (
+               .clk_100m(clk_100m),
+               .rst(0),  // reset button is active low
+               .clk_pix(clk_pix),
+               .clk_pix_5x(),  // not used for VGA output
+               .clk_pix_locked(clk_pix_locked)
+            );
+            always_ff @(posedge clk_pix) rst_pix <= !clk_pix_locked;  // wait for clock lock
+
+            assign rstn = sys_clk_rstn;
+        end else begin : g_gen_debug_clk
+
+            assign clk_100m = clk;
+            assign clk_pix = clk;
+            assign rst_pix = ~rstn;
+        end
+    endgenerate
+
+    always_ff @(posedge clk) begin
+        $display("rstn: %b", ~rstn);
+        $display("rst_pix: %b", rst_pix);
+    end
 
     // ============================ MODEL READER =============================
     logic w_model_reader_ready;
@@ -277,11 +296,16 @@ module top_MH_FPGA (
     assign led[1] = ~display_inst.r_current_active_render_target;
     assign led[2] =  display_inst.r_current_active_render_target;
 
-    // assign frame = display_inst.frame;
-    // assign sx = display_inst.screen_x;
-    // assign sy = display_inst.screen_y;
-    // assign display_en = display_inst.de;
-    //
+    logic frame       /* verilator public_flat_rw */;
+    logic display_en  /* verilator public_flat_rw */;
+    logic [15:0] sx   /* verilator public_flat_rw */;
+    logic [15:0] sy   /* verilator public_flat_rw */;
+
+    assign frame = display_inst.frame;
+    assign sx = display_inst.screen_x;
+    assign sy = display_inst.screen_y;
+    assign display_en = display_inst.de;
+
     // assign vga_r = {2{display_inst.o_red}};
     // assign vga_g = {2{display_inst.o_green}};
     // assign vga_b = {2{display_inst.o_blue}};
@@ -300,12 +324,18 @@ module top_MH_FPGA (
         RENDER_FINISHED
     } state_t;
     state_t current_state = IDLE, next_state;
+    state_t last_state = current_state;
 
     always_ff @(posedge clk_100m) begin
         if (~rstn) begin
             current_state <= IDLE;
         end else begin
             current_state <= next_state;
+            last_state <= current_state;
+
+            if (last_state != current_state) begin
+                $display("Top: Current State: %s", current_state.name());
+            end
         end
     end
 

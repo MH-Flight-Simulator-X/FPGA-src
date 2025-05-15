@@ -18,8 +18,8 @@
 #define INPUT_VERTEX_FRACBITS 13
 
 // screen dimensions
-const int H_RES = 640;
-const int V_RES = 480;
+const int H_RES = 640*2;
+const int V_RES = 480*2;
 const int H_SCREEN_RES = 640;
 const int V_SCREEN_RES = 480;
 
@@ -48,22 +48,19 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 8; i++) {
         dut->clk ^= 1;
         if (sim_time % 4 == 0) {
-            dut->clk_pixel ^= 1;
+            dut->top_MH_FPGA__DOT__clk_pix ^= 1;
         }
         dut->eval();
-        dut->rstn = 0;
+        dut->top_MH_FPGA__DOT__rstn = 0;
         sim_time++;
     }    
-    dut->rstn = 1;
+    dut->top_MH_FPGA__DOT__rstn = 1;
 
     static int last_angle = dut->top_MH_FPGA__DOT__r_angle;
     while (true) {
         // Main sim
         dut->clk ^= 1;
-        // if (sim_time % 4 == 0) {
-        //     dut->clk_pixel ^= 1;
-        // }
-        dut->clk_pixel ^= 1;    // Makes it a lot faster for testing
+        dut->top_MH_FPGA__DOT__clk_pix ^= 1;    // Makes it a lot faster for testing
         dut->eval();
 
         if (view.update()) {
@@ -74,29 +71,33 @@ int main(int argc, char* argv[]) {
             posedge_cnt++;
         }
 
+        static int num_black = 0;
+        static int num_black_odd = 0;
+        static int num_black_even = 0;
+
         static bool clk_pixel_last = 0;
-        if (dut->clk_pixel == 1 && clk_pixel_last == 0) {
-            if (dut->display_en) {
-                int addr = dut->sy * H_RES + dut->sx;
+        if (dut->top_MH_FPGA__DOT__clk_pix == 1 && clk_pixel_last == 0) {
+            if (dut->top_MH_FPGA__DOT__display_en) {
+                int addr = dut->top_MH_FPGA__DOT__sy * H_SCREEN_RES + dut->top_MH_FPGA__DOT__sx;
                 Pixel color = {
                     .a = 0xFF, 
-                    .b = dut->vga_b, 
-                    .g = dut->vga_g, 
-                    .r = dut->vga_r, 
+                    .b = uint8_t(dut->vga_b << 4 | dut->vga_b), 
+                    .g = uint8_t(dut->vga_g << 4 | dut->vga_g), 
+                    .r = uint8_t(dut->vga_r << 4 | dut->vga_r), 
                 };
                 view.set_pixel(addr, color);
             }
 
             static bool frame_last = 0;
-            if (dut->frame == 1 && frame_last == 0) {
+            if (dut->top_MH_FPGA__DOT__frame == 1 && frame_last == 0) {
                 printf("New Frame!\n");
                 view.update_screen(true, posedge_cnt);
                 view.clear_screen();
                 frame_count++;
             }
-            frame_last = dut->frame;
+            frame_last = dut->top_MH_FPGA__DOT__frame;
         }
-        clk_pixel_last = dut->clk_pixel;
+        clk_pixel_last = dut->top_MH_FPGA__DOT__clk_pix;
 
         sim_time++;
     }

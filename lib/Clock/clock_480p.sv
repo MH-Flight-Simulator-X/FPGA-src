@@ -8,6 +8,21 @@
 // Generate 25.2 MHz (640x480 60 Hz) with 100 MHz input clock
 // MMCME2_BASE and BUFG are documented in Xilinx UG472
 
+`ifdef VERILATOR
+module clock_480p (
+    input  wire logic clk_100m,       // input clock (100 MHz)
+    input  wire logic rst,            // reset
+    output      logic clk_pix,        // pixel clock
+    output      logic clk_pix_5x,     // 5x clock for 10:1 DDR SerDes
+    output      logic clk_pix_locked  // pixel clock locked?
+);
+    assign clk_pix = clk_100m;
+    assign clk_pix_5x = clk_100m;
+    assign clk_pix_locked = 1'b1;
+endmodule
+
+`else
+
 module clock_480p (
     input  wire logic clk_100m,       // input clock (100 MHz)
     input  wire logic rst,            // reset
@@ -67,3 +82,5 @@ module clock_480p (
         clk_pix_locked <= locked_sync_0;
     end
 endmodule
+
+`endif

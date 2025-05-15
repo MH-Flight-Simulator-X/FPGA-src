@@ -17,6 +17,8 @@ LIB_DIR = ../lib
 OBJ_DIR = obj_dir
 
 VERILOG_SOURCES = \
+	$(LIB_DIR)/Clock/clock_100Mhz.sv \
+	$(LIB_DIR)/Clock/clock_480p.sv \
 	$(LIB_DIR)/Math/MatVecMul/src/mat_vec_mul_new.sv \
 	$(LIB_DIR)/Math/MatMul/src/mat_mul.sv \
 	$(LIB_DIR)/Math/FastInverse/src/fast_inverse.sv \

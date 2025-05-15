@@ -1,10 +1,11 @@
 import math
+import numpy as np
 from pathlib import Path
 from read_obj_file import read_obj_file
 from decimal_to_fixed import to_fixed_point_hex, to_fixed_point_bin
 
 model_dir = Path(__file__).parent.parent / "algorithms/models/"
-model_files = ["suzanne.obj"] # "cube.obj"
+model_files = ["shrek_smol.obj"] # "suzanne.obj"
 
 MAX_TRIANGLE_COUNT = 4096;
 MAX_VERTEX_COUNT   = 4096;
@@ -24,7 +25,7 @@ with open("model_headers.mem", "w") as h_file, open("model_faces.mem", "w") as f
 
     for model_file in model_files:
         print(model_dir / model_file)
-        vertices, faces = read_obj_file(model_dir / model_file)
+        vertices, faces = read_obj_file(model_dir / model_file, 1.25, np.array([np.pi/2, 0, 0]))
 
         print(faces)
         print(vertices)

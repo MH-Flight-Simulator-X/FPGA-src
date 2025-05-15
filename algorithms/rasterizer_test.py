@@ -1,3 +1,4 @@
+from os import getcwd
 import numpy as np
 import pygame
 
@@ -223,8 +224,9 @@ def draw_model(model, pos, rotation, depth_buffer, screen):
         rasterize_triangle(projected_vertices[face[0]], projected_vertices[face[1]], projected_vertices[face[2]], colors[i%4], depth_buffer, screen)
 
         
-tetrahedron = read_obj_file("tetrahedron.obj")
-monkey = read_obj_file("simplify_amongus.obj")
+print(getcwd())
+tetrahedron = read_obj_file("algorithms/models/ntnu.obj")
+# monkey = read_obj_file("simplify_amongus.obj")
 
 angle = 0
 

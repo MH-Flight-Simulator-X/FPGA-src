@@ -1,6 +1,21 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
+`ifdef VERILATOR
+module clock_100Mhz (
+    input  wire logic clk_20m,        // input clock (20 MHz)
+    input  wire logic rst,            // reset
+    output      logic clk_100m,       // 100 MHz clock
+    output      logic clk_100m_5x,    // 5x clock (600 MHz from VCO)
+    output      logic clk_100m_locked // clock locked
+);
+    assign clk_100m = clk_20m;
+    assign clk_100m_5x = clk_20m;
+    assign clk_100m_locked = 1'b1;
+endmodule
+
+`else
+
 // Generate 100 MHz with 20 MHz input clock
 module clock_100Mhz (
     input  wire logic clk_20m,        // input clock (20 MHz)
@@ -63,3 +78,4 @@ module clock_100Mhz (
     end
 endmodule
 
+`endif
