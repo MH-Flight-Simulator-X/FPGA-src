@@ -15,7 +15,7 @@ MicroHard Flight Simulator X is a student project in the course TDT4295 Computer
 A100T FPGA and a SiliconLabs EFM32 MCU. The system outlined here is the graphics processing system residing on the FPGA, and deals with all the graphical processing and effects needed to visualize the flight simulator. This part of the project is the culmination of a few months worth of hard work by Morten sørensen and Andreas V. Jonsterhaug. The system is written in SystemVerilog with Verilator testbenches for each module in the system. The other parts of the system, that is the PCB and the MCU source code can be found elsewhere in the MH Flight Simulator X org: ![GitHub Page](https://github.com/MH-Flight-Simulator-X)
 
 <div align="center">
-  <img src="https://github.com/MH-Flight-Simulator-X/FPGA-src/blob/main/imgs/flight_sim.png" alt="Cool photo" width="600"/>
+    <video src="https://github.com/user-attachments/assets/c12e54eb-0f3c-4efa-be6c-9832d1708274" controls"></video>
 </div>
 
 ## Overview 
@@ -93,6 +93,16 @@ For each of the modules in the **lib/** directory, a __src__ and a __tb__ direct
 The testbenches for the src files are provided in the tb directory. All testbenches are written in C++
 and are utilizing [Verilator](https://github.com/verilator/verilator).
 
+## Simulation
+To start the simulator run the following inside the **tb/** directory
+```
+make run
+```
+
+<div align="center">
+    <img src="https://github.com/MH-Flight-Simulator-X/FPGA-src/blob/main/imgs/flight_sim.png?raw=true" alt="Simulator screenshot" width="600"/>
+</div>
+
 ## Building the project
 To build the project run the following inside the **Build/** directory
 
@@ -100,3 +110,4 @@ To build the project run the following inside the **Build/** directory
 mkdir logs
 vivado -mode batch -source build.tcl -log logs/build.log -journal logs/build.jou
 ```
+
